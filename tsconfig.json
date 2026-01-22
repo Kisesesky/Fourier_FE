@@ -1,0 +1,73 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2022"
+    ],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@/workspace/chat/*": [
+        "./app/(workspace)/workspace/[teamId]/[projectId]/chat/*"
+      ],
+      "@/workspace/docs/*": [
+        "./app/(workspace)/workspace/[teamId]/[projectId]/docs/*"
+      ],
+      "@/workspace/issues/*": [
+        "./app/(workspace)/workspace/[teamId]/[projectId]/issues/*"
+      ],
+      "@/workspace/members/*": [
+        "./app/(workspace)/workspace/[teamId]/[projectId]/members/*"
+      ],
+      "@/workspace/worksheet/*": [
+        "./app/(workspace)/workspace/[teamId]/[projectId]/worksheet/*"
+      ],
+      "@/workspace/root/*": [
+        "./app/(workspace)/workspace/[teamId]/_components/*"
+      ],
+      "@/workspace/calendar/*": [
+        "./app/(workspace)/workspace/[teamId]/[projectId]/calendar/*"
+      ],
+      "@/workspace/dashboard/*": [
+        "./app/(workspace)/workspace/[teamId]/[projectId]/dashboard/*"
+      ],
+      "@/workspace/root-model/*": [
+        "./app/(workspace)/workspace/[teamId]/_model/*"
+      ]
+    },
+    "types": [
+      "node"
+    ],
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.d.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "reference"
+  ]
+}

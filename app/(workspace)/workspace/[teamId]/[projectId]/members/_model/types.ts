@@ -1,4 +1,4 @@
-export type MemberRole = "owner" | "admin" | "member" | "guest";
+export type MemberRole = "owner" | "maintainer" | "member" | "viewer";
 
 export type PresenceStatus = "online" | "away" | "offline" | "dnd";
 

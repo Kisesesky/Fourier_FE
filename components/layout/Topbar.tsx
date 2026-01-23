@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -26,6 +26,9 @@ import SettingsModal from "@/components/settings/SettingsModal";
 import { ThemeMode } from "@/lib/theme";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import { useWorkspaceUser } from "@/hooks/useWorkspaceUser";
+import { useAuthProfile } from "@/hooks/useAuthProfile";
+import { signOut } from "@/lib/auth";
+import { setAuthToken } from "@/lib/api";
 
 const THEME_ICONS: Record<ThemeMode, typeof Sun> = {
   light: Sun,
@@ -85,13 +88,26 @@ export default function Topbar({
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   const { currentUser, userFallback } = useWorkspaceUser();
-  const [tabs, setTabs] = useState<WorkspaceTab[]>([
-    { id: "home", label: "Home", href: "/" },
-    { id: "project-11", label: "11", href: "/?project=11", closable: true },
-  ]);
+  const { profile } = useAuthProfile();
+  const pathname = usePathname();
+  const [tabs, setTabs] = useState<WorkspaceTab[]>([]);
   const [activeTab, setActiveTab] = useState("home");
   const [recentlyClosed, setRecentlyClosed] = useState<WorkspaceTab[]>([]);
   const [showRecentMenu, setShowRecentMenu] = useState(false);
+  const [recentProjects, setRecentProjects] = useState<WorkspaceTab[]>([]);
+
+  const displayName = currentUser?.name ?? profile?.email ?? "User";
+  const avatarUrl = currentUser?.avatarUrl ?? undefined;
+  const userInitials = useMemo(() => {
+    const base = displayName?.trim() || "User";
+    return base
+      .split(/\s+/)
+      .map((part: string) => part[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+  }, [displayName]);
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -126,10 +142,14 @@ export default function Topbar({
   const handleCloseWorkspaceTab = (tabId: string) => {
     const target = tabs.find((item) => item.id === tabId);
     if (!target || !target.closable) return;
-    const nextTabs = tabs.filter((item) => item.id !== tabId);
-    setTabs(nextTabs);
+    const nextRecent = recentProjects.filter((item) => item.id !== tabId);
+    setRecentProjects(nextRecent);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("recentProjects", JSON.stringify(nextRecent));
+      window.dispatchEvent(new Event("recent-projects-updated"));
+    }
     if (activeTab === tabId) {
-      const fallback = nextTabs[0] ?? tabs.find((item) => !item.closable) ?? tabs[0];
+      const fallback = tabs.find((item) => item.id === "home");
       if (fallback) {
         setActiveTab(fallback.id);
         router.push(fallback.href ?? "/");
@@ -137,38 +157,88 @@ export default function Topbar({
     }
     setRecentlyClosed((prev) => {
       const filtered = prev.filter((item) => item.id !== tabId);
-      return [target, ...filtered].slice(0, 5);
+      const next = [target, ...filtered].slice(0, 8);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("recentlyClosedProjects", JSON.stringify(next));
+      }
+      return next;
     });
   };
 
   const restoreTab = (tab: WorkspaceTab) => {
-    setTabs((prev) => {
-      if (prev.some((item) => item.id === tab.id)) return prev;
-      return [...prev, tab];
-    });
-    setRecentlyClosed((prev) => prev.filter((item) => item.id !== tab.id));
     setShowRecentMenu(false);
+    setRecentlyClosed((prev) => {
+      const next = prev.filter((item) => item.id !== tab.id);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("recentlyClosedProjects", JSON.stringify(next));
+      }
+      return next;
+    });
+    setRecentProjects((prev) => {
+      if (prev.some((item) => item.id === tab.id)) return prev;
+      const next = [...prev, tab];
+      if (typeof window !== "undefined") {
+        localStorage.setItem("recentProjects", JSON.stringify(next));
+        window.dispatchEvent(new Event("recent-projects-updated"));
+      }
+      return next;
+    });
+    router.push(tab.href);
   };
 
   const ThemeIcon = useMemo(() => THEME_ICONS[theme], [theme]);
 
+  useEffect(() => {
+    const loadRecent = () => {
+      if (typeof window === "undefined") return;
+      const stored = localStorage.getItem("recentProjects");
+      const parsed = stored ? (JSON.parse(stored) as WorkspaceTab[]) : [];
+      setRecentProjects(parsed.filter((item) => item && item.id && item.href));
+    };
+    const loadClosed = () => {
+      if (typeof window === "undefined") return;
+      const stored = localStorage.getItem("recentlyClosedProjects");
+      const parsed = stored ? (JSON.parse(stored) as WorkspaceTab[]) : [];
+      setRecentlyClosed(parsed.filter((item) => item && item.id && item.href));
+    };
+    loadRecent();
+    loadClosed();
+    window.addEventListener("recent-projects-updated", loadRecent);
+    return () => window.removeEventListener("recent-projects-updated", loadRecent);
+  }, []);
+
+  useEffect(() => {
+    if (!pathname) return;
+    const match = pathname.match(/^\/workspace\/[^/]+\/([^/]+)/);
+    if (match?.[1]) {
+      setActiveTab(match[1]);
+    } else {
+      setActiveTab("home");
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    setTabs([
+      { id: "home", label: "Home", href: "/" },
+      ...recentProjects.map((item) => ({ ...item, closable: true })),
+    ]);
+  }, [recentProjects]);
+
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem("accessToken");
-
-      if (token) {
-        await fetch("http://localhost:3001/api/v1/auth/sign-out", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
+      await signOut();
     } catch (e) {
       console.error("Logout failed", e);
+      show({
+        title: "로그아웃 실패",
+        description: "네트워크 상태를 확인해주세요.",
+        variant: "error",
+      });
     } finally {
       // 프론트 상태 정리
       localStorage.removeItem("accessToken");
+      setAuthToken(null);
+      sessionStorage.removeItem("auth:justSignedIn");
       setUserMenuOpen(false);
 
       // 로그인 페이지로 이동
@@ -184,10 +254,10 @@ export default function Topbar({
         onClick={() => setUserMenuOpen((prev) => !prev)}
         aria-label="User menu"
       >
-        {currentUser?.avatarUrl ? (
-          <img src={currentUser.avatarUrl} alt={currentUser?.name || "Me"} className="h-full w-full object-cover" />
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
         ) : (
-          <span className="text-xs font-semibold">{userFallback}</span>
+          <span className="text-xs font-semibold">{userInitials || userFallback}</span>
         )}
       </button>
       {userMenuOpen && (
@@ -208,7 +278,12 @@ export default function Topbar({
     return (
       <header className="flex h-[56px] w-full items-center justify-between border-b border-border bg-panel px-4 text-foreground shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-colors md:px-8">
         <div className="flex items-center gap-3 text-sm">
-          <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="flex items-center gap-2"
+            onClick={() => router.push("/")}
+            aria-label="Go home"
+          >
             <Image
               src="/logo.png"
               alt="Fourier logo"
@@ -218,7 +293,7 @@ export default function Topbar({
               priority
             />
             <span className="text-lg font-semibold">Fourier</span>
-          </div>
+          </button>
           <div className="flex items-center gap-3">
             {tabs.map((tab) => (
               <div
@@ -297,7 +372,7 @@ export default function Topbar({
             <ThemeIcon size={16} />
             <span className="capitalize">{theme}</span>
           </button>
-          <ToolbarIcon icon={RotateCcw} label="Refresh" />
+          <ToolbarIcon icon={RotateCcw} label="Refresh" onClick={() => window.location.reload()} />
           <ToolbarIcon icon={Bell} label="Notifications" />
           <ToolbarIcon icon={Settings} label="Settings" onClick={onWorkspaceSettings} />
           {renderUserSection()}
@@ -332,7 +407,12 @@ export default function Topbar({
             </button>
           )}
 
-          <div className="hidden items-center gap-2 md:flex">
+          <button
+            type="button"
+            className="hidden items-center gap-2 md:flex"
+            onClick={() => router.push("/")}
+            aria-label="Go home"
+          >
             <Image
               src="/logo.png"
               alt="Fourier logo"
@@ -344,7 +424,7 @@ export default function Topbar({
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold text-foreground">FOURIER</span>
             </div>
-          </div>
+          </button>
         </div>
 
         <div className="flex flex-1 items-center justify-end gap-3">

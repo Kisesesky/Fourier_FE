@@ -1,30 +1,43 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { CheckCircle, Copy, Search, UserPlus, X } from "lucide-react";
-import {
-  defaultInvites,
-  defaultMembers,
-  defaultPresence,
-  createPresenceMap,
-} from "@/workspace/members/_model/mocks";
-import type { MemberRole, PresenceStatus } from "@/workspace/members/_model/types";
+import { useParams } from "next/navigation";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { fetchTeamMembers } from "@/lib/team";
+import { useToast } from "@/components/ui/Toast";
+import type { Member, MemberRole, PresenceStatus } from "@/workspace/members/_model/types";
 
 const roleLabels: Record<MemberRole, string> = {
   owner: "Owner",
-  admin: "Admin",
+  maintainer: "MAINTAINER",
   member: "Member",
-  guest: "Guest",
+  viewer: "VIEWER",
 };
 
-const inviteRoles: MemberRole[] = ["owner", "admin", "member", "guest"];
+const inviteRoles: MemberRole[] = ["owner", "maintainer", "member", "viewer"];
 
 const statusColor: Record<PresenceStatus, string> = {
   online: "bg-emerald-400/10 text-emerald-300",
   away: "bg-amber-400/10 text-amber-200",
   offline: "bg-slate-500/15 text-muted",
   dnd: "bg-rose-500/15 text-rose-300",
+};
+
+const mapTeamRole = (role: string): MemberRole => {
+  switch (role) {
+    case "OWNER":
+      return "owner";
+    case "MAINTAINER":
+      return "maintainer";
+    case "MEMBER":
+      return "member";
+    case "VIEWER":
+      return "viewer";
+    default:
+      return "member";
+  }
 };
 
 const getInitials = (name: string) =>
@@ -43,9 +56,10 @@ interface InviteMemberModalProps {
   onEmailChange: (value: string) => void;
   onRoleChange: (value: MemberRole) => void;
   onClose: () => void;
+  onSubmit: () => void;
 }
 
-const InviteMemberModal = ({ open, email, role, onEmailChange, onRoleChange, onClose }: InviteMemberModalProps) => {
+const InviteMemberModal = ({ open, email, role, onEmailChange, onRoleChange, onClose, onSubmit }: InviteMemberModalProps) => {
   if (!open) return null;
   const inviteLink = "fourier.app/invite/workspace";
 
@@ -111,6 +125,7 @@ const InviteMemberModal = ({ open, email, role, onEmailChange, onRoleChange, onC
             type="button"
             disabled={!email.trim()}
             className="w-full rounded-full bg-[#f7ce9c] px-4 py-2 text-sm font-semibold text-[#1a1203] transition disabled:opacity-40"
+            onClick={onSubmit}
           >
             Send invite
           </button>
@@ -133,32 +148,69 @@ const InviteMemberModal = ({ open, email, role, onEmailChange, onRoleChange, onC
 };
 
 const MembersView = () => {
+  const { teamId } = useParams<{ teamId: string }>();
+  const { workspace } = useWorkspace();
+  const { show } = useToast();
   const [activeMemberTab, setActiveMemberTab] = useState<"Members" | "Pending Invites" | "Roles">("Members");
   const [search, setSearch] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("member");
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [members, setMembers] = useState<Member[]>([]);
 
-  const presenceMap = useMemo(() => createPresenceMap(defaultPresence), []);
-  const onlineCount = defaultPresence.filter((presence) => presence.status === "online").length;
-  const favoriteCount = defaultMembers.filter((member) => member.isFavorite).length;
+  useEffect(() => {
+    if (!workspace?.id || !teamId) return;
+    const load = async () => {
+      try {
+        const data = await fetchTeamMembers(workspace.id, teamId);
+        const mapped = (data ?? []).map((member: { userId: string; name: string; role: string; email?: string | null; avatarUrl?: string | null }) => ({
+          id: member.userId,
+          name: member.name,
+          email: member.email ?? "",
+          role: mapTeamRole(member.role),
+          avatarUrl: member.avatarUrl ?? undefined,
+          joinedAt: Date.now(),
+          lastActiveAt: Date.now(),
+        }));
+        setMembers(mapped);
+      } catch (err) {
+        console.error("Failed to fetch team members", err);
+        show({
+          title: "멤버 로딩 실패",
+          description: "팀 멤버를 불러오지 못했습니다.",
+          variant: "error",
+        });
+      }
+    };
+    load();
+  }, [teamId, workspace?.id, show]);
+
+  const presenceMap = useMemo(() => {
+    const map: Record<string, { status: PresenceStatus }> = {};
+    members.forEach((member) => {
+      map[member.id] = { status: "offline" };
+    });
+    return map;
+  }, [members]);
+  const onlineCount = 0;
+  const favoriteCount = members.filter((member) => member.isFavorite).length;
 
   const stats = [
-    { id: "total", label: "Workspace members", value: defaultMembers.length, helper: `${onlineCount} online` },
-    { id: "pending", label: "Pending invites", value: defaultInvites.length, helper: "Auto-expire in 7 days" },
+    { id: "total", label: "Workspace members", value: members.length, helper: `${onlineCount} online` },
+    { id: "pending", label: "Pending invites", value: 0, helper: "Auto-expire in 7 days" },
     { id: "favorites", label: "Favorites", value: favoriteCount, helper: "Star from profile" },
   ];
 
   const normalizedSearch = search.trim().toLowerCase();
   const filteredMembers = useMemo(() => {
-    if (!normalizedSearch) return defaultMembers;
-    return defaultMembers.filter(
+    if (!normalizedSearch) return members;
+    return members.filter(
       (member) =>
         member.name.toLowerCase().includes(normalizedSearch) ||
         member.email.toLowerCase().includes(normalizedSearch) ||
         (member.location ?? "").toLowerCase().includes(normalizedSearch)
     );
-  }, [normalizedSearch]);
+  }, [normalizedSearch, members]);
 
   const renderMembers = () => (
     <div className="divide-y divide-border">
@@ -203,6 +255,16 @@ const MembersView = () => {
     </div>
   );
 
+  const pendingInvites: Array<{
+    id: string;
+    email: string;
+    role: MemberRole;
+    invitedByName: string;
+    invitedAt: number;
+    status: string;
+    name?: string;
+  }> = [];
+
   const renderPending = () => (
     <div className="divide-y divide-border">
       <div className="grid grid-cols-[1.5fr,1fr,1.2fr,1fr,1fr] px-3 pb-3 text-[11px] uppercase tracking-[0.4em] text-muted">
@@ -212,7 +274,10 @@ const MembersView = () => {
         <span>Invited At</span>
         <span>Status</span>
       </div>
-      {defaultInvites.map((invite) => (
+      {pendingInvites.length === 0 ? (
+        <div className="px-3 py-10 text-center text-sm text-muted">대기 중 초대가 없습니다.</div>
+      ) : (
+        pendingInvites.map((invite) => (
         <div key={invite.id} className="grid grid-cols-[1.5fr,1fr,1.2fr,1fr,1fr] items-center gap-4 px-3 py-4">
           <div>
             <p className="font-semibold">{invite.email}</p>
@@ -233,7 +298,8 @@ const MembersView = () => {
             </button>
           </div>
         </div>
-      ))}
+      )))
+      }
     </div>
   );
 
@@ -245,14 +311,14 @@ const MembersView = () => {
           <p className="mt-2 text-sm text-muted">
             {role === "owner"
               ? "Full control over billing, roles, and workspace security."
-              : role === "admin"
+              : role === "maintainer"
                 ? "Manage members, edit workspace resources, and run deploys."
                 : role === "member"
                   ? "Collaborate on every project with edit access."
                   : "Read-only visibility with ability to comment."}
           </p>
           <ul className="mt-4 space-y-2 text-sm text-muted">
-            {role === "guest" ? (
+            {role === "viewer" ? (
               <li className="flex items-center gap-2">
                 <CheckCircle size={14} className="text-emerald-400" />
                 Comment + view resources
@@ -357,10 +423,19 @@ const MembersView = () => {
         onEmailChange={setInviteEmail}
         onRoleChange={setInviteRole}
         onClose={() => setShowInviteModal(false)}
+        onSubmit={() => {
+          if (!inviteEmail.trim()) return;
+          setShowInviteModal(false);
+          setInviteEmail("");
+          show({
+            title: "초대 기능 준비 중",
+            description: "팀 초대 API 연결은 다음 단계에서 진행합니다.",
+            variant: "warning",
+          });
+        }}
       />
     </section>
   );
 };
 
 export default MembersView;
-

@@ -7,7 +7,10 @@ import { CheckCircle2, Clock3, Search, UserPlus, Users, X } from "lucide-react";
 import MemberCard from "./MemberCard";
 import MemberProfilePanel from "./MemberProfilePanel";
 import InviteForm from "./InviteForm";
-import { useMembers } from "@/workspace/members/_model/store";
+import { useParams } from "next/navigation";
+import { addProjectMember, fetchProjectMembers, removeProjectMember } from "@/lib/projects";
+import { searchUsers } from "@/lib/users";
+import { useToast } from "@/components/ui/Toast";
 import type { Member, MemberInvite, PresenceStatus } from "@/workspace/members/_model/types";
 
 const presenceOrder: Record<PresenceStatus, number> = {
@@ -17,31 +20,116 @@ const presenceOrder: Record<PresenceStatus, number> = {
   offline: 3,
 };
 
+const mapProjectRole = (role: string): Member["role"] => {
+  switch (role) {
+    case "OWNER":
+      return "owner";
+    case "MAINTAINER":
+      return "maintainer";
+    case "MEMBER":
+      return "member";
+    case "VIEWER":
+      return "viewer";
+    default:
+      return "member";
+  }
+};
+
+const mapMemberRoleToProjectRole = (role: Member["role"]) => {
+  switch (role) {
+    case "owner":
+      return "OWNER";
+    case "maintainer":
+      return "MAINTAINER";
+    case "member":
+      return "MEMBER";
+    case "viewer":
+      return "VIEWER";
+    default:
+      return "MEMBER";
+  }
+};
+
 export default function MembersView() {
-  const { members, memberIds, invites, presence, selectedMemberId } = useMembers((state) => ({
-    members: state.members,
-    memberIds: state.memberIds,
-    invites: state.invites,
-    presence: state.presence,
-    selectedMemberId: state.selectedMemberId,
-  }));
-  const sendInvite = useMembers((state) => state.sendInvite);
-  const acceptInvite = useMembers((state) => state.acceptInvite);
-  const declineInvite = useMembers((state) => state.declineInvite);
-  const toggleFavorite = useMembers((state) => state.toggleFavorite);
-  const removeMember = useMembers((state) => state.removeMember);
-  const setSelectedMember = useMembers((state) => state.setSelectedMember);
-  const setPresence = useMembers((state) => state.setPresence);
-  const clearPresenceStaleness = useMembers((state) => state.clearPresenceStaleness);
+  const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
+  const { show } = useToast();
+  const [members, setMembers] = useState<Record<string, Member>>({});
+  const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [invites, setInvites] = useState<MemberInvite[]>([]);
+  const [presence, setPresence] = useState<Record<string, { memberId: string; status: PresenceStatus; lastSeenAt: number }>>({});
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  const loadMembers = async () => {
+    if (!teamId || !projectId) return;
+    try {
+      const data = await fetchProjectMembers(teamId, projectId);
+      const mapped = (data ?? []).map((member: { userId: string; name: string; email?: string | null; avatarUrl?: string | null; role: string }) => ({
+        id: member.userId,
+        name: member.name,
+        email: member.email ?? "",
+        role: mapProjectRole(member.role),
+        avatarUrl: member.avatarUrl ?? undefined,
+        joinedAt: Date.now(),
+        lastActiveAt: Date.now(),
+      }));
+      const map = Object.fromEntries(mapped.map((m: Member) => [m.id, m]));
+      setMembers(map);
+      setMemberIds(mapped.map((m: Member) => m.id));
+      if (!selectedMemberId && mapped[0]) {
+        setSelectedMemberId(mapped[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to fetch project members", err);
+      show({
+        title: "멤버 로딩 실패",
+        description: "프로젝트 멤버를 불러오지 못했습니다.",
+        variant: "error",
+      });
+    }
+  };
+
   useEffect(() => {
-    const timer = setInterval(() => clearPresenceStaleness(), 60_000);
-    return () => clearInterval(timer);
-  }, [clearPresenceStaleness]);
+    if (!teamId || !projectId) return;
+    loadMembers();
+  }, [teamId, projectId, selectedMemberId, show]);
+
+  const handleInvite = async (payload: { email: string; name?: string; role?: Member["role"]; message?: string }) => {
+    if (!teamId || !projectId) return;
+    try {
+      const results = await searchUsers(payload.email.trim());
+      if (!Array.isArray(results) || results.length === 0) {
+        show({
+          title: "사용자 없음",
+          description: "해당 이메일/이름의 사용자를 찾을 수 없습니다.",
+          variant: "warning",
+        });
+        return;
+      }
+      const exact = results.find((user) => user.email?.toLowerCase() === payload.email.trim().toLowerCase());
+      const target = exact ?? results[0];
+      await addProjectMember(teamId, projectId, {
+        userId: target.id,
+        role: mapMemberRoleToProjectRole(payload.role ?? "member"),
+      });
+      await loadMembers();
+      show({
+        title: "멤버 추가 완료",
+        description: `${target.displayName ?? target.name} 님이 프로젝트에 추가되었습니다.`,
+        variant: "success",
+      });
+    } catch (err) {
+      console.error("Failed to add project member", err);
+      show({
+        title: "멤버 추가 실패",
+        description: "권한 또는 입력값을 확인해주세요.",
+        variant: "error",
+      });
+    }
+  };
 
   const normalizedQuery = query.trim().toLowerCase();
   const orderedMembers: Member[] = useMemo(() => {
@@ -77,9 +165,9 @@ export default function MembersView() {
 
   useEffect(() => {
     if (!selectedMemberId && orderedMembers[0]) {
-      setSelectedMember(orderedMembers[0].id);
+      setSelectedMemberId(orderedMembers[0].id);
     }
-  }, [orderedMembers, selectedMemberId, setSelectedMember]);
+  }, [orderedMembers, selectedMemberId]);
 
   const selectedMember = selectedMemberId ? members[selectedMemberId] ?? null : null;
   const pendingInvites = invites.filter((invite) => invite.status === "pending");
@@ -119,7 +207,7 @@ export default function MembersView() {
                   <InviteForm
                     onCancel={() => setInviteOpen(false)}
                     onSubmit={(payload) => {
-                      sendInvite(payload);
+                      handleInvite(payload);
                       setInviteOpen(false);
                     }}
                   />
@@ -166,13 +254,40 @@ export default function MembersView() {
                   presence={presence[member.id]}
                   selected={selectedMember?.id === member.id}
                   onSelect={() => {
-                    setSelectedMember(member.id);
+                    setSelectedMemberId(member.id);
                     setProfileOpen(true);
                   }}
-                  onToggleFavorite={() => toggleFavorite(member.id)}
+                  onToggleFavorite={() => {
+                    setMembers((prev) => ({
+                      ...prev,
+                      [member.id]: { ...prev[member.id], isFavorite: !prev[member.id]?.isFavorite },
+                    }));
+                  }}
                   onRemove={() => {
                     if (window.confirm(`${member.name}을(를) 삭제할까요?`)) {
-                      removeMember(member.id);
+                      if (!teamId || !projectId) return;
+                      removeProjectMember(teamId, projectId, member.id)
+                        .then(() => {
+                          setMembers((prev) => {
+                            const next = { ...prev };
+                            delete next[member.id];
+                            return next;
+                          });
+                          setMemberIds((prev) => prev.filter((id) => id !== member.id));
+                          show({
+                            title: "멤버 삭제 완료",
+                            description: "프로젝트 멤버가 삭제되었습니다.",
+                            variant: "success",
+                          });
+                        })
+                        .catch((err) => {
+                          console.error("Failed to remove project member", err);
+                          show({
+                            title: "멤버 삭제 실패",
+                            description: "권한 또는 입력값을 확인해주세요.",
+                            variant: "error",
+                          });
+                        });
                     }
                   }}
                 />
@@ -207,7 +322,13 @@ export default function MembersView() {
                     <div className="flex gap-2 text-xs">
                       <button
                         type="button"
-                        onClick={() => acceptInvite(invite.id)}
+                        onClick={() => {
+                          show({
+                            title: "초대 수락 준비 중",
+                            description: "팀 초대 API와 연결 예정입니다.",
+                            variant: "warning",
+                          });
+                        }}
                         className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-3 py-1.5 font-semibold text-emerald-600 transition hover:bg-emerald-50"
                       >
                         <CheckCircle2 size={14} />
@@ -215,7 +336,9 @@ export default function MembersView() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => declineInvite(invite.id)}
+                        onClick={() => {
+                          setInvites((prev) => prev.filter((item) => item.id !== invite.id));
+                        }}
                         className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-muted transition hover:text-foreground"
                       >
                         삭제
@@ -243,12 +366,42 @@ export default function MembersView() {
                 member={selectedMember ?? null}
                 presence={selectedMember ? presence[selectedMember.id] : undefined}
                 onPresenceChange={(status) => {
-                  if (selectedMember) setPresence(selectedMember.id, status);
+                  if (!selectedMember) return;
+                  setPresence((prev) => ({
+                    ...prev,
+                    [selectedMember.id]: {
+                      memberId: selectedMember.id,
+                      status,
+                      lastSeenAt: Date.now(),
+                    },
+                  }));
                 }}
                 onRemove={(memberId) => {
                   if (window.confirm("정말 삭제할까요?")) {
-                    removeMember(memberId);
-                    setProfileOpen(false);
+                    if (!teamId || !projectId) return;
+                    removeProjectMember(teamId, projectId, memberId)
+                      .then(() => {
+                        setMembers((prev) => {
+                          const next = { ...prev };
+                          delete next[memberId];
+                          return next;
+                        });
+                        setMemberIds((prev) => prev.filter((id) => id !== memberId));
+                        setProfileOpen(false);
+                        show({
+                          title: "멤버 삭제 완료",
+                          description: "프로젝트 멤버가 삭제되었습니다.",
+                          variant: "success",
+                        });
+                      })
+                      .catch((err) => {
+                        console.error("Failed to remove project member", err);
+                        show({
+                          title: "멤버 삭제 실패",
+                          description: "권한 또는 입력값을 확인해주세요.",
+                          variant: "error",
+                        });
+                      });
                   }
                 }}
               />

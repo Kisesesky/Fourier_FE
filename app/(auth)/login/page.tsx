@@ -4,6 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { useToast } from "@/components/ui/Toast";
+import { signIn } from "@/lib/auth";
+import { setAuthToken } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 type FormState = {
   email: string;
@@ -17,6 +21,9 @@ const initialState: FormState = {
 
 export default function LoginPage() {
   const [form, setForm] = useState<FormState>(initialState);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { show } = useToast();
+  const router = useRouter();
 
   const handleChange = (key: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
@@ -25,34 +32,30 @@ export default function LoginPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
-      const res = await fetch("http://localhost:3001/api/v1/auth/sign-in", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-        }),
+      if (isSubmitting) return;
+      setIsSubmitting(true);
+      const data = await signIn({
+        email: form.email,
+        password: form.password,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || "로그인 실패");
-        return;
+      if (data?.accessToken) {
+        localStorage.setItem("accessToken", data.accessToken);
+        setAuthToken(data.accessToken);
       }
-
-      localStorage.setItem("accessToken", data.accessToken);
-
-      alert("로그인 성공! 워크스페이스로 이동합니다.");
-
-      // 워크스페이스 페이지 또는 대시보드로 이동
-      window.location.href = "http://localhost:3000";
-
+      sessionStorage.setItem("auth:justSignedIn", "1");
+      router.replace("/");
     } catch (error) {
       console.error(error);
-      alert("서버와 통신 중 오류가 발생했습니다.");
+      const message =
+        (error as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      const description = Array.isArray(message) ? message.join(" ") : message;
+      show({
+        title: "로그인 실패",
+        description: description || "이메일 또는 비밀번호를 확인해주세요.",
+        variant: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -96,7 +99,7 @@ export default function LoginPage() {
           </Link>
         </div>
         <Button type="submit" className="w-full">
-          로그인
+          {isSubmitting ? "로그인 중..." : "로그인"}
         </Button>
       </form>
     </div>

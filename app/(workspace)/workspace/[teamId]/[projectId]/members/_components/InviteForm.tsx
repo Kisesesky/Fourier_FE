@@ -93,7 +93,7 @@ export default function InviteForm({ onSubmit, onCancel }: Props) {
           <input
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            placeholder="Issues 정리 부탁드려요"
+            placeholder="팀으로 초대합니다."
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/40"
           />
         </div>

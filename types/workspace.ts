@@ -1,9 +1,27 @@
 import type { LucideIcon } from "lucide-react";
 
-export type Team = { id: string; name: string; role: string; members: number; active?: boolean };
+export type Team = {
+  id: string;
+  name: string;
+  role: string;
+  members: number;
+  iconType?: "IMAGE";
+  iconValue?: string;
+  active?: boolean;
+};
 export type Workspace = { id: string; name: string; createdAt: string };
 export type Shortcut = { id: string; label: string; hint?: string; icon: LucideIcon };
-export type Project = { id: string; title: string; tag: string; owner: string; updated: string; description: string };
+export type Project = {
+  id: string;
+  title: string;
+  tag: string;
+  owner: string;
+  updated: string;
+  description: string;
+  iconType?: "IMAGE";
+  iconValue?: string;
+  status?: "ACTIVE" | "DRAFT" | "DISABLED";
+};
 export type ProjectViewMode = "grid" | "list";
 export type WorkspaceMember = {
   id: string;

@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
-import { activityTimeline } from "@/workspace/root-model/activities";
-import { createMemberMap, defaultMembers } from "@/workspace/members/_model/mocks";
+import { useParams } from "next/navigation";
+import { fetchTeamActivity, type TeamActivityItem } from "@/lib/activity";
+import { useToast } from "@/components/ui/Toast";
 
 const stats = [
   { id: "deploys", label: "Deployments", value: 18, helper: "+5 vs last week" },
@@ -20,8 +21,71 @@ const getInitials = (name: string) =>
     .join("")
     .toUpperCase();
 
+type ActivityDay = {
+  id: string;
+  dateLabel: string;
+  dayLabel: string;
+  entries: {
+    id: string;
+    time: string;
+    badge?: string;
+    action: string;
+    detail?: string;
+    memberName: string;
+  }[];
+};
+
 const ActivitiesView = () => {
-  const memberMap = useMemo(() => createMemberMap(defaultMembers), []);
+  const { teamId } = useParams<{ teamId: string }>();
+  const { show } = useToast();
+  const [items, setItems] = useState<TeamActivityItem[]>([]);
+
+  useEffect(() => {
+    if (!teamId) return;
+    const load = async () => {
+      try {
+        const data = await fetchTeamActivity(teamId);
+        setItems(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to fetch team activity", err);
+        show({
+          title: "활동 로그 로딩 실패",
+          description: "워크스페이스 활동을 불러오지 못했습니다.",
+          variant: "error",
+        });
+      }
+    };
+    load();
+  }, [teamId, show]);
+
+  const activityTimeline = useMemo<ActivityDay[]>(() => {
+    const grouped = new Map<string, ActivityDay>();
+    const formatter = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "short", day: "numeric" });
+    const dayFormatter = new Intl.DateTimeFormat("ko-KR", { weekday: "short" });
+
+    items.forEach((item) => {
+      const createdAt = new Date(item.createdAt);
+      const dateKey = createdAt.toDateString();
+      if (!grouped.has(dateKey)) {
+        grouped.set(dateKey, {
+          id: dateKey,
+          dateLabel: formatter.format(createdAt),
+          dayLabel: dayFormatter.format(createdAt),
+          entries: [],
+        });
+      }
+      grouped.get(dateKey)!.entries.push({
+        id: item.id,
+        time: createdAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+        badge: item.action?.toUpperCase?.(),
+        action: item.message || item.action || "활동",
+        detail: item.payload ? JSON.stringify(item.payload) : undefined,
+        memberName: item.actor?.name ?? "Unknown",
+      });
+    });
+
+    return Array.from(grouped.values()).sort((a, b) => (a.id < b.id ? 1 : -1));
+  }, [items]);
 
   return (
     <section className="space-y-6">
@@ -64,12 +128,10 @@ const ActivitiesView = () => {
 
               <div className="space-y-3">
                 {day.entries.map((entry) => {
-                  const member = memberMap[entry.memberId];
-                  const avatar = member?.avatarUrl;
                   return (
                     <div key={entry.id} className="flex items-start gap-4 rounded-2xl border border-border px-4 py-3">
                       <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-accent text-sm font-semibold">
-                        {avatar ? <img src={avatar} alt={member?.name ?? "member"} className="h-full w-full object-cover" /> : getInitials(member?.name ?? "?")}
+                        {getInitials(entry.memberName ?? "?")}
                       </span>
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center justify-between text-xs text-muted">
@@ -81,8 +143,7 @@ const ActivitiesView = () => {
                           )}
                         </div>
                         <p className="mt-1 text-sm text-foreground">
-                          <span className="font-semibold">{member?.name ?? "Unknown"}</span> {entry.action}
-                          {entry.target && <span className="text-muted"> {entry.target}</span>}
+                          <span className="font-semibold">{entry.memberName ?? "Unknown"}</span> {entry.action}
                         </p>
                         {entry.detail && <p className="text-xs text-muted">{entry.detail}</p>}
                       </div>
@@ -102,4 +163,3 @@ const ActivitiesView = () => {
 };
 
 export default ActivitiesView;
-

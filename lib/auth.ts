@@ -4,6 +4,9 @@ import api from "./api";
 export type AuthProfile = {
   id: string;
   email: string;
+  name?: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 };

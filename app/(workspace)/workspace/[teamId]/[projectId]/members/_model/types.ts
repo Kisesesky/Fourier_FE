@@ -1,4 +1,4 @@
-export type MemberRole = "owner" | "maintainer" | "member" | "viewer";
+export type MemberRole = "owner" | "manager" | "member" | "guest";
 
 export type PresenceStatus = "online" | "away" | "offline" | "dnd";
 
@@ -7,6 +7,8 @@ export interface Member {
   name: string;
   email: string;
   role: MemberRole;
+  customRoleId?: string | null;
+  customRoleName?: string | null;
   title?: string;
   avatarUrl?: string;
   location?: string;

@@ -5,6 +5,13 @@ import { Clock3, Mail, MapPin, Star, Trash2 } from "lucide-react";
 import type { Member, MemberPresence, PresenceStatus } from "@/workspace/members/_model/types";
 import MemberAvatar from "./MemberAvatar";
 
+const roleLabel: Record<Member["role"], string> = {
+  owner: "Owner",
+  manager: "Admin",
+  member: "Editor",
+  guest: "Viewer",
+};
+
 type MemberCardProps = {
   member: Member;
   presence?: MemberPresence;
@@ -46,7 +53,7 @@ export default function MemberCard({
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-xl font-semibold tracking-tight text-foreground">{member.name}</span>
             <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.3em] text-muted">
-              {member.role}
+              {roleLabel[member.role] ?? "Editor"}
             </span>
             {member.title && (
               <span className="rounded-full border border-border/50 bg-background/70 px-2.5 py-0.5 text-[11px] text-foreground">

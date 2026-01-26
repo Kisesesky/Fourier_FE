@@ -1,27 +1,31 @@
-// components/members/InviteForm.tsx
-
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { MemberRole } from "@/workspace/members/_model/types";
 
 type Props = {
-  onSubmit: (payload: { email: string; name?: string; role?: MemberRole; message?: string }) => void;
+  members: Array<{ id: string; name: string; email?: string | null }>;
+  onSubmit: (payload: { userId: string; role: MemberRole }) => void;
   onCancel: () => void;
 };
 
-export default function InviteForm({ onSubmit, onCancel }: Props) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+const projectRoles: MemberRole[] = ["manager", "member", "guest"];
+const roleLabel: Record<MemberRole, string> = {
+  owner: "Owner",
+  manager: "Admin",
+  member: "Editor",
+  guest: "Viewer",
+};
+
+export default function InviteForm({ members, onSubmit, onCancel }: Props) {
+  const [selectedId, setSelectedId] = useState("");
   const [role, setRole] = useState<MemberRole>("member");
-  const [message, setMessage] = useState("");
+  const options = useMemo(() => members, [members]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!email.trim()) return;
-    onSubmit({ email, name, role, message });
-    setName("");
-    setEmail("");
+    if (!selectedId) return;
+    onSubmit({ userId: selectedId, role });
+    setSelectedId("");
     setRole("member");
-    setMessage("");
   };
 
   return (
@@ -31,8 +35,8 @@ export default function InviteForm({ onSubmit, onCancel }: Props) {
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-brand">친구 초대</div>
-          <p className="text-xs text-muted">이메일로 초대장을 보내고 바로 협업을 시작해요.</p>
+          <div className="text-sm font-semibold text-brand">프로젝트 멤버 추가</div>
+          <p className="text-xs text-muted">팀 멤버 중에서 프로젝트 멤버를 선택하세요.</p>
         </div>
         <div className="flex gap-2 text-xs">
           <button
@@ -44,36 +48,30 @@ export default function InviteForm({ onSubmit, onCancel }: Props) {
           </button>
           <button
             type="submit"
-            className="rounded-md bg-brand px-4 py-1.5 font-semibold text-white shadow-sm transition hover:bg-brand/90"
+            disabled={!selectedId}
+            className="rounded-md bg-brand px-4 py-1.5 font-semibold text-white shadow-sm transition hover:bg-brand/90 disabled:opacity-50"
           >
-            초대 보내기
+            추가하기
           </button>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">이름</label>
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="홍길동"
+          <label className="text-xs font-semibold uppercase tracking-wide text-muted">팀 멤버</label>
+          <select
+            value={selectedId}
+            onChange={(event) => setSelectedId(event.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/40"
-          />
+          >
+            <option value="">멤버 선택</option>
+            {options.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.name} {member.email ? `(${member.email})` : ""}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">이메일 *</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="teammate@company.com"
-            required
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/40"
-          />
-        </div>
-      </div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-semibold uppercase tracking-wide text-muted">역할</label>
           <select
@@ -81,21 +79,12 @@ export default function InviteForm({ onSubmit, onCancel }: Props) {
             onChange={(event) => setRole(event.target.value as MemberRole)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/40"
           >
-            {["owner", "admin", "member", "guest"].map((item) => (
+            {projectRoles.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {roleLabel[item] ?? "Editor"}
               </option>
             ))}
           </select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted">메시지</label>
-          <input
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder="팀으로 초대합니다."
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/40"
-          />
         </div>
       </div>
     </form>

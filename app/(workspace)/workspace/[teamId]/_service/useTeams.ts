@@ -55,5 +55,16 @@ export function useTeams(workspaceId: string, userId?: string) {
     };
   }, [workspaceId, refetch]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleRefresh = () => {
+      refetch().catch(() => {});
+    };
+    window.addEventListener("teams:refresh", handleRefresh);
+    return () => {
+      window.removeEventListener("teams:refresh", handleRefresh);
+    };
+  }, [refetch]);
+
   return { teams, loading, error, refetch };
 }

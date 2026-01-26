@@ -12,6 +12,7 @@ import SettingsView from "@/workspace/root/views/SettingsView";
 import ActivitiesView from "@/workspace/root/views/ActivitiesView";
 import WorkspaceSettingsModal from "@/workspace/root/WorkspaceSettingsModal";
 import RecentVisitedView from "@/workspace/root/views/RecentVisitedView";
+import FriendsView from "@/workspace/root/views/FriendsView";
 import { recentVisited } from "@/workspace/root-model/workspaceData";
 import type { Project, ProjectViewMode } from "@/types/workspace";
 import { LayoutGrid, List } from "lucide-react";
@@ -25,7 +26,9 @@ import { cloneProject, createProject, deleteProject, favoriteProject, unfavorite
 import { useToast } from "@/components/ui/Toast";
 import Modal from "@/components/common/Modal";
 import { uploadImage } from "@/lib/uploads";
-import MembersView from "./(workspace)/workspace/[teamId]/[projectId]/members/_components/MembersView";
+import TeamMembersView from "./(workspace)/workspace/[teamId]/_components/views/TeamMembersView";
+import { fetchFriends } from "@/lib/members";
+import FloatingDm from "./(workspace)/workspace/[teamId]/_components/FloatingDm";
 
 const slugify = (value: string) =>
   value
@@ -52,7 +55,9 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<ProjectViewMode>("grid");
   const [starredProjects, setStarredProjects] = useState<Record<string, boolean>>({});
   const [menuProject, setMenuProject] = useState<string | null>(null);
-  const [leftNavView, setLeftNavView] = useState<"projects" | "recent" | "favorites">("projects");
+  const [leftNavView, setLeftNavView] = useState<"projects" | "recent" | "favorites" | "friends">("projects");
+  const [friendsTab, setFriendsTab] = useState<"friends" | "requests" | "manage">("friends");
+  const [friendCount, setFriendCount] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("Projects");
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
   const [projectsByTeam, setProjectsByTeam] = useState<Record<string, Project[]>>({});
@@ -108,6 +113,16 @@ export default function HomePage() {
       window.dispatchEvent(new Event("recent-projects-updated"));
     }
     router.push(href);
+  };
+  const handleSelectTeam = (teamId: string) => {
+    setTeams((prev) =>
+      prev.map((team) => ({
+        ...team,
+        active: team.id === teamId,
+      }))
+    );
+    setLeftNavView("projects");
+    setActiveTab("Projects");
   };
   const handleToggleStar = async (projectId: string) => {
     if (!activeTeam) return;
@@ -174,11 +189,12 @@ export default function HomePage() {
     if (!activeTeam || creatingProject) return;
     const trimmedName = newProjectName.trim();
     if (!trimmedName) return;
+    const nameWithSuffix = trimmedName.endsWith("'s Project") ? trimmedName : `${trimmedName}'s Project`;
     try {
       setCreatingProject(true);
       const iconValue = newProjectIconValue.trim();
       const created = await createProject(activeTeam.id, {
-        name: trimmedName,
+        name: nameWithSuffix,
         description: newProjectDescription.trim() || undefined,
         ...(iconValue ? { iconType: "IMAGE", iconValue } : {}),
         status: newProjectStatus,
@@ -193,7 +209,7 @@ export default function HomePage() {
       setNewProjectStatus("ACTIVE");
       show({
         title: "프로젝트 생성 완료",
-        description: `${created?.name ?? trimmedName} 프로젝트가 생성되었습니다.`,
+        description: `${created?.name ?? nameWithSuffix} 프로젝트가 생성되었습니다.`,
         variant: "success",
       });
     } catch (err) {
@@ -602,6 +618,35 @@ export default function HomePage() {
   }, [projectError, show]);
 
   useEffect(() => {
+    if (!workspace?.id) return;
+    const loadFriendCount = async () => {
+      try {
+        const list = await fetchFriends(workspace.id);
+        setFriendCount(list.length);
+      } catch (err) {
+        console.error("Failed to fetch friend count", err);
+      }
+    };
+    void loadFriendCount();
+    const handler = () => void loadFriendCount();
+    window.addEventListener("friends:refresh", handler as EventListener);
+    return () => {
+      window.removeEventListener("friends:refresh", handler as EventListener);
+    };
+  }, [workspace?.id]);
+
+  useEffect(() => {
+    const handler = () => {
+      setLeftNavView("friends");
+      setFriendsTab("requests");
+    };
+    window.addEventListener("friends:open-requests", handler as EventListener);
+    return () => {
+      window.removeEventListener("friends:open-requests", handler as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!teams.length) return;
     setProjectsByTeam((prev) => {
       const next = { ...prev };
@@ -625,7 +670,7 @@ export default function HomePage() {
             <div
               className={
                 viewMode === "grid"
-                  ? "pt-2 flex flex-wrap gap-5"
+                  ? "pt-2 grid grid-cols-1 gap-6 lg:grid-cols-2"
                   : "pt-2 space-y-3"
               }
             >
@@ -655,7 +700,7 @@ export default function HomePage() {
       case "Activities":
         return <ActivitiesView />;
       case "Members":
-        return <MembersView />;
+        return <TeamMembersView teamId={activeTeamId} />;
       case "Settings":
         return <SettingsView />;
       default:
@@ -679,16 +724,8 @@ export default function HomePage() {
           onChangeView={setLeftNavView}
           favoriteCount={favoriteProjects.length}
           recentCount={recentVisited.length}
-          onSelectTeam={(teamId) => {
-            setTeams((prev) =>
-              prev.map((team) => ({
-                ...team,
-                active: team.id === teamId,
-              }))
-            );
-            setLeftNavView("projects");
-            setActiveTab("Projects");
-          }}
+          friendCount={friendCount}
+          onSelectTeam={handleSelectTeam}
         />
 
         <main className="flex flex-1 flex-col gap-6 px-5 py-6 md:px-10">
@@ -763,6 +800,12 @@ export default function HomePage() {
                   </div>
                 )}
               </section>
+            ) : leftNavView === "friends" ? (
+              <FriendsView
+                onSelectTeam={handleSelectTeam}
+                activeTab={friendsTab}
+                onTabChange={setFriendsTab}
+              />
             ) : (
               <>
                 <section className="space-y-2">
@@ -907,7 +950,13 @@ export default function HomePage() {
           >
             <div className="space-y-2">
               <p className="text-[11px] uppercase tracking-[0.45em] text-muted">Create a project</p>
-              <h2 className="text-2xl font-semibold">{newProjectName.trim() || "Start something new"}</h2>
+              <h2 className="text-2xl font-semibold">
+                {newProjectName.trim()
+                  ? newProjectName.trim().endsWith("'s Project")
+                    ? newProjectName.trim()
+                    : `${newProjectName.trim()}'s Project`
+                  : "Start something new"}
+              </h2>
               <p className="text-sm text-muted">Add an icon, a short description, and status.</p>
             </div>
 
@@ -1279,6 +1328,7 @@ export default function HomePage() {
       </Modal>
 
       {showWorkspaceSettings && <WorkspaceSettingsModal onClose={() => setShowWorkspaceSettings(false)} />}
+      <FloatingDm />
     </div>
   );
 }

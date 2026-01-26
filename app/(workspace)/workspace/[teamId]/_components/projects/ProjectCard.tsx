@@ -47,7 +47,9 @@ const ProjectCard = ({ project, viewMode, isStarred, onToggleStar, onOpenMenu, o
           </span>
           <div className="flex flex-1 items-center justify-between">
             <div>
-            <h3 className="font-semibold">{project.title}</h3>
+            <h3 className="font-semibold">
+              {project.title.endsWith("'s Project") ? project.title : `${project.title}'s Project`}
+            </h3>
               <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-muted">
                 <span className={clsx("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px]", statusTone)}>
                   {status}
@@ -94,7 +96,7 @@ const ProjectCard = ({ project, viewMode, isStarred, onToggleStar, onOpenMenu, o
 
   return (
     <article
-      className="group flex h-[240px] w-[280px] cursor-pointer flex-col justify-between rounded-[26px] border border-border bg-panel p-5 text-sm text-foreground shadow-[0_4px_14px_rgba(0,0,0,0.05)] transition hover:border-border/80 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)]"
+      className="group flex h-[280px] w-full cursor-pointer flex-col justify-between rounded-[28px] border border-border bg-panel p-6 text-sm text-foreground shadow-[0_4px_14px_rgba(0,0,0,0.05)] transition hover:border-border/80 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)]"
       role="button"
       tabIndex={0}
       onClick={handleOpen}
@@ -112,7 +114,9 @@ const ProjectCard = ({ project, viewMode, isStarred, onToggleStar, onOpenMenu, o
         </div>
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h3 className="text-2xl font-semibold">{project.title}</h3>
+            <h3 className="text-2xl font-semibold">
+              {project.title.endsWith("'s Project") ? project.title : `${project.title}'s Project`}
+            </h3>
             <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-muted">
               <span className={clsx("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px]", statusTone)}>
                 {status}

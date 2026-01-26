@@ -3,15 +3,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { CheckCircle2, Clock3, Search, UserPlus, Users, X } from "lucide-react";
+import { Search, UserPlus, Users, X } from "lucide-react";
 import MemberCard from "./MemberCard";
 import MemberProfilePanel from "./MemberProfilePanel";
 import InviteForm from "./InviteForm";
 import { useParams } from "next/navigation";
 import { addProjectMember, fetchProjectMembers, removeProjectMember } from "@/lib/projects";
-import { searchUsers } from "@/lib/users";
+import { fetchTeamMembers } from "@/lib/team";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { useToast } from "@/components/ui/Toast";
-import type { Member, MemberInvite, PresenceStatus } from "@/workspace/members/_model/types";
+import type { Member, PresenceStatus } from "@/workspace/members/_model/types";
 
 const presenceOrder: Record<PresenceStatus, number> = {
   online: 0,
@@ -24,12 +25,12 @@ const mapProjectRole = (role: string): Member["role"] => {
   switch (role) {
     case "OWNER":
       return "owner";
-    case "MAINTAINER":
-      return "maintainer";
+    case "MANAGER":
+      return "manager";
     case "MEMBER":
       return "member";
-    case "VIEWER":
-      return "viewer";
+    case "GUEST":
+      return "guest";
     default:
       return "member";
   }
@@ -39,12 +40,12 @@ const mapMemberRoleToProjectRole = (role: Member["role"]) => {
   switch (role) {
     case "owner":
       return "OWNER";
-    case "maintainer":
-      return "MAINTAINER";
+    case "manager":
+      return "MANAGER";
     case "member":
       return "MEMBER";
-    case "viewer":
-      return "VIEWER";
+    case "guest":
+      return "GUEST";
     default:
       return "MEMBER";
   }
@@ -53,11 +54,12 @@ const mapMemberRoleToProjectRole = (role: Member["role"]) => {
 export default function MembersView() {
   const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
   const { show } = useToast();
+  const { workspace } = useWorkspace();
   const [members, setMembers] = useState<Record<string, Member>>({});
   const [memberIds, setMemberIds] = useState<string[]>([]);
-  const [invites, setInvites] = useState<MemberInvite[]>([]);
   const [presence, setPresence] = useState<Record<string, { memberId: string; status: PresenceStatus; lastSeenAt: number }>>({});
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; email?: string | null }>>([]);
 
   const [query, setQuery] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -97,28 +99,35 @@ export default function MembersView() {
     loadMembers();
   }, [teamId, projectId, selectedMemberId, show]);
 
-  const handleInvite = async (payload: { email: string; name?: string; role?: Member["role"]; message?: string }) => {
+  useEffect(() => {
+    if (!workspace?.id || !teamId) return;
+    const loadTeamMembers = async () => {
+      try {
+        const data = await fetchTeamMembers(workspace.id, teamId);
+        const mapped = (data ?? []).map((member: { userId: string; name: string; email?: string | null }) => ({
+          id: member.userId,
+          name: member.name,
+          email: member.email ?? null,
+        }));
+        setTeamMembers(mapped);
+      } catch (err) {
+        console.error("Failed to fetch team members", err);
+      }
+    };
+    loadTeamMembers();
+  }, [teamId, workspace?.id]);
+
+  const handleInvite = async (payload: { userId: string; role: Member["role"] }) => {
     if (!teamId || !projectId) return;
     try {
-      const results = await searchUsers(payload.email.trim());
-      if (!Array.isArray(results) || results.length === 0) {
-        show({
-          title: "사용자 없음",
-          description: "해당 이메일/이름의 사용자를 찾을 수 없습니다.",
-          variant: "warning",
-        });
-        return;
-      }
-      const exact = results.find((user) => user.email?.toLowerCase() === payload.email.trim().toLowerCase());
-      const target = exact ?? results[0];
       await addProjectMember(teamId, projectId, {
-        userId: target.id,
+        userId: payload.userId,
         role: mapMemberRoleToProjectRole(payload.role ?? "member"),
       });
       await loadMembers();
       show({
         title: "멤버 추가 완료",
-        description: `${target.displayName ?? target.name} 님이 프로젝트에 추가되었습니다.`,
+        description: "프로젝트 멤버가 추가되었습니다.",
         variant: "success",
       });
     } catch (err) {
@@ -170,7 +179,10 @@ export default function MembersView() {
   }, [orderedMembers, selectedMemberId]);
 
   const selectedMember = selectedMemberId ? members[selectedMemberId] ?? null : null;
-  const pendingInvites = invites.filter((invite) => invite.status === "pending");
+  const availableTeamMembers = useMemo(
+    () => teamMembers.filter((member) => !members[member.id]),
+    [teamMembers, members]
+  );
   const total = orderedMembers.length;
   const favorites = orderedMembers.filter((member) => member.isFavorite).length;
   const online = Object.values(presence).filter((record) => record.status === "online").length;
@@ -182,7 +194,7 @@ export default function MembersView() {
           <div>
             <p className="text-sm font-semibold text-brand">팀 멤버 관리</p>
             <h1 className="mt-1 text-2xl font-bold text-foreground">Members</h1>
-            <p className="text-sm text-muted">친구 초대, 온라인 상태, 즐겨찾기를 한 곳에서 제어합니다.</p>
+            <p className="text-sm text-muted">프로젝트 멤버를 추가하고 상태를 확인합니다.</p>
           </div>
           <Dialog.Root open={inviteOpen} onOpenChange={setInviteOpen}>
             <Dialog.Trigger asChild>
@@ -191,20 +203,21 @@ export default function MembersView() {
                 className="inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand/90"
               >
                 <UserPlus size={16} />
-                친구 초대
+                프로젝트 멤버 추가
               </button>
             </Dialog.Trigger>
             <Dialog.Portal>
               <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
               <Dialog.Content className="fixed left-1/2 top-20 z-50 w-[520px] -translate-x-1/2 rounded-3xl border border-border bg-panel p-6 shadow-panel focus:outline-none">
                 <div className="flex items-center justify-between">
-                  <Dialog.Title className="text-lg font-semibold">친구 초대</Dialog.Title>
+                  <Dialog.Title className="text-lg font-semibold">프로젝트 멤버 추가</Dialog.Title>
                   <Dialog.Close className="rounded-full border border-border/70 p-1 text-muted transition hover:text-foreground" aria-label="닫기">
                     <X size={16} />
                   </Dialog.Close>
                 </div>
                 <div className="mt-4">
                   <InviteForm
+                    members={availableTeamMembers}
                     onCancel={() => setInviteOpen(false)}
                     onSubmit={(payload) => {
                       handleInvite(payload);
@@ -295,60 +308,6 @@ export default function MembersView() {
             </div>
           </section>
 
-          {pendingInvites.length > 0 && (
-            <section className="rounded-3xl border border-border bg-panel/70 p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between text-sm">
-                <span className="font-semibold text-foreground">대기 중 초대 {pendingInvites.length}건</span>
-                <span className="inline-flex items-center gap-1 text-xs text-muted">
-                  <Clock3 size={14} />
-                  최근 {pendingInvites[0].invitedByName} 초대
-                </span>
-              </div>
-              <div className="space-y-3">
-                {pendingInvites.map((invite) => (
-                  <div
-                    key={invite.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/60 px-4 py-3 text-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <InviteAvatar invite={invite} />
-                      <div>
-                        <div className="font-semibold text-foreground">{invite.name ?? invite.email}</div>
-                        <p className="text-xs text-muted">
-                          {invite.email} • {invite.role}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          show({
-                            title: "초대 수락 준비 중",
-                            description: "팀 초대 API와 연결 예정입니다.",
-                            variant: "warning",
-                          });
-                        }}
-                        className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-3 py-1.5 font-semibold text-emerald-600 transition hover:bg-emerald-50"
-                      >
-                        <CheckCircle2 size={14} />
-                        수락
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInvites((prev) => prev.filter((item) => item.id !== invite.id));
-                        }}
-                        className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-muted transition hover:text-foreground"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
       </div>
 
       <Dialog.Root open={profileOpen && !!selectedMember} onOpenChange={setProfileOpen}>
@@ -431,29 +390,5 @@ function UsersBadge({ label, value }: { label: string; value: number }) {
         {label} • {value}
       </span>
     </span>
-  );
-}
-
-function InviteAvatar({ invite }: { invite: MemberInvite }) {
-  const label = invite.name ?? invite.email;
-  if (invite.avatarUrl) {
-    return (
-      <img
-        src={invite.avatarUrl}
-        alt={label}
-        className="h-10 w-10 rounded-full object-cover"
-      />
-    );
-  }
-  const initials = label
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-  return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/20 text-xs font-semibold text-muted">
-      {initials}
-    </div>
   );
 }

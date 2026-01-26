@@ -1,4 +1,4 @@
-import { Briefcase, Clock3, Grid2x2, Star } from "lucide-react";
+import { Briefcase, Clock3, Grid2x2, Star, Users } from "lucide-react";
 import type {
   BillingContact,
   InvoiceRecord,
@@ -19,6 +19,7 @@ export const initialTeams: Team[] = [
 
 export const shortcuts: Shortcut[] = [
   { id: "favorite", label: "My Favorites", icon: Star },
+  { id: "friends", label: "Friends", icon: Users },
   { id: "recent", label: "Recently Visited", icon: Clock3 },
 ];
 

@@ -18,6 +18,13 @@ const presenceLabels: Record<PresenceStatus, string> = {
   offline: "오프라인",
 };
 
+const roleLabel: Record<Member["role"], string> = {
+  owner: "Owner",
+  manager: "Admin",
+  member: "Editor",
+  guest: "Viewer",
+};
+
 const presenceOptions: PresenceStatus[] = ["online", "away", "dnd", "offline"];
 
 export default function MemberProfilePanel({ member, presence, onPresenceChange, onRemove }: Props) {
@@ -46,7 +53,7 @@ export default function MemberProfilePanel({ member, presence, onPresenceChange,
           <ShieldCheck size={16} className="mt-1 text-muted" />
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted">역할</dt>
-            <dd className="font-medium text-foreground">{member.role}</dd>
+            <dd className="font-medium text-foreground">{roleLabel[member.role] ?? "Editor"}</dd>
           </div>
         </div>
         <div className="flex items-start gap-3">

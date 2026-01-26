@@ -25,7 +25,7 @@ export const defaultMembers: Member[] = [
     id: "mem-alice",
     name: "카리나",
     email: "alice@flowdash.dev",
-    role: "admin",
+    role: "manager",
     title: "Design Lead",
     location: "Seoul, KR",
     timezone: "KST",

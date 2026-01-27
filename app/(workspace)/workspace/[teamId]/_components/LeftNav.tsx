@@ -93,7 +93,7 @@ const LeftNav = ({
   );
 
   return (
-    <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-panel px-6 py-6 text-sm text-muted transition-colors md:flex">
+    <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-panel px-6 py-6 text-sm text-muted transition-colors md:sticky md:top-0 md:h-full md:overflow-y-auto md:flex">
       <div className="mb-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Workspace</p>
         <div className="relative mt-3" ref={workspaceMenuRef}>

@@ -10,9 +10,18 @@ interface ProjectCardProps {
   onToggleStar: (id: string) => void;
   onOpenMenu: (id: string) => void;
   onOpenProject?: (id: string) => void;
+  hideActions?: boolean;
 }
 
-const ProjectCard = ({ project, viewMode, isStarred, onToggleStar, onOpenMenu, onOpenProject }: ProjectCardProps) => {
+const ProjectCard = ({
+  project,
+  viewMode,
+  isStarred,
+  onToggleStar,
+  onOpenMenu,
+  onOpenProject,
+  hideActions,
+}: ProjectCardProps) => {
   const handleOpen = () => onOpenProject?.(project.id);
   const handleKeyOpen = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -58,38 +67,40 @@ const ProjectCard = ({ project, viewMode, isStarred, onToggleStar, onOpenMenu, o
             </div>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-3 text-muted opacity-0 transition group-hover:opacity-100">
-          <button
-            className="text-muted transition group-hover:opacity-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenMenu(project.id);
-            }}
-            aria-label="More actions"
-          >
-            <MoreHorizontal size={18} />
-          </button>
-          <button
-            className="hover:text-foreground"
-            aria-label="Open"
-            onClick={(event) => {
-              event.stopPropagation();
-              handleOpen();
-            }}
-          >
-            <ExternalLink size={16} />
-          </button>
-          <button
-            className={isStarred ? "text-amber-300" : "text-muted"}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleStar(project.id);
-            }}
-            aria-label="Star project"
-          >
-            <Star size={16} className={isStarred ? "fill-amber-300" : ""} />
-          </button>
-        </div>
+        {!hideActions && (
+          <div className="mt-3 flex items-center gap-3 text-muted opacity-0 transition group-hover:opacity-100">
+            <button
+              className="text-muted transition group-hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenMenu(project.id);
+              }}
+              aria-label="More actions"
+            >
+              <MoreHorizontal size={18} />
+            </button>
+            <button
+              className="hover:text-foreground"
+              aria-label="Open"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleOpen();
+              }}
+            >
+              <ExternalLink size={16} />
+            </button>
+            <button
+              className={isStarred ? "text-amber-300" : "text-muted"}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleStar(project.id);
+              }}
+              aria-label="Star project"
+            >
+              <Star size={16} className={isStarred ? "fill-amber-300" : ""} />
+            </button>
+          </div>
+        )}
       </article>
     );
   }
@@ -123,44 +134,48 @@ const ProjectCard = ({ project, viewMode, isStarred, onToggleStar, onOpenMenu, o
               </span>
             </div>
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenMenu(project.id);
-            }}
-            aria-label="More actions"
-            className="text-muted opacity-0 transition group-hover:opacity-100"
-          >
-            <MoreHorizontal size={18} />
-          </button>
+          {!hideActions && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenMenu(project.id);
+              }}
+              aria-label="More actions"
+              className="text-muted opacity-0 transition group-hover:opacity-100"
+            >
+              <MoreHorizontal size={18} />
+            </button>
+          )}
         </div>
         <div className="col-span-2 rounded-2xl border border-border bg-accent/40 p-3">
             <p className="mt-2 line-clamp-3 text-sm text-muted">{project.description}</p>
         </div>
       </div>
       <div>
-        <div className="mt-3 flex items-center justify-between text-muted opacity-0 transition group-hover:opacity-100">
-          <button
-            className={isStarred ? "text-amber-300" : "text-muted"}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleStar(project.id);
-            }}
-            aria-label="Star project"
-          >
-            <Star size={16} className={isStarred ? "fill-amber-300" : ""} />
-          </button>
-          <button
-            className="flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs hover:text-foreground"
-            aria-label="Open"
-            onClick={(event) => {
-              event.stopPropagation();
-              handleOpen();
-            }}
-          >
-            <ExternalLink size={14} /> Open
-          </button>
-        </div>
+        {!hideActions && (
+          <div className="mt-3 flex items-center justify-between text-muted opacity-0 transition group-hover:opacity-100">
+            <button
+              className={isStarred ? "text-amber-300" : "text-muted"}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleStar(project.id);
+              }}
+              aria-label="Star project"
+            >
+              <Star size={16} className={isStarred ? "fill-amber-300" : ""} />
+            </button>
+            <button
+              className="flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs hover:text-foreground"
+              aria-label="Open"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleOpen();
+              }}
+            >
+              <ExternalLink size={14} /> Open
+            </button>
+          </div>
+        )}
       </div>
     </article>
   );

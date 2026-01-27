@@ -13,7 +13,6 @@ import ActivitiesView from "@/workspace/root/views/ActivitiesView";
 import WorkspaceSettingsModal from "@/workspace/root/WorkspaceSettingsModal";
 import RecentVisitedView from "@/workspace/root/views/RecentVisitedView";
 import FriendsView from "@/workspace/root/views/FriendsView";
-import { recentVisited } from "@/workspace/root-model/workspaceData";
 import type { Project, ProjectViewMode } from "@/types/workspace";
 import { LayoutGrid, List } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -29,12 +28,6 @@ import { uploadImage } from "@/lib/uploads";
 import TeamMembersView from "./(workspace)/workspace/[teamId]/_components/views/TeamMembersView";
 import { fetchFriends } from "@/lib/members";
 import FloatingDm from "./(workspace)/workspace/[teamId]/_components/FloatingDm";
-
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
 
 export default function HomePage() {
   const router = useRouter();
@@ -58,6 +51,7 @@ export default function HomePage() {
   const [leftNavView, setLeftNavView] = useState<"projects" | "recent" | "favorites" | "friends">("projects");
   const [friendsTab, setFriendsTab] = useState<"friends" | "requests" | "manage">("friends");
   const [friendCount, setFriendCount] = useState(0);
+  const [recentCount, setRecentCount] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("Projects");
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
   const [projectsByTeam, setProjectsByTeam] = useState<Record<string, Project[]>>({});
@@ -98,15 +92,44 @@ export default function HomePage() {
   const activeTeamId = activeTeam?.id;
   const { projects: fetchedProjects, error: projectError, refetch: refetchProjects } = useProjects(activeTeamId);
   const teamProjects = activeTeam ? projectsByTeam[activeTeam.id] ?? [] : [];
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const STORAGE_KEY = "recently-visited";
+    const load = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? (JSON.parse(raw) as unknown[]) : [];
+        setRecentCount(Array.isArray(parsed) ? parsed.length : 0);
+      } catch {
+        setRecentCount(0);
+      }
+    };
+    load();
+    const handleUpdate = () => load();
+    window.addEventListener("recently-visited:update", handleUpdate as EventListener);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("recently-visited:update", handleUpdate as EventListener);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
   const handleProjectNavigate = (projectId: string) => {
     if (!activeTeam) return;
     const href = `/workspace/${encodeURIComponent(activeTeam.id)}/${encodeURIComponent(projectId)}`;
     if (typeof window !== "undefined") {
       const project = teamProjects.find((item) => item.id === projectId);
       const stored = localStorage.getItem("recentProjects");
-      const parsed: Array<{ id: string; label: string; href: string }> = stored ? JSON.parse(stored) : [];
+      const parsed: Array<{ id: string; label: string; href: string; iconValue?: string; description?: string }> = stored
+        ? JSON.parse(stored)
+        : [];
       const next = [
-        { id: projectId, label: project?.title ?? "Project", href },
+        {
+          id: projectId,
+          label: project?.title ?? "Project",
+          href,
+          iconValue: project?.iconValue ?? "",
+          description: project?.description ?? "",
+        },
         ...parsed.filter((item) => item.id !== projectId),
       ].slice(0, 6);
       localStorage.setItem("recentProjects", JSON.stringify(next));
@@ -709,10 +732,12 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors">
-      <Topbar workspaceMode onWorkspaceSettings={() => setShowWorkspaceSettings(true)} />
+    <div className="h-screen overflow-hidden bg-background text-foreground transition-colors">
+      <div className="sticky top-0 z-40 h-14 shrink-0 border-b border-border bg-panel shadow-panel">
+        <Topbar workspaceMode onWorkspaceSettings={() => setShowWorkspaceSettings(true)} />
+      </div>
 
-      <div className="flex min-h-[calc(100vh-4rem)]">
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
         <LeftNav
           teams={teams}
           teamsOpen={teamsOpen}
@@ -723,12 +748,12 @@ export default function HomePage() {
           activeView={leftNavView}
           onChangeView={setLeftNavView}
           favoriteCount={favoriteProjects.length}
-          recentCount={recentVisited.length}
+          recentCount={recentCount}
           friendCount={friendCount}
           onSelectTeam={handleSelectTeam}
         />
 
-        <main className="flex flex-1 flex-col gap-6 px-5 py-6 md:px-10">
+        <main className="flex h-full flex-1 flex-col gap-6 overflow-y-auto px-5 py-6 md:px-10">
           <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6">
             {teams.length === 0 ? (
               <section className="rounded-2xl border border-dashed border-border bg-panel p-10 text-center text-sm text-muted">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Mail, UserPlus, Users } from "lucide-react";
+import { MessageSquareMore, UserPlus, Users } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import Modal from "@/components/common/Modal";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -39,6 +39,10 @@ type FriendsViewProps = {
 };
 
 const HIDDEN_FRIENDS_KEY = "friends:hidden";
+const statusColor: Record<"online" | "offline", string> = {
+  online: "bg-emerald-400/10 text-emerald-300",
+  offline: "bg-slate-500/15 text-muted",
+};
 
 export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, onTabChange }: FriendsViewProps) {
   const { show } = useToast();
@@ -296,18 +300,18 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.4em] text-white/40">People</p>
-          <h2 className="text-3xl font-semibold text-white">Friends</h2>
-          <p className="text-sm text-white/55">자주 협업하는 사람을 한 곳에서 관리하세요.</p>
+          <p className="text-[11px] uppercase tracking-[0.4em] text-muted">People</p>
+          <h2 className="text-3xl font-semibold text-foreground">Friends</h2>
+          <p className="text-sm text-muted">자주 협업하는 사람을 한 곳에서 관리하세요.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-panel/80 px-4 py-2 text-xs text-muted">
             <Users size={14} />
             <span>친구 {formatCount(friends.length)}명</span>
           </div>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-black shadow-lg shadow-black/20"
+            className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background shadow-lg shadow-black/20"
             onClick={handleOpenInvite}
           >
             <UserPlus size={14} />
@@ -316,14 +320,14 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
         </div>
       </div>
 
-      <div className="rounded-[28px] border border-white/10 bg-panel/80 p-5 shadow-[0_12px_40px_rgba(15,15,15,0.2)]">
+      <div className="rounded-[28px] border border-border bg-panel/80 p-5 shadow-[0_12px_40px_rgba(15,15,15,0.2)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-white/40">Directory</p>
-            <h3 className="text-lg font-semibold text-white">친구</h3>
-            <p className="text-xs text-white/55">친구 목록과 관리를 탭으로 나눴어요.</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted">Directory</p>
+            <h3 className="text-lg font-semibold text-foreground">친구</h3>
+            <p className="text-xs text-muted">친구 목록과 관리를 탭으로 나눴어요.</p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 p-1">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-panel/80 p-1">
             {([
               { id: "friends", label: "친구목록" },
               { id: "requests", label: "친구요청" },
@@ -333,7 +337,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                 key={tab.id}
                 type="button"
                 className={`rounded-full px-4 py-1.5 text-xs transition ${
-                  activeTab === tab.id ? "bg-white text-black" : "text-white/60 hover:text-white"
+                  activeTab === tab.id ? "bg-foreground text-background" : "text-muted hover:text-foreground"
                 }`}
                 onClick={() => setActiveTab(tab.id)}
               >
@@ -348,43 +352,43 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <select
-                  className="h-9 rounded-full border border-white/10 bg-black/20 px-3 text-[11px] text-white/70 focus:border-white/30 focus:outline-none"
+                  className="h-9 rounded-full border border-border bg-panel px-3 text-[11px] text-foreground focus:border-primary focus:outline-none"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "recent" | "name")}
                 >
                   <option value="recent">최근 추가</option>
                   <option value="name">이름순</option>
                 </select>
-                  <input
-                    className="h-9 rounded-full border border-white/10 bg-black/20 px-4 text-xs text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none"
-                    placeholder="Search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                <input
+                  className="h-9 rounded-full border border-border bg-panel px-4 text-xs text-foreground placeholder:text-muted focus:border-primary focus:outline-none"
+                  placeholder="Search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
             </div>
 
             <div className="mt-4 space-y-3">
               {loading || searching ? (
-                <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/60">
+                <div className="rounded-xl border border-border bg-panel/80 p-4 text-sm text-muted">
                   친구 목록을 불러오는 중...
                 </div>
               ) : visibleFriends.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-sm text-white/60">
+                <div className="rounded-xl border border-dashed border-border bg-panel/80 p-4 text-sm text-muted">
                   아직 친구가 없습니다. 친구 추가 버튼을 눌러 요청을 보내보세요.
                 </div>
               ) : (
                 visibleFriends.map((friend) => (
                   <div
                     key={friend.memberId}
-                    className="group relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br from-black/20 via-panel/90 to-black/10 px-5 py-4 transition hover:border-white/20 hover:shadow-[0_12px_30px_rgba(15,15,15,0.25)]"
+                    className="group relative overflow-hidden rounded-[24px] border border-border bg-panel/80 px-5 py-4 transition hover:border-border/70 hover:shadow-[0_12px_30px_rgba(15,15,15,0.25)] dark:bg-gradient-to-br dark:from-black/20 dark:via-panel/90 dark:to-black/10"
                   >
-                    <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-80">
+                    <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-80 dark:opacity-60">
                       <div className="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_60%)]" />
                     </div>
                     <div className="relative flex flex-wrap items-center justify-between gap-4">
                       <div className="flex min-w-[240px] items-center gap-4">
-                        <div className="relative h-12 w-12 overflow-hidden rounded-full bg-white/10 text-xs font-semibold text-white">
+                        <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
                           {friend.avatarUrl ? (
                             <img src={friend.avatarUrl} alt={friend.displayName} className="h-full w-full object-cover" />
                           ) : (
@@ -399,34 +403,29 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                           />
                         </div>
                         <div>
-                          <p className="text-base font-semibold text-white">{friend.displayName}</p>
-                          <p className="text-[11px] uppercase tracking-[0.3em] text-white/40">
+                          <p className="text-base font-semibold text-foreground">{friend.displayName}</p>
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase ${
+                              statusColor[onlineUserIds.includes(friend.userId) ? "online" : "offline"]
+                            }`}
+                          >
                             {onlineUserIds.includes(friend.userId) ? "Online" : "Offline"}
-                          </p>
+                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-white/60">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/30 px-3 py-1">
-                          <Mail size={12} />
-                          연결됨
-                        </span>
-                        {friend.sharedTeams && friend.sharedTeams.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            {friend.sharedTeams.slice(0, 2).map((team) => (
-                              <button
-                                key={`${friend.memberId}-${team.id}`}
-                                type="button"
-                                className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/60 hover:border-white/30 hover:text-white"
-                                onClick={() => onSelectTeam?.(team.id)}
-                              >
-                                {team.name}
-                              </button>
-                            ))}
-                            {friend.sharedTeams.length > 2 && (
-                              <span className="text-[10px] text-white/40">+{friend.sharedTeams.length - 2}</span>
-                            )}
-                          </div>
-                        )}
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-full border border-border bg-panel/80 px-2 py-2 text-muted hover:border-border/70 hover:text-foreground"
+                          onClick={() => {
+                            window.dispatchEvent(
+                              new CustomEvent("dm:open-friend", { detail: { userId: friend.userId } })
+                            );
+                          }}
+                          aria-label="DM 보내기"
+                        >
+                          <MessageSquareMore size={14} />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -436,17 +435,17 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
           </>
         ) : activeTab === "requests" ? (
           <div className="mt-4 space-y-4">
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="rounded-2xl border border-border bg-panel/80 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-xs uppercase tracking-[0.3em] text-white/40">받은 요청</p>
-                <span className="text-xs text-white/50">{formatCount(requests.length)} incoming</span>
+                <p className="text-xs uppercase tracking-[0.3em] text-muted">받은 요청</p>
+                <span className="text-xs text-muted">{formatCount(requests.length)} incoming</span>
               </div>
               {loading ? (
-                <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/60">
+                <div className="rounded-xl border border-border bg-panel/80 p-4 text-sm text-muted">
                   요청을 불러오는 중...
                 </div>
               ) : requests.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-sm text-white/60">
+                <div className="rounded-xl border border-dashed border-border bg-panel/80 p-4 text-sm text-muted">
                   받은 요청이 없습니다.
                 </div>
               ) : (
@@ -454,10 +453,10 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                   {requests.map((request) => (
                     <div
                       key={request.memberId}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-panel/80 px-3 py-2"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="relative h-9 w-9 overflow-hidden rounded-full bg-white/10 text-xs font-semibold text-white">
+                        <div className="relative h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
                           {request.avatarUrl ? (
                             <img src={request.avatarUrl} alt={request.displayName} className="h-full w-full object-cover" />
                           ) : (
@@ -467,14 +466,14 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">{request.displayName}</p>
-                          <p className="text-[11px] text-white/50">새로운 친구 요청</p>
+                          <p className="text-sm font-medium text-foreground">{request.displayName}</p>
+                          <p className="text-[11px] text-muted">새로운 친구 요청</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/70 hover:border-white/40 hover:text-white"
+                          className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-border/70 hover:text-foreground"
                           disabled={actioningId === request.memberId}
                           onClick={() => handleRemove(request.memberId)}
                         >
@@ -482,7 +481,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                         </button>
                         <button
                           type="button"
-                          className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-black"
+                          className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background"
                           disabled={actioningId === request.memberId}
                           onClick={() => handleAccept(request.memberId)}
                         >
@@ -495,17 +494,17 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
               )}
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="rounded-2xl border border-border bg-panel/80 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-xs uppercase tracking-[0.3em] text-white/40">보낸 요청</p>
-                <span className="text-xs text-white/50">{formatCount(sentRequests.length)} outgoing</span>
+                <p className="text-xs uppercase tracking-[0.3em] text-muted">보낸 요청</p>
+                <span className="text-xs text-muted">{formatCount(sentRequests.length)} outgoing</span>
               </div>
               {loading ? (
-                <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/60">
+                <div className="rounded-xl border border-border bg-panel/80 p-4 text-sm text-muted">
                   보낸 요청을 불러오는 중...
                 </div>
               ) : sentRequests.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-sm text-white/60">
+                <div className="rounded-xl border border-dashed border-border bg-panel/80 p-4 text-sm text-muted">
                   보낸 요청이 없습니다.
                 </div>
               ) : (
@@ -513,10 +512,10 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                   {sentRequests.map((request) => (
                     <div
                       key={request.memberId}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-panel/80 px-3 py-2"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="relative h-9 w-9 overflow-hidden rounded-full bg-white/10 text-xs font-semibold text-white">
+                        <div className="relative h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
                           {request.avatarUrl ? (
                             <img src={request.avatarUrl} alt={request.displayName} className="h-full w-full object-cover" />
                           ) : (
@@ -526,13 +525,13 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">{request.displayName}</p>
-                          <p className="text-[11px] text-white/50">요청 전송됨</p>
+                          <p className="text-sm font-medium text-foreground">{request.displayName}</p>
+                          <p className="text-[11px] text-muted">요청 전송됨</p>
                         </div>
                       </div>
                       <button
                         type="button"
-                        className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/70 hover:border-white/40 hover:text-white"
+                        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-border/70 hover:text-foreground"
                         disabled={actioningId === request.memberId}
                         onClick={() => handleRemove(request.memberId)}
                       >
@@ -549,7 +548,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <select
-                  className="h-9 rounded-full border border-white/10 bg-black/20 px-3 text-[11px] text-white/70 focus:border-white/30 focus:outline-none"
+                  className="h-9 rounded-full border border-border bg-panel px-3 text-[11px] text-foreground focus:border-primary focus:outline-none"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "recent" | "name")}
                 >
@@ -557,7 +556,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                   <option value="name">이름순</option>
                 </select>
                 <input
-                  className="h-9 rounded-full border border-white/10 bg-black/20 px-4 text-xs text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none"
+                  className="h-9 rounded-full border border-border bg-panel px-4 text-xs text-foreground placeholder:text-muted focus:border-primary focus:outline-none"
                   placeholder="Search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -567,19 +566,19 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
 
             <div className="mt-4 space-y-2">
               {friends.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-sm text-white/60">
+                <div className="rounded-xl border border-dashed border-border bg-panel/80 p-4 text-sm text-muted">
                   삭제할 친구가 없습니다.
                 </div>
               ) : (
                 orderedFriends.map((friend) => (
                   <div
                     key={friend.memberId}
-                    className={`flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 ${
+                    className={`flex items-center justify-between gap-3 rounded-xl border border-border bg-panel/80 px-3 py-2 ${
                       hiddenIds.includes(friend.memberId) ? "opacity-60" : ""
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="relative h-9 w-9 overflow-hidden rounded-full bg-white/10 text-xs font-semibold text-white">
+                      <div className="relative h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
                         {friend.avatarUrl ? (
                           <img src={friend.avatarUrl} alt={friend.displayName} className="h-full w-full object-cover" />
                         ) : (
@@ -589,8 +588,8 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">{friend.displayName}</p>
-                        <p className="text-[11px] text-white/50">
+                        <p className="text-sm font-medium text-foreground">{friend.displayName}</p>
+                        <p className="text-[11px] text-muted">
                           {hiddenIds.includes(friend.memberId) ? "숨김 처리됨" : "친구"}
                         </p>
                       </div>
@@ -598,7 +597,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/70 hover:border-white/40 hover:text-white"
+                        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-border/70 hover:text-foreground"
                         disabled={actioningId === friend.memberId}
                         onClick={() => handleToggleHide(friend.memberId)}
                       >
@@ -606,7 +605,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                       </button>
                       <button
                         type="button"
-                        className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/70 hover:border-white/40 hover:text-white"
+                        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-border/70 hover:text-foreground"
                         disabled={actioningId === friend.memberId}
                         onClick={() => handleBlock(friend.memberId)}
                       >
@@ -614,7 +613,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                       </button>
                       <button
                         type="button"
-                        className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/70 hover:border-white/40 hover:text-white"
+                        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-border/70 hover:text-foreground"
                         disabled={actioningId === friend.memberId}
                         onClick={() => handleRemove(friend.memberId)}
                       >

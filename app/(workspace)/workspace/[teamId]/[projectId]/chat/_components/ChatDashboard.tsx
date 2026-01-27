@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useCallback, type MouseEvent } from "react";
+import { useMemo, useState, useCallback, useEffect, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
@@ -80,10 +80,15 @@ export default function ChatDashboard() {
     channelId,
     users,
     toggleStar,
+    loadChannels,
   } = useChat();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  useEffect(() => {
+    void loadChannels();
+  }, [loadChannels]);
 
   const activeWorkspace = useMemo(() => workspaces.find((ws) => ws.id === workspaceId), [workspaces, workspaceId]);
   const starredSet = useMemo(() => {

@@ -14,6 +14,7 @@ type ModalProps = {
   className?: string;
   widthClass?: string; // e.g. "max-w-4xl"
   heightClass?: string;
+  bodyClassName?: string;
 };
 
 export default function Modal({
@@ -23,7 +24,8 @@ export default function Modal({
   children,
   className,
   widthClass = 'max-w-5xl',
-  heightClass
+  heightClass,
+  bodyClassName
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -50,7 +52,7 @@ export default function Modal({
             <X size={18} />
           </button>
         </div>
-        <div className="max-h-[78vh] overflow-auto bg-panel">{children}</div>
+        <div className={clsx("max-h-[78vh] overflow-auto bg-panel", bodyClassName)}>{children}</div>
       </div>
     </div>,
     document.body

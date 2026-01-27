@@ -1,23 +1,9 @@
 // store/chat.ts
 import { create } from "zustand";
 import { lsGet, lsSet } from "@/lib/persist";
-import {
-  DEFAULT_WORKSPACE_ID,
-  DEFAULT_WORKSPACE_NAME,
-  DEFAULT_STARRED_SECTION_ID,
-  DEFAULT_CHANNEL_SECTION_ID,
-  DEFAULT_DM_SECTION_ID,
-  defaultChannels,
-  defaultChannelMembers,
-  defaultChannelTopics,
-  createDefaultMessages,
-  createDefaultWorkspace,
-} from "./mocks";
-import { defaultMembers } from "@/workspace/members/_model/mocks";
+import { listChannels, listMessages, sendChannelMessage, listProjectMembers } from "../_service/api";
 
 import type {
-  Attachment,
-  ReactionMap,
   Msg,
   Channel,
   WorkspaceSectionType,
@@ -54,6 +40,9 @@ type State = {
   users: Record<string, ChatUser>;
   userStatus: Record<string, PresenceState>;
 
+  teamId?: string;
+  projectId?: string;
+
   workspaceId: string;
   workspaces: Workspace[];
   allChannels: Channel[];
@@ -76,6 +65,9 @@ type State = {
   huddles: Record<string, HuddleState>;
   savedByUser: Record<string, string[]>;
 
+  setContext: (teamId: string, projectId: string) => void;
+  setMe: (user: ChatUser) => void;
+  setUsers: (users: ChatUser[]) => void;
   loadChannels: () => Promise<void>;
   createWorkspace: (opts?: { name?: string; icon?: string; backgroundColor?: string; image?: string }) => Promise<void>;
   updateWorkspace: (id: string, patch: { name?: string; icon?: string; backgroundColor?: string; image?: string | null }) => void;
@@ -156,139 +148,21 @@ function cloneTopics(map: Record<string, { topic: string; muted?: boolean }>): R
 
 let bc: BroadcastChannel | null = null;
 
-const CHAT_VERSION_KEY = "fd.chat.version";
-const CHAT_VERSION = 1;
+const DEFAULT_ME: ChatUser = { id: "me", name: "Me" };
+const DEFAULT_STATUS_MAP: Record<string, PresenceState> = {};
+const FALLBACK_WORKSPACE_ID = "workspace";
 
-const DEFAULT_CHAT_USERS: Record<string, ChatUser> = defaultMembers.reduce((acc, member) => {
-  acc[member.id] = { id: member.id, name: member.name, avatarUrl: member.avatarUrl };
-  return acc;
-}, {} as Record<string, ChatUser>);
-
-const DEFAULT_ME_ID =
-  defaultMembers.find((member) => member.id === "mem-you")?.id ??
-  defaultMembers[0]?.id ??
-  "mem-default";
-
-const DEFAULT_ME: ChatUser = DEFAULT_CHAT_USERS[DEFAULT_ME_ID] ?? { id: DEFAULT_ME_ID, name: "You" };
-
-const DEFAULT_STATUS_MAP: Record<string, PresenceState> = defaultMembers.reduce(
-  (acc, member, index) => {
-    acc[member.id] = index === 0 ? "online" : "away";
-    return acc;
-  },
-  {} as Record<string, PresenceState>,
-);
-
-const DEFAULT_HUDDLE_MEMBER_IDS = defaultMembers.slice(0, 3).map((member) => member.id);
-
-/** ---------------- Seed ---------------- */
-function seedChatData() {
-  const channels = defaultChannels.map((channel) => ({ ...channel }));
-  const workspaces = [createDefaultWorkspace(channels)];
-  const seededMessages = createDefaultMessages(Date.now());
-  lsSet(CHANNELS_KEY, channels);
-  lsSet(WORKSPACES_KEY, workspaces);
-  lsSet(ACTIVE_WORKSPACE_KEY, DEFAULT_WORKSPACE_ID);
-  channels.forEach((channel) => {
-    lsSet(MSGS_KEY(channel.id), seededMessages[channel.id] ?? []);
-  });
-  lsSet(PINS_KEY, {} as Record<string, string[]>);
-  lsSet(LAST_READ_KEY, {});
-  lsSet(ACTIVITY_KEY, {});
-  lsSet(MEMBERS_KEY, cloneMembers(defaultChannelMembers));
-  lsSet(TOPICS_KEY, cloneTopics(defaultChannelTopics));
-  lsSet(STATUS_KEY, { ...DEFAULT_STATUS_MAP });
-  lsSet(SAVED_KEY(DEFAULT_ME_ID), {});
-  lsSet(CHAT_VERSION_KEY, CHAT_VERSION);
-}
-
-function ensureSeed() {
-  let channels = lsGet<Channel[]>(CHANNELS_KEY, []);
-  let workspaces = lsGet<Workspace[]>(WORKSPACES_KEY, []);
-  const currentVersion = lsGet<number>(CHAT_VERSION_KEY, 0);
-  if (currentVersion !== CHAT_VERSION || channels.length === 0 || workspaces.length === 0) {
-    seedChatData();
-    channels = lsGet<Channel[]>(CHANNELS_KEY, []);
-    workspaces = lsGet<Workspace[]>(WORKSPACES_KEY, []);
-  }
-  const members = lsGet<Record<string,string[]>>(MEMBERS_KEY, {});
-  const topics = lsGet<Record<string,{topic:string; muted?:boolean}>>(TOPICS_KEY, {});
-  const status = lsGet<Record<string,PresenceState>>(STATUS_KEY, {});
-
-  if (channels.some(c => !c.workspaceId)) {
-    const fallbackWorkspace = workspaces[0]?.id || DEFAULT_WORKSPACE_ID;
-    channels = channels.map(c => ({
-      ...c,
-      workspaceId: c.workspaceId || fallbackWorkspace
-    }));
-    lsSet(CHANNELS_KEY, channels);
-  }
-
-  if (workspaces.length === 0) {
-    workspaces = [createDefaultWorkspace(channels)];
-  } else {
-    const byWorkspace = new Map<string, Channel[]>();
-    for (const ch of channels) {
-      if (!byWorkspace.has(ch.workspaceId)) byWorkspace.set(ch.workspaceId, []);
-      byWorkspace.get(ch.workspaceId)!.push(ch);
-    }
-    let dirty = false;
-    workspaces = workspaces.map(ws => {
-      const existing = new Set(ws.sections.flatMap(s => s.itemIds));
-      const required = (byWorkspace.get(ws.id) || []).filter(c => !c.isDM && !existing.has(c.id));
-      if (required.length === 0) return ws;
-      dirty = true;
-      return {
-        ...ws,
-        sections: ws.sections.map(sec => {
-          if (sec.type !== "channels") return sec;
-          return { ...sec, itemIds: [...sec.itemIds, ...required.map(r => r.id)] };
-        })
-      };
-    });
-    if (dirty) lsSet(WORKSPACES_KEY, workspaces);
-  }
-
-  const active = lsGet<string | null>(ACTIVE_WORKSPACE_KEY, null);
-  if (!active) {
-    lsSet(ACTIVE_WORKSPACE_KEY, (workspaces[0]?.id) || DEFAULT_WORKSPACE_ID);
-  }
-
-  if (Object.keys(members).length === 0) {
-    lsSet(MEMBERS_KEY, cloneMembers(defaultChannelMembers));
-  }
-  if (Object.keys(topics).length === 0) {
-    lsSet(TOPICS_KEY, cloneTopics(defaultChannelTopics));
-  }
-  if (Object.keys(status).length === 0) {
-    lsSet(STATUS_KEY, { ...DEFAULT_STATUS_MAP });
-  }
-}
-ensureSeed();
-
-const INITIAL_WORKSPACES = lsGet<Workspace[]>(WORKSPACES_KEY, []);
-const INITIAL_ALL_CHANNELS = lsGet<Channel[]>(CHANNELS_KEY, []);
-const INITIAL_FALLBACK_WORKSPACE_ID = INITIAL_WORKSPACES[0]?.id || DEFAULT_WORKSPACE_ID;
-const INITIAL_WORKSPACE_ID = (() => {
-  const active = lsGet<string>(ACTIVE_WORKSPACE_KEY, INITIAL_FALLBACK_WORKSPACE_ID);
-  return INITIAL_WORKSPACES.some(ws => ws.id === active) ? active : INITIAL_FALLBACK_WORKSPACE_ID;
-})();
-const INITIAL_CHANNELS = INITIAL_ALL_CHANNELS.filter(c => c.workspaceId === INITIAL_WORKSPACE_ID);
+const buildWorkspace = (id: string, channels: Channel[]): Workspace => ({
+  id,
+  name: "Project Chat",
+  sections: [
+    { id: `${id}:starred`, title: "Starred", type: "starred", itemIds: [], collapsed: false },
+    { id: `${id}:channels`, title: "Channels", type: "channels", itemIds: channels.map((ch) => ch.id), collapsed: false },
+    { id: `${id}:dms`, title: "Direct Messages", type: "dms", itemIds: [], collapsed: false },
+  ],
+});
 
 /** ---------------- Helpers ---------------- */
-async function toAttachment(f: FileItem): Promise<Attachment> {
-  const MAX_INLINE = 1024 * 1024; // 1MB
-  let dataUrl: string | undefined = undefined;
-  const eligible = f.size <= MAX_INLINE && (f.type.startsWith("image/") || f.type === "application/pdf");
-  if (eligible) {
-    dataUrl = await new Promise<string>((resolve) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.readAsDataURL(f.blob);
-    });
-  }
-  return { id: f.id, name: f.name, type: f.type, size: f.size, dataUrl };
-}
 function hasLink(text: string) {
   return /(https?:\/\/[^\s]+)/i.test(text || "");
 }
@@ -305,57 +179,105 @@ function summarizeMessage(msg?: Msg) {
   return "";
 }
 
+type ChannelMessageResponse = {
+  id: string;
+  content?: string;
+  senderId: string;
+  sender?: { id: string; name: string; avatar?: string };
+  createdAt: string;
+  editedAt?: string;
+  threadParentId?: string;
+  thread?: { count: number };
+};
+
+const mapChannelMessage = (message: ChannelMessageResponse, channelId: string): Msg => ({
+  id: message.id,
+  author: message.sender?.name ?? "Unknown",
+  authorId: message.senderId,
+  text: message.content ?? "",
+  ts: message.createdAt ? Date.parse(message.createdAt) : Date.now(),
+  editedAt: message.editedAt ? Date.parse(message.editedAt) : undefined,
+  channelId,
+  parentId: message.threadParentId ?? undefined,
+  threadCount: message.thread?.count ?? undefined,
+});
+
 /** ---------------- Store ---------------- */
 export const useChat = create<State>((set, get) => ({
   me: DEFAULT_ME,
-  users: { ...DEFAULT_CHAT_USERS },
-  userStatus: lsGet<Record<string, PresenceState>>(STATUS_KEY, DEFAULT_STATUS_MAP),
+  users: {},
+  userStatus: {},
 
-  workspaceId: INITIAL_WORKSPACE_ID,
-  workspaces: INITIAL_WORKSPACES,
-  allChannels: INITIAL_ALL_CHANNELS,
+  teamId: undefined,
+  projectId: undefined,
 
-  channelId: INITIAL_CHANNELS[0]?.id ?? "general",
-  channels: INITIAL_CHANNELS,
-  channelMembers: lsGet<Record<string,string[]>>(MEMBERS_KEY, {}),
+  workspaceId: FALLBACK_WORKSPACE_ID,
+  workspaces: [],
+  allChannels: [],
 
-  channelTopics: lsGet<Record<string,{topic:string; muted?:boolean}>>(TOPICS_KEY, {}),
+  channelId: "",
+  channels: [],
+  channelMembers: {},
+
+  channelTopics: {},
 
   messages: [],
   threadFor: null,
 
-  lastReadAt: lsGet<Record<string, number>>(LAST_READ_KEY, {}),
-  channelActivity: lsGet<Record<string, ChannelActivity>>(ACTIVITY_KEY, {}),
+  lastReadAt: {},
+  channelActivity: {},
   typingUsers: {},
-  pinnedByChannel: lsGet<Record<string,string[]>>(PINS_KEY, {}),
+  pinnedByChannel: {},
   huddles: {},
-  savedByUser: lsGet<Record<string,string[]>>(SAVED_KEY(DEFAULT_ME_ID), {}),
+  savedByUser: {},
 
+  setContext: (teamId, projectId) => {
+    set({ teamId, projectId });
+    void get().loadChannels();
+  },
+  setMe: (user) => {
+    set({ me: user });
+  },
+  setUsers: (users) => {
+    const map = users.reduce<Record<string, ChatUser>>((acc, user) => {
+      acc[user.id] = user;
+      return acc;
+    }, {});
+    set({ users: map });
+  },
   loadChannels: async () => {
-    ensureSeed();
-    const workspaces = lsGet<Workspace[]>(WORKSPACES_KEY, []);
-    const allChannels = lsGet<Channel[]>(CHANNELS_KEY, []);
-    const fallbackWorkspace = workspaces[0]?.id || DEFAULT_WORKSPACE_ID;
-    const active = lsGet<string>(ACTIVE_WORKSPACE_KEY, fallbackWorkspace);
-    const workspaceId = workspaces.some(ws => ws.id === active) ? active : fallbackWorkspace;
-    const channels = allChannels.filter(c => c.workspaceId === workspaceId);
-
-    set({ workspaces, allChannels, workspaceId, channels });
-    channels.forEach(ch => get().updateChannelActivity(ch.id));
-
+    const { projectId, teamId } = get();
+    if (!projectId) return;
+    const [channelList, members] = await Promise.all([
+      listChannels(projectId),
+      teamId ? listProjectMembers(teamId, projectId) : Promise.resolve([]),
+    ]);
+    const workspaceId = projectId;
+    const channels = channelList.map((ch) => ({ ...ch, workspaceId }));
+    const workspaces = [buildWorkspace(workspaceId, channels)];
+    set({ workspaces, allChannels: channels, workspaceId, channels });
+    if (members.length > 0) {
+      const userMap = members.reduce<Record<string, ChatUser>>((acc, member) => {
+        acc[member.userId] = {
+          id: member.userId,
+          name: member.name,
+          avatarUrl: member.avatarUrl ?? undefined,
+        };
+        return acc;
+      }, {});
+      set({ users: userMap });
+    }
+    channels.forEach((ch) => get().updateChannelActivity(ch.id));
     if (channels.length === 0) {
       set({ channelId: "", messages: [], threadFor: null });
       return;
     }
-
     const current = get().channelId;
-    const exists = channels.some(c => c.id === current);
+    const exists = channels.some((c) => c.id === current);
     if (!exists) {
       await get().setChannel(channels[0].id);
     } else {
-      const list = lsGet<Msg[]>(MSGS_KEY(current), []);
-      set({ messages: list });
-      get().updateChannelActivity(current, list);
+      await get().setChannel(current);
     }
   },
 
@@ -446,23 +368,17 @@ export const useChat = create<State>((set, get) => ({
       nextWorkspaceId = workspaces[0]?.id ?? "";
     }
     if (workspaces.length === 0) {
-      lsSet(WORKSPACES_KEY, []);
-      ensureSeed();
-      const seededWorkspaces = lsGet<Workspace[]>(WORKSPACES_KEY, []);
-      const seededChannels = lsGet<Channel[]>(CHANNELS_KEY, []);
-      const fallbackId = seededWorkspaces[0]?.id ?? DEFAULT_WORKSPACE_ID;
       set({
-        workspaces: seededWorkspaces,
-        allChannels: seededChannels,
-        workspaceId: fallbackId,
-        channels: seededChannels.filter((ch) => ch.workspaceId === fallbackId),
+        workspaces: [],
+        allChannels: [],
+        workspaceId: FALLBACK_WORKSPACE_ID,
+        channels: [],
         channelMembers,
         channelTopics,
         channelActivity,
         typingUsers,
         pinnedByChannel,
       });
-      await get().setWorkspace(fallbackId);
       return;
     }
     lsSet(WORKSPACES_KEY, workspaces);
@@ -519,7 +435,7 @@ export const useChat = create<State>((set, get) => ({
       const users = get().users;
       const otherIds = raw ? raw.split("+").filter(Boolean) : [];
       const participants = Array.from(new Set([meId, ...otherIds]));
-      const workspaceId = get().workspaceId || DEFAULT_WORKSPACE_ID;
+      const workspaceId = get().workspaceId || FALLBACK_WORKSPACE_ID;
 
       let displayName: string;
       if (otherIds.length <= 1) {
@@ -583,9 +499,10 @@ export const useChat = create<State>((set, get) => ({
       return;
     }
 
-    const list = lsGet<Msg[]>(MSGS_KEY(id), []);
-    set({ channelId: id, messages: list, threadFor: null });
-    get().updateChannelActivity(id, list);
+    const list = await listMessages(id);
+    const mapped = list.map((message) => mapChannelMessage(message, id));
+    set({ channelId: id, messages: mapped, threadFor: null });
+    get().updateChannelActivity(id, mapped);
     bc?.postMessage({ type: "channel:set", id });
   },
 
@@ -647,36 +564,14 @@ export const useChat = create<State>((set, get) => ({
   },
 
   send: async (text, files = [], opts) => {
-    const { channelId, me } = get();
-    const attachments: Attachment[] = [];
-    for (const f of files) attachments.push(await toAttachment(f));
-
-    const msg: Msg = {
-      id: String(Date.now()),
-      author: me.name,
-      authorId: me.id,
-      text,
-      ts: Date.now(),
-      channelId,
-      attachments: attachments.length ? attachments : undefined,
-      parentId: opts?.parentId ?? null,
-      mentions: opts?.mentions ?? [],
-      reactions: {},
-      seenBy: [me.id],
-    };
-
-    const list = lsGet<Msg[]>(MSGS_KEY(channelId), []);
-    const next = [...list, msg];
-
-    if (msg.parentId) {
-      const rootIdx = next.findIndex(m => m.id === msg.parentId);
-      if (rootIdx >= 0) {
-        const root = next[rootIdx];
-        next[rootIdx] = { ...root, threadCount: (root.threadCount || 0) + 1 };
-      }
-    }
-
-    lsSet(MSGS_KEY(channelId), next);
+    const { channelId } = get();
+    if (!channelId) return;
+    const response = await sendChannelMessage(channelId, text, {
+      replyToMessageId: opts?.parentId ?? undefined,
+      threadParentId: opts?.parentId ?? undefined,
+    });
+    const msg = mapChannelMessage(response, channelId);
+    const next = [...get().messages, msg];
     set({ messages: next });
     get().updateChannelActivity(channelId, next);
     bc?.postMessage({ type: "message:new", msg, channelId });
@@ -892,7 +787,7 @@ export const useChat = create<State>((set, get) => ({
 
   /** 채널 생성 */
   createChannel: (name, memberIds) => {
-    const workspaceId = get().workspaceId || DEFAULT_WORKSPACE_ID;
+    const workspaceId = get().workspaceId || FALLBACK_WORKSPACE_ID;
     const existing = new Set(get().allChannels.map(c => c.id));
     const base = name.replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
     let id = base || `ch-${Date.now()}`;
@@ -1185,5 +1080,3 @@ export const useChat = create<State>((set, get) => ({
     }
   },
 }));
-
-

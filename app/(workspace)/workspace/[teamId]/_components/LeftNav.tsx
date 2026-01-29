@@ -93,7 +93,7 @@ const LeftNav = ({
   );
 
   return (
-    <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-panel px-6 py-6 text-sm text-muted transition-colors md:sticky md:top-0 md:h-full md:overflow-y-auto md:flex">
+    <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-panel px-6 py-6 text-sm text-muted transition-colors md:sticky md:top-0 md:h-full md:overflow-y-auto md:flex md:w-64 lg:w-72 xl:w-80">
       <div className="mb-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Workspace</p>
         <div className="relative mt-3" ref={workspaceMenuRef}>
@@ -159,7 +159,7 @@ const LeftNav = ({
           {teams.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-panel px-4 py-4 text-left text-xs text-muted">
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-accent text-[11px] text-foreground">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-accent text-[11px] text-foreground">
                   팀
                 </span>
                 <div className="flex-1 space-y-1">
@@ -185,7 +185,7 @@ const LeftNav = ({
                   tabIndex={0}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-border bg-panel text-[11px] font-semibold text-muted">
+                    <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-border bg-panel text-[11px] font-semibold text-muted">
                       {team.iconValue ? (
                         <img src={team.iconValue} alt={team.name} className="h-full w-full object-cover" />
                       ) : (

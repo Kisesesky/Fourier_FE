@@ -138,7 +138,7 @@ const RecentVisitedView = () => {
           –
         </button>
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-accent text-muted">
+          <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-accent text-muted">
             {item.iconValue ? (
               <img src={item.iconValue} alt={`${item.title} icon`} className="h-full w-full object-cover" />
             ) : (

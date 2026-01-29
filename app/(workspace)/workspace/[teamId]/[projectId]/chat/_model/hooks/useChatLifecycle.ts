@@ -11,7 +11,8 @@ type UseChatLifecycleParams = {
   initRealtime: () => void;
   loadChannels: () => Promise<void>;
   setChannel: (id: string) => Promise<void>;
-  markChannelRead: () => void;
+  refreshChannel: (id: string) => Promise<void>;
+  markChannelRead: (id?: string, ts?: number) => void;
   markSeenUpTo: (ts: number) => void;
   me: { id: string; name: string };
   onMention: (author: string, text: string | undefined) => void;
@@ -25,6 +26,7 @@ export function useChatLifecycle({
   initRealtime,
   loadChannels,
   setChannel,
+  refreshChannel,
   markChannelRead,
   markSeenUpTo,
   me,
@@ -38,7 +40,9 @@ export function useChatLifecycle({
     (async () => {
       initRealtime();
       await loadChannels();
-      await setChannel(channelId);
+      if (channelId) {
+        await setChannel(channelId);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -57,7 +61,7 @@ export function useChatLifecycle({
 
     lastSynced.current = { channelId, messageId: lastMessage.id };
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-    markChannelRead();
+    markChannelRead(channelId, lastMessage.ts);
     markSeenUpTo(lastMessage.ts);
     broadcastRead(me.id, me.name, channelId, lastMessage.ts);
   }, [lastMessage?.id, lastMessage?.ts, channelId, markChannelRead, markSeenUpTo, broadcastRead, me.id, me.name, listRef]);
@@ -77,6 +81,11 @@ export function useChatLifecycle({
       clearInterval(interval);
     };
   }, [messages, broadcastRead, channelId, me.id, me.name, listRef]);
+
+  useEffect(() => {
+    if (!channelId || channelId.startsWith("dm:")) return;
+    void refreshChannel(channelId);
+  }, [channelId, refreshChannel]);
 
   useEffect(() => {
     if (messages.length > lastMessageCount.current) {

@@ -1,7 +1,8 @@
 // store/chat.ts
 import { create } from "zustand";
 import { lsGet, lsSet } from "@/lib/persist";
-import { listChannels, listMessages, sendChannelMessage, listProjectMembers } from "../_service/api";
+import { listChannels, listMessages, sendChannelMessage, sendThreadMessage, listProjectMembers, getChannelPreferences, saveChannelPreferences, getPinnedMessages, getSavedMessages, createChannel as createChannelApi } from "../_service/api";
+import { getChatSocket } from "@/lib/socket";
 
 import type {
   Msg,
@@ -54,6 +55,8 @@ type State = {
 
   /** 채널 토픽/설정 */
   channelTopics: Record<string, { topic: string; muted?: boolean }>;
+  pinnedChannelIds: string[];
+  archivedChannelIds: string[];
 
   messages: Msg[];
   threadFor?: { rootId: string } | null;
@@ -74,8 +77,11 @@ type State = {
   deleteWorkspace: (id: string) => Promise<void>;
   setWorkspace: (id: string) => Promise<void>;
   setChannel: (id: string) => Promise<void>;
+  refreshChannel: (id: string) => Promise<void>;
   toggleSectionCollapsed: (sectionId: string, value?: boolean) => void;
   toggleStar: (channelId: string) => void;
+  togglePinnedChannel: (channelId: string) => void;
+  toggleArchivedChannel: (channelId: string) => void;
 
   send: (text: string, files?: FileItem[], opts?: { parentId?: string | null; mentions?: string[] }) => Promise<void>;
   updateMessage: (id: string, patch: Partial<Pick<Msg, "text">>) => void;
@@ -87,7 +93,7 @@ type State = {
   closeThread: () => void;
 
   setTyping: (typing: boolean) => void;
-  markChannelRead: (id?: string) => void;
+  markChannelRead: (id?: string, ts?: number) => void;
   markUnreadAt: (ts: number, channelId?: string) => void;
   markSeenUpTo: (ts: number, channelId?: string) => void;
 
@@ -104,7 +110,7 @@ type State = {
   search: (q: string, opts?: { kind?: "all"|"messages"|"files"|"links" }) => Msg[];
 
   /** 채널 관리 */
-  createChannel: (name: string, memberIds: string[]) => string; // returns channelId
+  createChannel: (name: string, memberIds: string[]) => Promise<string>; // returns channelId
   startGroupDM: (memberIds: string[], opts?: { name?: string }) => string | null;
   inviteToChannel: (channelId: string, memberIds: string[]) => void;
 
@@ -137,6 +143,17 @@ const TOPICS_KEY = "fd.chat.topics";
 const STATUS_KEY = "fd.chat.status";
 const LAST_READ_KEY = "fd.chat.lastRead";
 const ACTIVITY_KEY = "fd.chat.activity";
+const PINNED_CHANNELS_KEY = "fd.chat.pinnedChannels";
+const ARCHIVED_CHANNELS_KEY = "fd.chat.archivedChannels";
+
+const sortMessages = (list: Msg[]) =>
+  [...list].sort((a, b) => {
+    if (a.ts !== b.ts) return a.ts - b.ts;
+    return a.id.localeCompare(b.id);
+  });
+
+let socketBound = false;
+const localEchoIds = new Set<string>();
 
 function cloneMembers(map: Record<string, string[]>): Record<string, string[]> {
   return Object.fromEntries(Object.entries(map).map(([key, value]) => [key, [...value]]));
@@ -188,9 +205,30 @@ type ChannelMessageResponse = {
   editedAt?: string;
   threadParentId?: string;
   thread?: { count: number };
+  reactions?: Array<{ emoji: string; count: number; reactedByMe?: boolean }>;
 };
 
-const mapChannelMessage = (message: ChannelMessageResponse, channelId: string): Msg => ({
+const mapReactions = (
+  reactions: Array<{ emoji: string; count: number; reactedByMe?: boolean }> | undefined,
+  meId: string,
+) => {
+  if (!reactions || reactions.length === 0) return undefined;
+  const out: Record<string, string[]> = {};
+  reactions.forEach((r) => {
+    const count = Math.max(0, r.count || 0);
+    if (count === 0) return;
+    const ids: string[] = [];
+    if (r.reactedByMe) ids.push(meId);
+    const fill = count - (r.reactedByMe ? 1 : 0);
+    for (let i = 0; i < fill; i += 1) {
+      ids.push(`anon-${r.emoji}-${i}`);
+    }
+    out[r.emoji] = ids;
+  });
+  return Object.keys(out).length > 0 ? out : undefined;
+};
+
+const mapChannelMessage = (message: ChannelMessageResponse, channelId: string, meId: string): Msg => ({
   id: message.id,
   author: message.sender?.name ?? "Unknown",
   authorId: message.senderId,
@@ -200,6 +238,7 @@ const mapChannelMessage = (message: ChannelMessageResponse, channelId: string): 
   channelId,
   parentId: message.threadParentId ?? undefined,
   threadCount: message.thread?.count ?? undefined,
+  reactions: mapReactions(message.reactions, meId),
 });
 
 /** ---------------- Store ---------------- */
@@ -220,6 +259,8 @@ export const useChat = create<State>((set, get) => ({
   channelMembers: {},
 
   channelTopics: {},
+  pinnedChannelIds: lsGet<string[]>(PINNED_CHANNELS_KEY, []),
+  archivedChannelIds: lsGet<string[]>(ARCHIVED_CHANNELS_KEY, []),
 
   messages: [],
   threadFor: null,
@@ -227,7 +268,7 @@ export const useChat = create<State>((set, get) => ({
   lastReadAt: {},
   channelActivity: {},
   typingUsers: {},
-  pinnedByChannel: {},
+  pinnedByChannel: lsGet<Record<string, string[]>>(PINS_KEY, {}),
   huddles: {},
   savedByUser: {},
 
@@ -236,7 +277,16 @@ export const useChat = create<State>((set, get) => ({
     void get().loadChannels();
   },
   setMe: (user) => {
-    set({ me: user });
+    const saved = lsGet<Record<string, string[]>>(SAVED_KEY(user.id), {});
+    const pins = lsGet<Record<string, string[]>>(PINS_KEY, {});
+    set({ me: user, savedByUser: saved, pinnedByChannel: pins });
+    getSavedMessages()
+      .then((ids) => {
+        const next = { ...saved, [user.id]: ids };
+        set({ savedByUser: next });
+        lsSet(SAVED_KEY(user.id), next);
+      })
+      .catch(() => {});
   },
   setUsers: (users) => {
     const map = users.reduce<Record<string, ChatUser>>((acc, user) => {
@@ -248,14 +298,22 @@ export const useChat = create<State>((set, get) => ({
   loadChannels: async () => {
     const { projectId, teamId } = get();
     if (!projectId) return;
-    const [channelList, members] = await Promise.all([
+    const [channelList, members, preferences] = await Promise.all([
       listChannels(projectId),
       teamId ? listProjectMembers(teamId, projectId) : Promise.resolve([]),
+      getChannelPreferences(projectId).catch(() => ({ pinnedChannelIds: [], archivedChannelIds: [] })),
     ]);
     const workspaceId = projectId;
     const channels = channelList.map((ch) => ({ ...ch, workspaceId }));
     const workspaces = [buildWorkspace(workspaceId, channels)];
-    set({ workspaces, allChannels: channels, workspaceId, channels });
+    set({
+      workspaces,
+      allChannels: channels,
+      workspaceId,
+      channels,
+      pinnedChannelIds: preferences.pinnedChannelIds ?? [],
+      archivedChannelIds: preferences.archivedChannelIds ?? [],
+    });
     if (members.length > 0) {
       const userMap = members.reduce<Record<string, ChatUser>>((acc, member) => {
         acc[member.userId] = {
@@ -500,10 +558,39 @@ export const useChat = create<State>((set, get) => ({
     }
 
     const list = await listMessages(id);
-    const mapped = list.map((message) => mapChannelMessage(message, id));
+    const mapped = sortMessages(list.map((message) => mapChannelMessage(message, id, get().me.id)));
+    getPinnedMessages(id)
+      .then((ids) => {
+        const pins = { ...(get().pinnedByChannel || {}) };
+        pins[id] = ids;
+        set({ pinnedByChannel: pins });
+        lsSet(PINS_KEY, pins);
+      })
+      .catch(() => {});
     set({ channelId: id, messages: mapped, threadFor: null });
+    lsSet(MSGS_KEY(id), mapped);
     get().updateChannelActivity(id, mapped);
     bc?.postMessage({ type: "channel:set", id });
+  },
+
+  refreshChannel: async (id) => {
+    if (!id || id.startsWith("dm:")) return;
+    const list = await listMessages(id);
+    const mapped = sortMessages(list.map((message) => mapChannelMessage(message, id, get().me.id)));
+    const currentId = get().channelId;
+    if (currentId === id) {
+      const cur = get().messages;
+      const curLast = cur[cur.length - 1]?.id;
+      const nextLast = mapped[mapped.length - 1]?.id;
+      if (curLast !== nextLast || cur.length !== mapped.length) {
+        set({ messages: mapped });
+      }
+      lsSet(MSGS_KEY(id), mapped);
+      get().updateChannelActivity(id, mapped);
+    } else {
+      lsSet(MSGS_KEY(id), mapped);
+      get().updateChannelActivity(id, mapped);
+    }
   },
 
   toggleSectionCollapsed: (sectionId, value) => {
@@ -563,16 +650,77 @@ export const useChat = create<State>((set, get) => ({
     lsSet(WORKSPACES_KEY, workspaces);
   },
 
+  togglePinnedChannel: (channelId) => {
+    const pinned = new Set(get().pinnedChannelIds);
+    const archived = new Set(get().archivedChannelIds);
+    if (pinned.has(channelId)) {
+      pinned.delete(channelId);
+    } else {
+      pinned.add(channelId);
+      archived.delete(channelId);
+    }
+    const pinnedList = Array.from(pinned);
+    const archivedList = Array.from(archived);
+    set({ pinnedChannelIds: pinnedList, archivedChannelIds: archivedList });
+    lsSet(PINNED_CHANNELS_KEY, pinnedList);
+    lsSet(ARCHIVED_CHANNELS_KEY, archivedList);
+    const projectId = get().projectId;
+    if (projectId) {
+      saveChannelPreferences(projectId, { pinnedChannelIds: pinnedList, archivedChannelIds: archivedList }).catch(() => {});
+    }
+  },
+
+  toggleArchivedChannel: (channelId) => {
+    const archived = new Set(get().archivedChannelIds);
+    const pinned = new Set(get().pinnedChannelIds);
+    if (archived.has(channelId)) {
+      archived.delete(channelId);
+    } else {
+      archived.add(channelId);
+      pinned.delete(channelId);
+    }
+    const archivedList = Array.from(archived);
+    const pinnedList = Array.from(pinned);
+    set({ archivedChannelIds: archivedList, pinnedChannelIds: pinnedList });
+    lsSet(ARCHIVED_CHANNELS_KEY, archivedList);
+    lsSet(PINNED_CHANNELS_KEY, pinnedList);
+    const projectId = get().projectId;
+    if (projectId) {
+      saveChannelPreferences(projectId, { pinnedChannelIds: pinnedList, archivedChannelIds: archivedList }).catch(() => {});
+    }
+  },
+
   send: async (text, files = [], opts) => {
     const { channelId } = get();
     if (!channelId) return;
-    const response = await sendChannelMessage(channelId, text, {
-      replyToMessageId: opts?.parentId ?? undefined,
-      threadParentId: opts?.parentId ?? undefined,
-    });
-    const msg = mapChannelMessage(response, channelId);
-    const next = [...get().messages, msg];
+    const response = opts?.parentId
+      ? await sendThreadMessage(
+          opts.parentId,
+          text,
+        )
+      : await sendChannelMessage(channelId, text, {
+          replyToMessageId: opts?.parentId ?? undefined,
+          threadParentId: opts?.parentId ?? undefined,
+        });
+    const msg = mapChannelMessage(response, channelId, get().me.id);
+    localEchoIds.add(msg.id);
+    setTimeout(() => localEchoIds.delete(msg.id), 3000);
+    const currentList = get().messages;
+    if (currentList.some((m) => m.id === msg.id)) {
+      get().updateChannelActivity(channelId, currentList);
+      return;
+    }
+    let next = sortMessages([...currentList, msg]);
+    if (opts?.parentId) {
+      const rootId = opts.parentId;
+      next = next.map((m) =>
+        m.id === rootId
+          ? { ...m, threadCount: (m.threadCount ?? 0) + 1 }
+          : m
+      );
+    }
     set({ messages: next });
+    lsSet(MSGS_KEY(channelId), next);
     get().updateChannelActivity(channelId, next);
     bc?.postMessage({ type: "message:new", msg, channelId });
   },
@@ -634,12 +782,19 @@ export const useChat = create<State>((set, get) => ({
       const map = { ...(m.reactions || {}) };
       const setIds = new Set(map[emoji] || []);
       if (setIds.has(me.id)) setIds.delete(me.id); else setIds.add(me.id);
-      map[emoji] = Array.from(setIds);
+      if (setIds.size === 0) {
+        delete map[emoji];
+      } else {
+        map[emoji] = Array.from(setIds);
+      }
       return { ...m, reactions: map };
     });
     set({ messages: next });
     lsSet(MSGS_KEY(channelId), next);
     bc?.postMessage({ type: "message:react", id, emoji, userId: me.id, channelId });
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const socket = getChatSocket(token);
+    socket?.emit("toggle-reaction", { messageId: id, emoji });
   },
 
   openThread: (rootId) => set({ threadFor: { rootId } }),
@@ -650,14 +805,23 @@ export const useChat = create<State>((set, get) => ({
     bc?.postMessage({ type: "typing", channelId, user: me.name, typing });
   },
 
-  markChannelRead: (id) => {
+  markChannelRead: (id, ts) => {
     const ch = id || get().channelId;
     if (!ch) return;
     const now = Date.now();
-    const next = { ...get().lastReadAt, [ch]: now };
+    let nextTs = ts ?? 0;
+    if (!nextTs) {
+      const list = lsGet<Msg[]>(MSGS_KEY(ch), []);
+      nextTs = list[list.length - 1]?.ts || 0;
+    }
+    nextTs = Math.max(now, nextTs);
+    const next = { ...get().lastReadAt, [ch]: nextTs };
     set({ lastReadAt: next });
     lsSet(LAST_READ_KEY, next);
     get().updateChannelActivity(ch);
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const socket = getChatSocket(token);
+    socket?.emit("channel.read", { channelId: ch });
   },
 
   markUnreadAt: (ts, ch) => {
@@ -692,11 +856,17 @@ export const useChat = create<State>((set, get) => ({
     const { pinnedByChannel, channelId } = get();
     const pins = { ...(pinnedByChannel || {}) };
     const list = new Set(pins[channelId] || []);
-    if (list.has(msgId)) list.delete(msgId); else list.add(msgId);
+    const wasPinned = list.has(msgId);
+    if (wasPinned) list.delete(msgId); else list.add(msgId);
     pins[channelId] = Array.from(list);
     set({ pinnedByChannel: pins });
     lsSet(PINS_KEY, pins);
     bc?.postMessage({ type: "pin:sync", channelId, pins: pins[channelId] || [] });
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const socket = getChatSocket(token);
+    if (socket && !channelId.startsWith("dm:")) {
+      socket.emit(wasPinned ? "unpin-message" : "pin-message", { messageId: msgId });
+    }
   },
 
   startHuddle: (ch) => {
@@ -738,6 +908,9 @@ export const useChat = create<State>((set, get) => ({
     saved[me.id] = Array.from(list);
     set({ savedByUser: saved });
     lsSet(SAVED_KEY(me.id), saved);
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const socket = getChatSocket(token);
+    socket?.emit("toggle-save-message", { messageId: msgId });
   },
   setUserStatus: (userId, status) => {
     const next = { ...get().userStatus, [userId]: status };
@@ -786,7 +959,78 @@ export const useChat = create<State>((set, get) => ({
   },
 
   /** 채널 생성 */
-  createChannel: (name, memberIds) => {
+  createChannel: async (name, memberIds) => {
+    const projectId = get().projectId;
+    if (projectId) {
+      const uniqueMembers = Array.from(new Set(memberIds || []));
+      const created = await createChannelApi(projectId, name, uniqueMembers);
+      const workspaceId = created.projectId ?? projectId;
+      const id = created.id;
+      const channel: Channel = { id, name: created.name, workspaceId };
+
+      let allChannels = [...get().allChannels, channel];
+      lsSet(CHANNELS_KEY, allChannels);
+
+      let channels = get().channels;
+      if (workspaceId === get().workspaceId) {
+        channels = [...channels, channel];
+      }
+
+      let workspaces = get().workspaces;
+      let workspaceChanged = false;
+      workspaces = workspaces.map(ws => {
+        if (ws.id !== workspaceId) return ws;
+        let changed = false;
+        const sections = ws.sections.map(sec => {
+          if (sec.type !== "channels") return sec;
+          if (sec.itemIds.includes(id)) return sec;
+          changed = true;
+          return { ...sec, itemIds: [...sec.itemIds, id] };
+        });
+        if (changed) {
+          workspaceChanged = true;
+          return { ...ws, sections };
+        }
+        return ws;
+      });
+      if (!workspaceChanged) {
+        workspaces = workspaces.map(ws => {
+          if (ws.id !== workspaceId) return ws;
+          if (ws.sections.some(sec => sec.type === "channels")) return ws;
+          workspaceChanged = true;
+          return {
+            ...ws,
+            sections: [
+              ...ws.sections,
+              { id: `${ws.id}-channels`, title: "Channels", type: "channels", itemIds: [id], collapsed: false },
+            ],
+          };
+        });
+      }
+      if (workspaceChanged) {
+        lsSet(WORKSPACES_KEY, workspaces);
+      }
+
+      const members = {
+        ...get().channelMembers,
+        [id]: created.memberIds && created.memberIds.length ? created.memberIds : Array.from(new Set([get().me.id, ...uniqueMembers])),
+      };
+      lsSet(MEMBERS_KEY, members);
+      const topics = { ...get().channelTopics, [id]: { topic: "" } };
+      lsSet(TOPICS_KEY, topics);
+      lsSet(MSGS_KEY(id), []);
+
+      set({
+        allChannels,
+        channels,
+        workspaces,
+        channelMembers: members,
+        channelTopics: topics,
+      });
+      bc?.postMessage({ type: "channel:create", channel: { ...channel }, members: members[id] });
+      return id;
+    }
+
     const workspaceId = get().workspaceId || FALLBACK_WORKSPACE_ID;
     const existing = new Set(get().allChannels.map(c => c.id));
     const base = name.replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
@@ -923,6 +1167,148 @@ export const useChat = create<State>((set, get) => ({
 
   initRealtime: () => {
     if (typeof window === "undefined") return;
+    if (!socketBound) {
+      socketBound = true;
+      const token = localStorage.getItem("accessToken");
+      const socket = getChatSocket(token);
+      if (socket) {
+        socket.on("message.pinned", (data: { messageId: string }) => {
+          const channelId = get().channelId;
+          const pins = { ...(get().pinnedByChannel || {}) };
+          const list = new Set(pins[channelId] || []);
+          list.add(data.messageId);
+          pins[channelId] = Array.from(list);
+          set({ pinnedByChannel: pins });
+          lsSet(PINS_KEY, pins);
+        });
+        socket.on("message.unpinned", (data: { messageId: string }) => {
+          const channelId = get().channelId;
+          const pins = { ...(get().pinnedByChannel || {}) };
+          const list = new Set(pins[channelId] || []);
+          list.delete(data.messageId);
+          pins[channelId] = Array.from(list);
+          set({ pinnedByChannel: pins });
+          lsSet(PINS_KEY, pins);
+        });
+        socket.on("message.saved", (data: { messageId: string }) => {
+          const meId = get().me.id;
+          const saved = { ...(get().savedByUser || {}) };
+          const list = new Set(saved[meId] || []);
+          list.add(data.messageId);
+          saved[meId] = Array.from(list);
+          set({ savedByUser: saved });
+          lsSet(SAVED_KEY(meId), saved);
+        });
+        socket.on("message.unsaved", (data: { messageId: string }) => {
+          const meId = get().me.id;
+          const saved = { ...(get().savedByUser || {}) };
+          const list = new Set(saved[meId] || []);
+          list.delete(data.messageId);
+          saved[meId] = Array.from(list);
+          set({ savedByUser: saved });
+          lsSet(SAVED_KEY(meId), saved);
+        });
+        socket.on("message.event", (event: { type: string; roomId?: string; payload?: any }) => {
+          if (!event?.roomId || !event.roomId.startsWith("channel:")) return;
+          const channelId = event.roomId.replace("channel:", "");
+          const currentId = get().channelId;
+          const list = channelId === currentId ? get().messages : lsGet<Msg[]>(MSGS_KEY(channelId), []);
+
+          if (event.type === "created" && event.payload) {
+            const msg = mapChannelMessage(event.payload as ChannelMessageResponse, channelId, get().me.id);
+            if (localEchoIds.has(msg.id)) return;
+            if (list.some((m) => m.id === msg.id)) {
+              return;
+            }
+            const next = sortMessages([...list, msg]);
+            if (channelId === currentId) {
+              set({ messages: next });
+            }
+            lsSet(MSGS_KEY(channelId), next);
+            get().updateChannelActivity(channelId, next);
+          }
+
+          if (event.type === "updated" && event.payload) {
+            const updated = mapChannelMessage(event.payload as ChannelMessageResponse, channelId, get().me.id);
+            const next = list.map((m) => (m.id === updated.id ? { ...m, ...updated } : m));
+            if (channelId === currentId) {
+              set({ messages: next });
+            }
+            lsSet(MSGS_KEY(channelId), next);
+            get().updateChannelActivity(channelId, next);
+          }
+
+          if (event.type === "deleted" && event.payload) {
+            const messageId = (event.payload as { messageId: string }).messageId;
+            if (!messageId) return;
+            const next = list.filter((m) => m.id !== messageId);
+            if (channelId === currentId) {
+              set({ messages: next });
+            }
+            lsSet(MSGS_KEY(channelId), next);
+            get().updateChannelActivity(channelId, next);
+          }
+
+          if (event.type === "reaction" && event.payload) {
+            const { messageId, emoji, userId, action } = event.payload as {
+              messageId: string;
+              emoji: string;
+              userId: string;
+              action: "added" | "removed";
+            };
+            const next = list.map((m) => {
+              if (m.id !== messageId) return m;
+              const map = { ...(m.reactions || {}) };
+              const setIds = new Set(map[emoji] || []);
+              if (action === "removed") {
+                setIds.delete(userId);
+              } else {
+                setIds.add(userId);
+              }
+              if (setIds.size === 0) {
+                delete map[emoji];
+              } else {
+                map[emoji] = Array.from(setIds);
+              }
+              return { ...m, reactions: map };
+            });
+            if (channelId === currentId) {
+              set({ messages: next });
+            }
+            lsSet(MSGS_KEY(channelId), next);
+          }
+
+          if (event.type === "thread_created" && event.payload) {
+            const replyPayload = (event.payload as { message?: ChannelMessageResponse }).message;
+            if (!replyPayload) return;
+            const replyMsg = mapChannelMessage(replyPayload, channelId, get().me.id);
+            if (localEchoIds.has(replyMsg.id)) return;
+            if (list.some((m) => m.id === replyMsg.id)) return;
+            const next = sortMessages([...list, replyMsg]);
+            if (channelId === currentId) {
+              set({ messages: next });
+            }
+            lsSet(MSGS_KEY(channelId), next);
+            get().updateChannelActivity(channelId, next);
+          }
+
+          if (event.type === "thread_meta" && event.payload) {
+            const { parentMessageId, thread } = event.payload as {
+              parentMessageId: string;
+              thread?: { replyCount?: number };
+            };
+            if (!parentMessageId) return;
+            const next = list.map((m) =>
+              m.id === parentMessageId ? { ...m, threadCount: thread?.replyCount ?? m.threadCount } : m
+            );
+            if (channelId === currentId) {
+              set({ messages: next });
+            }
+            lsSet(MSGS_KEY(channelId), next);
+          }
+        });
+      }
+    }
     if (!bc) {
       bc = new BroadcastChannel("flowdash-chat");
       bc.onmessage = (e) => {
@@ -989,10 +1375,16 @@ export const useChat = create<State>((set, get) => ({
           if (!msg) return;
           if (msg.channelId === curCh) {
             const cur = get().messages;
-            const next = [...cur, msg];
+            if (cur.some((m) => m.id === msg.id)) return;
+            const next = sortMessages([...cur, msg]);
             set({ messages: next });
+            lsSet(MSGS_KEY(msg.channelId), next);
             get().updateChannelActivity(msg.channelId, next);
           } else {
+            const list = lsGet<Msg[]>(MSGS_KEY(msg.channelId), []);
+            if (list.some((m) => m.id === msg.id)) return;
+            const next = sortMessages([...list, msg]);
+            lsSet(MSGS_KEY(msg.channelId), next);
             get().updateChannelActivity(msg.channelId);
           }
         }
@@ -1031,7 +1423,11 @@ export const useChat = create<State>((set, get) => ({
             const map = { ...(m.reactions || {}) };
             const setIds = new Set(map[data.emoji] || []);
             if (setIds.has(data.userId)) setIds.delete(data.userId); else setIds.add(data.userId);
-            map[data.emoji] = Array.from(setIds);
+            if (setIds.size === 0) {
+              delete map[data.emoji];
+            } else {
+              map[data.emoji] = Array.from(setIds);
+            }
             return { ...m, reactions: map };
           });
           set({ messages: next });

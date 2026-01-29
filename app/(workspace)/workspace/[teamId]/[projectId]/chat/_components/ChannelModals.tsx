@@ -22,18 +22,27 @@ function ModalShell({ open, onOpenChange, title, children }:{
   );
 }
 
-export function CreateChannelModal({ open, onOpenChange }:{open:boolean; onOpenChange:(v:boolean)=>void;}) {
+export function CreateChannelModal({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onCreated?: (id: string) => void;
+}) {
   const { users, me, createChannel, setChannel } = useChat();
   const [name, setName] = useState("");
   const [sel, setSel] = useState<Record<string,boolean>>({});
 
   const candidates = useMemo(()=> Object.values(users).filter(u => u.id !== me.id), [users, me.id]);
 
-  const submit = () => {
+  const submit = async () => {
     const memberIds = [me.id].concat(candidates.filter(c => sel[c.id]).map(c => c.id));
     if (!name.trim()) return;
-    const id = createChannel(name.trim(), memberIds);
-    setChannel(id);
+    const id = await createChannel(name.trim(), memberIds);
+    await setChannel(id);
+    onCreated?.(id);
     onOpenChange(false);
   };
 

@@ -55,14 +55,14 @@ export default function MessageContextMenu({
     <div className="fixed inset-0 z-50" onClick={onClose} onContextMenu={(e)=>{e.preventDefault(); onClose();}}>
       <div className="absolute inset-0" />
       <div
-        className="absolute z-50 w-56 rounded-md border border-border bg-panel shadow-panel p-1"
+        className="absolute z-50 w-60 rounded-lg border border-border bg-panel/95 shadow-panel p-1"
         style={{ left: Math.min(x, window.innerWidth - 240), top: Math.min(y, window.innerHeight - 380) }}
         onClick={(e)=> e.stopPropagation()}
       >
         {items.map(it => (
           <button
             key={it.id}
-            className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-subtle/60 ${'disabled' in it && it.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-subtle/60 ${'disabled' in it && it.disabled ? 'opacity-50 cursor-not-allowed' : ''} ${it.id === 'delete' ? 'text-rose-500' : ''}`}
             disabled={('disabled' in it) ? !!it.disabled : false}
             onClick={()=> onAction(it.id)}
           >

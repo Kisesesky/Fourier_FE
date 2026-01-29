@@ -161,7 +161,7 @@ const ActivitiesView = () => {
           <div className="relative" ref={filterRef}>
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted transition hover:bg-accent hover:text-foreground"
+              className="flex h-12 w-12 items-center justify-center rounded-full border border-border text-muted transition hover:bg-accent hover:text-foreground"
               onClick={() => setFilterOpen((prev) => !prev)}
               aria-label="필터"
             >

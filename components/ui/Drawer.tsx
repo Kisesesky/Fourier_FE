@@ -92,7 +92,7 @@ export default function Drawer({
     );
 
   return (
-    <div className={clsx('fixed inset-0 z-50 md:hidden', open ? 'pointer-events-auto' : 'pointer-events-none')}>
+    <div className={clsx('fixed inset-0 z-50 lg:hidden', open ? 'pointer-events-auto' : 'pointer-events-none')}>
       <div
         className={clsx('absolute inset-0 bg-black/40 transition-opacity', open ? 'opacity-100' : 'opacity-0')}
         onClick={() => onOpenChange(false)}

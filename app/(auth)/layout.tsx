@@ -27,7 +27,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </div>
           </Link>
           <Link
-            href="/login"
+            href="/sign-in"
             className="rounded-full border border-border px-3 py-1.5 text-xs text-muted transition hover:border-primary hover:text-primary sm:text-sm"
           >
             로그인

@@ -1,39 +1,37 @@
 'use client';
 
-import { useMemo, useState, useCallback, useEffect, type MouseEvent } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
-  BellDot,
-  ChevronRight,
-  Clock3,
-  Filter,
+  Archive,
+  ArchiveRestore,
+  Bell,
+  BellOff,
+  CheckCheck,
   Hash,
-  MessageSquare,
+  Info,
+  MoreHorizontal,
+  Pin,
+  PinOff,
   PlusCircle,
   Search,
-  Sparkles,
   Star,
   Users,
 } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import type { Channel, ChatUser } from "@/workspace/chat/_model/types";
+import type { Channel, ChatUser, PresenceState } from "@/workspace/chat/_model/types";
 
 type FilterKey = "all" | "starred" | "unread" | "mentions" | "dm";
 
-const FILTERS: { key: FilterKey; label: string; hint: string }[] = [
-  { key: "all", label: "전체", hint: "워크스페이스의 모든 채널" },
-  { key: "starred", label: "즐겨찾기", hint: "Starred 섹션에 고정된 채널" },
-  { key: "unread", label: "읽지 않음", hint: "읽지 않은 메시지가 남은 채널" },
-  { key: "mentions", label: "@멘션", hint: "나를 멘션한 알림이 있는 채널" },
-  { key: "dm", label: "DM", hint: "Direct Message" },
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "전체" },
+  { key: "unread", label: "읽지 않음" },
+  { key: "mentions", label: "@멘션" },
+  { key: "starred", label: "즐겨찾기" },
+  { key: "dm", label: "DM" },
 ];
-
-const VIEW_OPTIONS = [
-  { key: "grid", label: "카드" },
-  { key: "list", label: "리스트" },
-] as const satisfies ReadonlyArray<{ key: "grid" | "list"; label: string }>;
 
 type ChannelEntry = {
   channel: Channel;
@@ -46,6 +44,9 @@ type ChannelEntry = {
   mentions: number;
   starred: boolean;
   isDM: boolean;
+  avatarUrl?: string;
+  presence?: PresenceState;
+  muted?: boolean;
 };
 
 const relativeTime = (ts: number) => {
@@ -59,6 +60,13 @@ const relativeTime = (ts: number) => {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}일 전`;
   return new Date(ts).toLocaleDateString();
+};
+
+const presenceColors: Record<PresenceState, string> = {
+  online: "bg-emerald-500",
+  away: "bg-amber-400",
+  busy: "bg-rose-500",
+  offline: "bg-zinc-400",
 };
 
 const EmptyState = ({ label }: { label: string }) => (
@@ -79,16 +87,39 @@ export default function ChatDashboard() {
     setChannel,
     channelId,
     users,
+    userStatus,
     toggleStar,
+    setChannelMuted,
+    markChannelRead,
+    pinnedChannelIds,
+    archivedChannelIds,
+    togglePinnedChannel,
+    toggleArchivedChannel,
     loadChannels,
   } = useChat();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [listMode, setListMode] = useState<"all" | "unreads">("all");
+  const [showArchived, setShowArchived] = useState(false);
+  const [mentionsOnly, setMentionsOnly] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void loadChannels();
   }, [loadChannels]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (event: MouseEvent) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler as unknown as EventListener);
+    return () => document.removeEventListener("mousedown", handler as unknown as EventListener);
+  }, [menuOpen]);
 
   const activeWorkspace = useMemo(() => workspaces.find((ws) => ws.id === workspaceId), [workspaces, workspaceId]);
   const starredSet = useMemo(() => {
@@ -104,12 +135,15 @@ export default function ChatDashboard() {
         const isDM = !!channel.isDM || channel.id.startsWith("dm:");
         const activity = channelActivity[channel.id];
         const topic = isDM ? undefined : channelTopics[channel.id]?.topic;
+        const muted = channelTopics[channel.id]?.muted ?? false;
         const starred = starredSet.has(channel.id);
         const preview = activity?.lastPreview;
         const lastTs = activity?.lastMessageTs ?? 0;
         const unread = activity?.unreadCount ?? 0;
         const mentions = activity?.mentionCount ?? 0;
         const displayName = resolveChannelName(channel, users);
+        const targetUserId = isDM ? channel.id.replace(/^dm:/, "") : undefined;
+        const targetUser = targetUserId ? users[targetUserId] : undefined;
         return {
           channel,
           displayName,
@@ -121,6 +155,9 @@ export default function ChatDashboard() {
           mentions,
           starred,
           isDM,
+          avatarUrl: targetUser?.avatarUrl,
+          presence: targetUserId ? userStatus[targetUserId] : undefined,
+          muted,
         };
       })
       .filter((entry) => {
@@ -133,16 +170,50 @@ export default function ChatDashboard() {
         return haystack.includes(normalizedQuery);
       })
       .sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0));
-  }, [channels, channelActivity, channelTopics, filter, normalizedQuery, starredSet, users]);
+  }, [channels, channelActivity, channelTopics, filter, normalizedQuery, starredSet, userStatus, users]);
 
-  const unreadTotal = useMemo(() => entries.reduce((sum, entry) => sum + entry.unread, 0), [entries]);
-  const mentionTotal = useMemo(() => entries.reduce((sum, entry) => sum + entry.mentions, 0), [entries]);
-  const dmCount = useMemo(() => entries.filter((entry) => entry.isDM).length, [entries]);
-
-  const recentMentions = useMemo(
-    () => entries.filter((entry) => entry.mentions > 0).slice(0, 5),
-    [entries],
+  const pinnedSet = useMemo(() => new Set(pinnedChannelIds), [pinnedChannelIds]);
+  const archivedSet = useMemo(() => new Set(archivedChannelIds), [archivedChannelIds]);
+  const baseEntries = useMemo(() => {
+    if (listMode !== "unreads") return entries;
+    const list = entries.filter((entry) => entry.unread > 0);
+    return mentionsOnly ? list.filter((entry) => entry.mentions > 0) : list;
+  }, [entries, listMode, mentionsOnly]);
+  const visibleEntries = useMemo(
+    () => baseEntries.filter((entry) => !archivedSet.has(entry.channel.id)),
+    [baseEntries, archivedSet]
   );
+  const archivedEntries = useMemo(
+    () => (listMode === "all" ? entries.filter((entry) => archivedSet.has(entry.channel.id)) : []),
+    [entries, archivedSet, listMode]
+  );
+  const pinnedEntries = useMemo(
+    () => visibleEntries.filter((entry) => pinnedSet.has(entry.channel.id)),
+    [pinnedSet, visibleEntries]
+  );
+  const unreadEntries = useMemo(
+    () => visibleEntries.filter((entry) => entry.unread > 0),
+    [visibleEntries]
+  );
+  const starredEntries = useMemo(
+    () => visibleEntries.filter((entry) => entry.starred && !pinnedSet.has(entry.channel.id)),
+    [pinnedSet, visibleEntries]
+  );
+  const channelEntries = useMemo(
+    () =>
+      visibleEntries.filter(
+        (entry) => !entry.isDM && !pinnedSet.has(entry.channel.id) && !entry.starred
+      ),
+    [pinnedSet, visibleEntries]
+  );
+  const dmEntries = useMemo(
+    () =>
+      visibleEntries.filter(
+        (entry) => entry.isDM && !pinnedSet.has(entry.channel.id) && !entry.starred
+      ),
+    [pinnedSet, visibleEntries]
+  );
+  const isUnreadsView = listMode === "unreads";
 
   const handleOpenChannel = useCallback(
     async (id: string) => {
@@ -150,7 +221,7 @@ export default function ChatDashboard() {
       const href = buildHref(["chat", encodeURIComponent(id)], `/chat/${encodeURIComponent(id)}`);
       router.push(href);
     },
-    [router, setChannel],
+    [buildHref, router, setChannel],
   );
 
   const ensureDetailContext = useCallback(async () => {
@@ -160,7 +231,7 @@ export default function ChatDashboard() {
     const href = buildHref(["chat", encodeURIComponent(target)], `/chat/${encodeURIComponent(target)}`);
     router.push(href);
     return target;
-  }, [channelId, channels, router, setChannel]);
+  }, [buildHref, channelId, channels, router, setChannel]);
 
   const handleCreateChannel = useCallback(async () => {
     const target = await ensureDetailContext();
@@ -178,6 +249,53 @@ export default function ChatDashboard() {
     }, 400);
   }, [ensureDetailContext]);
 
+  const handleOpenRightPanelFor = useCallback(
+    async (id: string) => {
+      await setChannel(id);
+      if (typeof window === "undefined") return;
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event("chat:open-right"));
+      }, 200);
+    },
+    [setChannel],
+  );
+
+  const handleToggleMuted = useCallback(
+    (event: MouseEvent, id: string, muted: boolean) => {
+      event.stopPropagation();
+      setChannelMuted(id, !muted);
+    },
+    [setChannelMuted],
+  );
+
+  const handleTogglePinned = useCallback(
+    (event: MouseEvent, id: string) => {
+      event.stopPropagation();
+      togglePinnedChannel(id);
+    },
+    [togglePinnedChannel],
+  );
+
+  const handleToggleArchived = useCallback(
+    (event: MouseEvent, id: string) => {
+      event.stopPropagation();
+      toggleArchivedChannel(id);
+    },
+    [toggleArchivedChannel],
+  );
+
+  const handleMarkRead = useCallback(
+    (event: MouseEvent, id: string) => {
+      event.stopPropagation();
+      markChannelRead(id);
+    },
+    [markChannelRead],
+  );
+
+  const handleToggleMenu = useCallback(() => {
+    setMenuOpen((prev) => !prev);
+  }, []);
+
   const handleToggleStar = useCallback(
     (event: MouseEvent, id: string) => {
       event.stopPropagation();
@@ -188,151 +306,266 @@ export default function ChatDashboard() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-y-auto bg-subtle">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-border bg-panel/80 p-6 sm:p-8 shadow-panel">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-3">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <header className="rounded-2xl border border-border bg-panel/80 p-5 shadow-panel">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.18em] text-muted">Workspace Chat</p>
               <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">채팅 허브</h1>
-              <p className="text-sm text-muted">
-                팀 채널과 DM을 한곳에서 확인하세요. 중요한 대화만 골라보고, 새 채널/DM을 빠르게 만들 수 있습니다.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleCreateChannel}
-                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background shadow"
-                >
-                  <PlusCircle size={14} />
-                  새 채널 만들기
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenRightPanel}
-                  className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-foreground/80 hover:bg-panel"
-                >
-                  <Users size={14} />
-                  빠른 DM
-                </button>
-              </div>
+              <p className="text-sm text-muted">슬랙처럼 채널과 DM을 리스트로 관리하고 빠르게 전환하세요.</p>
             </div>
-            <div className="grid w-full grid-cols-2 gap-4 text-sm sm:grid-cols-3 lg:w-auto">
-              <StatCard label="전체 채널" value={channels.filter((ch) => !ch.isDM).length} icon={Hash} />
-              <StatCard label="읽지 않은 메시지" value={unreadTotal} icon={BellDot} emphasize />
-              <StatCard label="DM" value={dmCount} icon={MessageSquare} />
+            <div className="flex flex-wrap gap-2">
+              <div className="relative">
+                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="채널 또는 DM 검색"
+                  className="h-9 w-56 rounded-full border border-border bg-transparent pl-9 pr-3 text-sm outline-none focus:border-foreground/60"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleCreateChannel}
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background shadow"
+              >
+                <PlusCircle size={14} />
+                새 채널
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenRightPanel}
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-foreground/80 hover:bg-panel"
+              >
+                <Users size={14} />
+                빠른 DM
+              </button>
             </div>
           </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,2.5fr)_minmax(240px,1fr)]">
-          <div className="flex flex-col gap-4 rounded-2xl border border-border bg-panel/70 p-4 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex flex-wrap gap-2">
-                {FILTERS.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setFilter(key)}
-                    className={clsx(
-                      "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm",
-                      filter === key
-                        ? "border-foreground/80 bg-foreground text-background"
-                        : "border-border/70 text-muted hover:border-foreground/30 hover:text-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-2">
+              {FILTERS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={clsx(
+                    "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold",
+                    filter === key
+                      ? "border-foreground/80 bg-foreground text-background"
+                      : "border-border/70 text-muted hover:border-foreground/30 hover:text-foreground"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="rounded-full border border-border bg-panel/60 p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setListMode("all");
+                    setMentionsOnly(false);
+                  }}
+                  className={clsx(
+                    "rounded-full px-3 py-1 text-xs font-semibold",
+                    listMode === "all" ? "bg-foreground text-background" : "text-muted"
+                  )}
+                >
+                  전체
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setListMode("unreads");
+                    setShowArchived(false);
+                  }}
+                  className={clsx(
+                    "rounded-full px-3 py-1 text-xs font-semibold",
+                    listMode === "unreads" ? "bg-foreground text-background" : "text-muted"
+                  )}
+                >
+                  읽지 않음
+                </button>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <div className="relative">
-                  <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="채널 검색"
-                    className="h-9 w-48 rounded-full border border-border bg-transparent pl-9 pr-3 text-sm outline-none focus:border-foreground/60"
-                  />
-                </div>
-                <div className="rounded-full border border-border bg-panel/60 px-1 py-1">
-                  {VIEW_OPTIONS.map((option) => (
+              <div className="relative" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={handleToggleMenu}
+                  className={clsx(
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
+                    menuOpen
+                      ? "border-foreground/80 bg-foreground text-background"
+                      : "border-border/70 text-muted hover:border-foreground/30 hover:text-foreground"
+                  )}
+                  aria-expanded={menuOpen}
+                  aria-haspopup="menu"
+                >
+                  <MoreHorizontal size={14} />
+                  보기 옵션
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-10 z-20 w-52 rounded-xl border border-border bg-panel/95 p-2 shadow-panel">
                     <button
-                      key={option.key}
                       type="button"
-                      onClick={() => setViewMode(option.key)}
+                      onClick={() => {
+                        if (listMode !== "all") return;
+                        setShowArchived((prev) => !prev);
+                        setMenuOpen(false);
+                      }}
+                      disabled={listMode !== "all"}
                       className={clsx(
-                        "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold",
-                        viewMode === option.key ? "bg-foreground text-background" : "text-muted"
+                        "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition",
+                        listMode !== "all"
+                          ? "cursor-not-allowed text-muted/60"
+                          : "text-muted hover:bg-subtle/70 hover:text-foreground"
                       )}
                     >
-                      <Filter size={12} />
-                      {option.label}
+                      <span className="inline-flex items-center gap-2">
+                        <Archive size={12} />
+                        보관함 보기
+                      </span>
+                      <span>{showArchived && listMode === "all" ? "ON" : "OFF"}</span>
                     </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {entries.length === 0 ? (
-              <EmptyState label="조건에 맞는 채널이 없습니다." />
-            ) : viewMode === "grid" ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {entries.map((entry) => (
-                  <ChannelCard
-                    key={entry.channel.id}
-                    entry={entry}
-                    onOpen={() => handleOpenChannel(entry.channel.id)}
-                    onToggleStar={(event) => handleToggleStar(event, entry.channel.id)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="divide-y divide-border rounded-xl border border-border/70">
-                {entries.map((entry) => (
-                  <ChannelRow
-                    key={entry.channel.id}
-                    entry={entry}
-                    onOpen={() => handleOpenChannel(entry.channel.id)}
-                    onToggleStar={(event) => handleToggleStar(event, entry.channel.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <aside className="flex flex-col gap-4 rounded-2xl border border-border bg-panel/80 p-4 shadow-sm">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Mentions</p>
-              <div className="mt-2 space-y-2">
-                {recentMentions.length === 0 ? (
-                  <EmptyBadge label="새 멘션이 없습니다." icon={Sparkles} />
-                ) : (
-                  recentMentions.map((entry) => (
                     <button
-                      key={`mention-${entry.channel.id}`}
                       type="button"
-                      onClick={() => handleOpenChannel(entry.channel.id)}
-                      className="w-full rounded-xl border border-border/70 bg-subtle/60 px-3 py-2 text-left text-sm transition hover:border-foreground/50"
+                      onClick={() => {
+                        if (listMode !== "unreads") return;
+                        setMentionsOnly((prev) => !prev);
+                        setMenuOpen(false);
+                      }}
+                      disabled={listMode !== "unreads"}
+                      className={clsx(
+                        "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition",
+                        listMode !== "unreads"
+                          ? "cursor-not-allowed text-muted/60"
+                          : "text-muted hover:bg-subtle/70 hover:text-foreground"
+                      )}
                     >
-                      <div className="flex items-center justify-between gap-2 text-xs text-muted">
-                        <span>{entry.displayName}</span>
-                        <span>{relativeTime(entry.lastTs)}</span>
-                      </div>
-                      <p className="mt-1 text-sm text-foreground/90">{entry.lastPreview ?? "새 메시지"}</p>
+                      <span className="inline-flex items-center gap-2">@멘션만</span>
+                      <span>{mentionsOnly && listMode === "unreads" ? "ON" : "OFF"}</span>
                     </button>
-                  ))
+                  </div>
                 )}
               </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">요약</p>
-              <div className="mt-2 space-y-2 text-sm">
-                <SummaryRow icon={BellDot} label="읽지 않은 메시지" value={unreadTotal} />
-                <SummaryRow icon={Users} label="멘션" value={mentionTotal} />
-                <SummaryRow icon={Clock3} label="최근 활동" value={entries[0]?.displayName ?? "없음"} />
-              </div>
+          </div>
+        </header>
+
+        <section className="rounded-2xl border border-border bg-panel/70 p-4 shadow-sm">
+          {entries.length === 0 && (
+            <div className="mb-4">
+              <EmptyState label="조건에 맞는 채널이 없습니다." />
             </div>
-          </aside>
+          )}
+          <div className="space-y-6">
+            {isUnreadsView ? (
+              <ChannelSection
+                title="Unreads"
+                entries={unreadEntries}
+                emptyLabel="읽지 않은 메시지가 없습니다."
+                onOpen={handleOpenChannel}
+                onToggleStar={handleToggleStar}
+                onToggleMuted={handleToggleMuted}
+                onOpenInfo={handleOpenRightPanelFor}
+                onTogglePinned={handleTogglePinned}
+                onToggleArchived={handleToggleArchived}
+                onMarkRead={handleMarkRead}
+                pinnedSet={pinnedSet}
+                archivedSet={archivedSet}
+              />
+            ) : (
+              <>
+                <ChannelSection
+                  title="Unreads"
+                  entries={unreadEntries}
+                  emptyLabel="읽지 않은 메시지가 없습니다."
+                  onOpen={handleOpenChannel}
+                  onToggleStar={handleToggleStar}
+                  onToggleMuted={handleToggleMuted}
+                  onOpenInfo={handleOpenRightPanelFor}
+                  onTogglePinned={handleTogglePinned}
+                  onToggleArchived={handleToggleArchived}
+                  onMarkRead={handleMarkRead}
+                  pinnedSet={pinnedSet}
+                  archivedSet={archivedSet}
+                />
+                <ChannelSection
+                  title="Pinned"
+                  entries={pinnedEntries}
+                  emptyLabel="핀된 채널이 없습니다."
+                  onOpen={handleOpenChannel}
+                  onToggleStar={handleToggleStar}
+                  onToggleMuted={handleToggleMuted}
+                  onOpenInfo={handleOpenRightPanelFor}
+                  onTogglePinned={handleTogglePinned}
+                  onToggleArchived={handleToggleArchived}
+                  onMarkRead={handleMarkRead}
+                  pinnedSet={pinnedSet}
+                  archivedSet={archivedSet}
+                />
+                <ChannelSection
+                  title="Starred"
+                  entries={starredEntries}
+                  emptyLabel="즐겨찾기된 채널이 없습니다."
+                  onOpen={handleOpenChannel}
+                  onToggleStar={handleToggleStar}
+                  onToggleMuted={handleToggleMuted}
+                  onOpenInfo={handleOpenRightPanelFor}
+                  onTogglePinned={handleTogglePinned}
+                  onToggleArchived={handleToggleArchived}
+                  onMarkRead={handleMarkRead}
+                  pinnedSet={pinnedSet}
+                  archivedSet={archivedSet}
+                />
+                <ChannelSection
+                  title="Channels"
+                  entries={channelEntries}
+                  emptyLabel="표시할 채널이 없습니다."
+                  onOpen={handleOpenChannel}
+                  onToggleStar={handleToggleStar}
+                  onToggleMuted={handleToggleMuted}
+                  onOpenInfo={handleOpenRightPanelFor}
+                  onTogglePinned={handleTogglePinned}
+                  onToggleArchived={handleToggleArchived}
+                  onMarkRead={handleMarkRead}
+                  pinnedSet={pinnedSet}
+                  archivedSet={archivedSet}
+                />
+                <ChannelSection
+                  title="Direct messages"
+                  entries={dmEntries}
+                  emptyLabel="DM이 없습니다."
+                  onOpen={handleOpenChannel}
+                  onToggleStar={handleToggleStar}
+                  onToggleMuted={handleToggleMuted}
+                  onOpenInfo={handleOpenRightPanelFor}
+                  onTogglePinned={handleTogglePinned}
+                  onToggleArchived={handleToggleArchived}
+                  onMarkRead={handleMarkRead}
+                  pinnedSet={pinnedSet}
+                  archivedSet={archivedSet}
+                />
+                {showArchived && (
+                  <ChannelSection
+                    title="Archived"
+                    entries={archivedEntries}
+                    emptyLabel="보관된 채널이 없습니다."
+                    onOpen={handleOpenChannel}
+                    onToggleStar={handleToggleStar}
+                    onToggleMuted={handleToggleMuted}
+                    onOpenInfo={handleOpenRightPanelFor}
+                    onTogglePinned={handleTogglePinned}
+                    onToggleArchived={handleToggleArchived}
+                    onMarkRead={handleMarkRead}
+                    pinnedSet={pinnedSet}
+                    archivedSet={archivedSet}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </section>
       </div>
     </div>
@@ -348,154 +581,254 @@ function resolveChannelName(channel: Channel, users: Record<string, ChatUser>) {
   return channel.name?.replace(/^#\s*/, "#") || `#${channel.id}`;
 }
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  emphasize = false,
+function getInitials(label: string) {
+  const cleaned = label.replace(/^[@#]\s*/, "").trim();
+  if (!cleaned) return "?";
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts[1]?.[0] ?? "";
+  return `${first}${second}`.toUpperCase();
+}
+
+function buildPreview(entry: ChannelEntry) {
+  const base =
+    entry.lastPreview ??
+    entry.topic ??
+    (entry.isDM ? "Direct Message" : "아직 메시지가 없습니다.");
+  return entry.lastAuthor ? `${entry.lastAuthor}: ${base}` : base;
+}
+
+function ChannelSection({
+  title,
+  entries,
+  onOpen,
+  onToggleStar,
+  onToggleMuted,
+  onOpenInfo,
+  onTogglePinned,
+  onToggleArchived,
+  onMarkRead,
+  pinnedSet,
+  archivedSet,
+  emptyLabel,
 }: {
-  label: string;
-  value: number | string;
-  icon: typeof Hash;
-  emphasize?: boolean;
+  title: string;
+  entries: ChannelEntry[];
+  emptyLabel: string;
+  onOpen: (id: string) => void;
+  onToggleStar: (event: MouseEvent, id: string) => void;
+  onToggleMuted: (event: MouseEvent, id: string, muted: boolean) => void;
+  onOpenInfo: (id: string) => void;
+  onTogglePinned: (event: MouseEvent, id: string) => void;
+  onToggleArchived: (event: MouseEvent, id: string) => void;
+  onMarkRead: (event: MouseEvent, id: string) => void;
+  pinnedSet: Set<string>;
+  archivedSet: Set<string>;
 }) {
   return (
-    <div
-      className={clsx(
-        "rounded-2xl border px-4 py-3 text-sm shadow-sm",
-        emphasize ? "border-foreground/60 bg-foreground text-background" : "border-border bg-panel/60 text-foreground"
-      )}
-    >
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted">
-        <Icon size={14} />
-        {label}
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+        <span>{title}</span>
+        <span className="text-[10px]">{entries.length}</span>
       </div>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
+      <div className="space-y-1">
+        {entries.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border/70 bg-panel/50 px-3 py-2 text-xs text-muted">
+            {emptyLabel}
+          </div>
+        ) : (
+          entries.map((entry) => (
+            <ChannelListRow
+              key={entry.channel.id}
+              entry={entry}
+              onOpen={() => onOpen(entry.channel.id)}
+              onToggleStar={(event) => onToggleStar(event, entry.channel.id)}
+              onToggleMuted={(event) => onToggleMuted(event, entry.channel.id, entry.muted ?? false)}
+              onOpenInfo={() => onOpenInfo(entry.channel.id)}
+              onTogglePinned={(event) => onTogglePinned(event, entry.channel.id)}
+              onToggleArchived={(event) => onToggleArchived(event, entry.channel.id)}
+              onMarkRead={(event) => onMarkRead(event, entry.channel.id)}
+              pinned={pinnedSet.has(entry.channel.id)}
+              archived={archivedSet.has(entry.channel.id)}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
-function ChannelCard({
+function ChannelListRow({
   entry,
   onOpen,
   onToggleStar,
+  onToggleMuted,
+  onOpenInfo,
+  onTogglePinned,
+  onToggleArchived,
+  onMarkRead,
+  pinned,
+  archived,
 }: {
   entry: ChannelEntry;
   onOpen: () => void;
   onToggleStar: (event: MouseEvent) => void;
+  onToggleMuted: (event: MouseEvent) => void;
+  onOpenInfo: () => void;
+  onTogglePinned: (event: MouseEvent) => void;
+  onToggleArchived: (event: MouseEvent) => void;
+  onMarkRead: (event: MouseEvent) => void;
+  pinned: boolean;
+  archived: boolean;
 }) {
+  const preview = buildPreview(entry);
+  const presenceClass = presenceColors[entry.presence ?? "offline"] ?? presenceColors.offline;
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
-      className="flex flex-col rounded-2xl border border-border/70 bg-panel/60 p-4 text-left transition hover:border-foreground/40 hover:shadow-lg"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      className="group flex items-start gap-3 rounded-lg px-3 py-2 transition hover:bg-subtle/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {entry.isDM ? (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
-              <MessageSquare size={16} />
-            </div>
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/15 text-purple-500">
-              <Hash size={16} />
-            </div>
+      <div className="relative mt-0.5">
+        {entry.unread > 0 && (
+          <span className="absolute -left-2 top-3 h-1.5 w-1.5 rounded-full bg-rose-500" />
+        )}
+        <div
+          className={clsx(
+            "relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg text-xs font-semibold",
+            entry.isDM ? "bg-blue-500/15 text-blue-400" : "bg-purple-500/15 text-purple-400"
           )}
-          <div>
-            <p className="font-medium text-foreground">{entry.displayName}</p>
-            <p className="text-xs text-muted">{entry.topic ?? (entry.isDM ? "Direct Message" : "채널")}</p>
-          </div>
+        >
+          {entry.isDM ? (
+            entry.avatarUrl ? (
+              <img src={entry.avatarUrl} alt={entry.displayName} className="h-full w-full object-cover" />
+            ) : (
+              getInitials(entry.displayName)
+            )
+          ) : (
+            <Hash size={14} />
+          )}
+          {entry.isDM && (
+            <span
+              className={clsx(
+                "absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-border bg-panel",
+                presenceClass
+              )}
+            />
+          )}
         </div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span
+            className={clsx(
+              "truncate text-sm",
+              entry.unread > 0 ? "font-semibold text-foreground" : "text-foreground/90"
+            )}
+          >
+            {entry.displayName}
+          </span>
+          {!entry.isDM && entry.topic && (
+            <span className="truncate text-xs text-muted">{entry.topic}</span>
+          )}
+        </div>
+        <p className="truncate text-xs text-muted">{preview}</p>
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        <span className="text-[11px] text-muted group-hover:text-foreground/70">
+          {relativeTime(entry.lastTs)}
+        </span>
+        <div className="flex items-center gap-1">
+          {entry.mentions > 0 && (
+            <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] text-amber-500">
+              @{entry.mentions}
+            </span>
+          )}
+          {entry.unread > 0 && (
+            <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] text-rose-500">
+              {entry.unread}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="ml-1 flex items-center gap-1">
         <button
           type="button"
           onClick={onToggleStar}
           className={clsx(
-            "rounded-full p-2 transition",
-            entry.starred ? "text-amber-400 hover:text-amber-300" : "text-muted hover:text-foreground"
+            "rounded-full p-2 text-muted transition",
+            entry.starred
+              ? "opacity-100 text-amber-400 hover:text-amber-300"
+              : "opacity-0 group-hover:opacity-100 hover:text-foreground"
           )}
-          aria-label="Toggle favorite"
-        >
-          <Star size={16} className={entry.starred ? "fill-amber-400" : undefined} />
-        </button>
-      </div>
-      <p className="mt-3 text-sm text-foreground/90">
-        {entry.lastPreview ? entry.lastPreview : "아직 메시지가 없습니다."}
-      </p>
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted">
-        <span>{relativeTime(entry.lastTs)}</span>
-        {entry.unread > 0 && (
-          <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-rose-500">{entry.unread} unread</span>
-        )}
-        {entry.mentions > 0 && (
-          <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-amber-500">@ {entry.mentions}</span>
-        )}
-      </div>
-    </button>
-  );
-}
-
-function ChannelRow({
-  entry,
-  onOpen,
-  onToggleStar,
-}: {
-  entry: ChannelEntry;
-  onOpen: () => void;
-  onToggleStar: (event: MouseEvent) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-subtle/70"
-    >
-      <span className="text-muted">{entry.isDM ? <MessageSquare size={16} /> : <Hash size={16} />}</span>
-      <div className="flex flex-1 flex-col">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-foreground">{entry.displayName}</p>
-          {entry.unread > 0 && <Badge label={`${entry.unread} unread`} tone="rose" />}
-          {entry.mentions > 0 && <Badge label={`@${entry.mentions}`} tone="amber" />}
-        </div>
-        <p className="text-xs text-muted">{entry.lastPreview ?? entry.topic ?? "정보 없음"}</p>
-      </div>
-      <div className="flex items-center gap-2 text-xs text-muted">
-        <span>{relativeTime(entry.lastTs)}</span>
-        <button
-          type="button"
-          onClick={onToggleStar}
-          className={clsx("rounded-full p-2", entry.starred ? "text-amber-400" : "text-muted hover:text-foreground")}
           aria-label="Toggle favorite"
         >
           <Star size={14} className={entry.starred ? "fill-amber-400" : undefined} />
         </button>
-        <ChevronRight size={14} className="text-muted" />
+        <button
+          type="button"
+          onClick={onTogglePinned}
+          className={clsx(
+            "rounded-full p-2 text-muted transition",
+            pinned
+              ? "opacity-100 text-indigo-400 hover:text-indigo-300"
+              : "opacity-0 group-hover:opacity-100 hover:text-foreground"
+          )}
+          aria-label={pinned ? "핀 해제" : "핀 고정"}
+        >
+          {pinned ? <PinOff size={14} /> : <Pin size={14} />}
+        </button>
+        <button
+          type="button"
+          onClick={onMarkRead}
+          className={clsx(
+            "rounded-full p-2 text-muted transition",
+            entry.unread > 0 ? "opacity-0 group-hover:opacity-100 hover:text-foreground" : "opacity-0"
+          )}
+          aria-label="읽음 표시"
+        >
+          <CheckCheck size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleMuted}
+          className="rounded-full p-2 text-muted opacity-0 transition group-hover:opacity-100 hover:text-foreground"
+          aria-label={entry.muted ? "알림 켜기" : "알림 끄기"}
+        >
+          {entry.muted ? <BellOff size={14} /> : <Bell size={14} />}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleArchived}
+          className={clsx(
+            "rounded-full p-2 text-muted transition",
+            archived
+              ? "opacity-100 text-sky-400 hover:text-sky-300"
+              : "opacity-0 group-hover:opacity-100 hover:text-foreground"
+          )}
+          aria-label={archived ? "보관 해제" : "보관"}
+        >
+          {archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenInfo();
+          }}
+          className="rounded-full p-2 text-muted opacity-0 transition group-hover:opacity-100 hover:text-foreground"
+          aria-label="채널 정보 열기"
+        >
+          <Info size={14} />
+        </button>
       </div>
-    </button>
-  );
-}
-
-function Badge({ label, tone }: { label: string; tone: "rose" | "amber" }) {
-  const toneClass = tone === "rose" ? "bg-rose-500/15 text-rose-500" : "bg-amber-400/20 text-amber-600";
-  return <span className={clsx("rounded-full px-2 py-0.5 text-xs font-medium", toneClass)}>{label}</span>;
-}
-
-function SummaryRow({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: number | string }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-border/70 px-3 py-2 text-sm">
-      <div className="flex items-center gap-2 text-muted">
-        <Icon size={14} />
-        <span>{label}</span>
-      </div>
-      <span className="font-semibold text-foreground">{value}</span>
-    </div>
-  );
-}
-
-function EmptyBadge({ label, icon: Icon }: { label: string; icon: typeof Sparkles }) {
-  return (
-    <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/70 px-3 py-2 text-xs text-muted">
-      <Icon size={14} />
-      <span>{label}</span>
     </div>
   );
 }

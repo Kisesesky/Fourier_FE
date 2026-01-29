@@ -11,6 +11,8 @@ import MobileNavHeader from "@/components/layout/MobileNavHeader";
 import { ToastProvider } from "@/components/ui/Toast";
 import Drawer from "@/components/ui/Drawer";
 import FloatingDm from "../_components/FloatingDm";
+import { setAuthToken } from "@/lib/api";
+import ChatCreateChannelHost from "@/components/layout/ChatCreateChannelHost";
 
 export default function WorkspaceProjectLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -95,8 +97,15 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("accessToken");
+    setAuthToken(token);
+  }, []);
+
+  useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
 
   useEffect(() => {
     const handler = () => setShowWorkspaceSettings(true);
@@ -130,6 +139,7 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
 
       {showWorkspaceSettings && <WorkspaceSettingsModal onClose={() => setShowWorkspaceSettings(false)} />}
       <FloatingDm />
+      <ChatCreateChannelHost />
     </ToastProvider>
   );
 }

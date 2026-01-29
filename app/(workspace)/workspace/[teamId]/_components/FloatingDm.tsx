@@ -37,7 +37,7 @@ const getRelativeDateLabel = (date: Date) => {
 const getMessageTimeLabel = (date: Date) => {
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  if (diffMinutes < 5) return "방금 전";
+  if (diffMinutes < 1) return "방금 전";
   return date.toLocaleTimeString();
 };
 
@@ -45,6 +45,10 @@ export default function FloatingDm() {
   const { workspace } = useWorkspace();
   const { profile } = useAuthProfile();
   const [open, setOpen] = useState(false);
+  const [floatingHidden, setFloatingHidden] = useState(false);
+  const [floatingPos, setFloatingPos] = useState<{ x: number; y: number } | null>(null);
+  const [contextOpen, setContextOpen] = useState(false);
+  const [contextPos, setContextPos] = useState({ x: 0, y: 0 });
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [selected, setSelected] = useState<FriendProfile | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -71,13 +75,100 @@ export default function FloatingDm() {
   const [detailFileType, setDetailFileType] = useState("");
   const [detailFileOpen, setDetailFileOpen] = useState(false);
   const [pendingOpenUserId, setPendingOpenUserId] = useState<string | null>(null);
+  const [, setNowTick] = useState(0);
   const messageRefs = useMemo(() => new Map<string, HTMLDivElement | null>(), []);
   const messageScrollRef = useRef<HTMLDivElement | null>(null);
   const detailFileRef = useRef<HTMLDivElement | null>(null);
+  const floatingBtnRef = useRef<HTMLButtonElement | null>(null);
+  const contextRef = useRef<HTMLDivElement | null>(null);
+  const dragState = useRef({ active: false, offsetX: 0, offsetY: 0, moved: false });
 
   const RECENTS_KEY = "friends:dm:recents";
   const UNREAD_KEY = "friends:dm:unread";
   const READ_KEY = "friends:dm:read";
+  const FLOATING_POS_KEY = "friends:dm:floating:pos";
+  const FLOATING_HIDE_KEY = "friends:dm:floating:hidden";
+
+  const getDefaultFloatingPos = () => {
+    const defaultSize = 48;
+    const margin = 24;
+    if (typeof window === "undefined") {
+      return { x: margin, y: margin };
+    }
+    return {
+      x: Math.max(margin, window.innerWidth - defaultSize - margin),
+      y: Math.max(margin, window.innerHeight - defaultSize - margin),
+    };
+  };
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowTick((prev) => prev + 1);
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedHidden = localStorage.getItem(FLOATING_HIDE_KEY);
+    if (storedHidden === "true") {
+      setFloatingHidden(true);
+    }
+    const storedPos = localStorage.getItem(FLOATING_POS_KEY);
+    if (storedPos) {
+      try {
+        const parsed = JSON.parse(storedPos);
+        if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
+          setFloatingPos(parsed);
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setFloatingPos(getDefaultFloatingPos());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!floatingPos) return;
+    localStorage.setItem(FLOATING_POS_KEY, JSON.stringify(floatingPos));
+  }, [floatingPos]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(FLOATING_HIDE_KEY, floatingHidden ? "true" : "false");
+  }, [floatingHidden]);
+
+  useEffect(() => {
+    if (!contextOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (!contextRef.current) return;
+      if (!contextRef.current.contains(event.target as Node)) {
+        setContextOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setContextOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [contextOpen]);
+
+  useEffect(() => {
+    const show = () => setFloatingHidden(false);
+    const hide = () => setFloatingHidden(true);
+    window.addEventListener("dm:show-floating", show as EventListener);
+    window.addEventListener("dm:hide-floating", hide as EventListener);
+    return () => {
+      window.removeEventListener("dm:show-floating", show as EventListener);
+      window.removeEventListener("dm:hide-floating", hide as EventListener);
+    };
+  }, []);
   const EMOJIS = ["😀", "😂", "😍", "👍", "🎉", "🔥", "🥳", "😅", "😎", "🙏"];
   const FILE_TYPE_OPTIONS = [
     { value: "", label: "전체" },
@@ -228,11 +319,17 @@ export default function FloatingDm() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handler = () => setOpen(true);
+    const handler = () => {
+      setFloatingHidden(false);
+      setFloatingPos(getDefaultFloatingPos());
+      setOpen(true);
+    };
     window.addEventListener("dm:open", handler as EventListener);
     const handleOpenFriend = (event: Event) => {
       const detail = (event as CustomEvent<{ userId?: string }>).detail;
       if (!detail?.userId) return;
+      setFloatingHidden(false);
+      setFloatingPos(getDefaultFloatingPos());
       setPendingOpenUserId(detail.userId);
       setOpen(true);
     };
@@ -520,14 +617,94 @@ export default function FloatingDm() {
 
   return (
     <>
-      <button
-        type="button"
-        className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:scale-[1.02]"
-        onClick={() => setOpen(true)}
-        aria-label="Open DM"
-      >
-        <MessageSquare size={18} />
-      </button>
+      {!floatingHidden && floatingPos && (
+        <>
+          <button
+            ref={floatingBtnRef}
+            type="button"
+            className="fixed z-40 flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:scale-[1.02] cursor-grab active:cursor-grabbing select-none touch-none"
+            style={{ left: floatingPos.x, top: floatingPos.y }}
+            onClick={(event) => {
+              if (dragState.current.moved) {
+                dragState.current.moved = false;
+                event.preventDefault();
+                return;
+              }
+              setOpen(true);
+            }}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              dragState.current.active = true;
+              dragState.current.moved = false;
+              const rect = floatingBtnRef.current?.getBoundingClientRect();
+              dragState.current.offsetX = rect ? event.clientX - rect.left : 0;
+              dragState.current.offsetY = rect ? event.clientY - rect.top : 0;
+              floatingBtnRef.current?.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (!dragState.current.active) return;
+              const size = 48;
+              const margin = 12;
+              const nextX = Math.min(
+                Math.max(margin, event.clientX - dragState.current.offsetX),
+                window.innerWidth - size - margin,
+              );
+              const nextY = Math.min(
+                Math.max(margin, event.clientY - dragState.current.offsetY),
+                window.innerHeight - size - margin,
+              );
+              dragState.current.moved = true;
+              setFloatingPos({ x: nextX, y: nextY });
+            }}
+            onPointerUp={(event) => {
+              if (!dragState.current.active) return;
+              dragState.current.active = false;
+              floatingBtnRef.current?.releasePointerCapture(event.pointerId);
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              setContextPos({ x: event.clientX, y: event.clientY });
+              setContextOpen(true);
+            }}
+            aria-label="Open DM"
+          >
+            <MessageSquare size={18} />
+          </button>
+          {contextOpen && (
+            <div
+              ref={contextRef}
+              className="fixed z-50 w-36 rounded-lg border border-border bg-panel shadow-panel"
+              style={{ left: contextPos.x, top: contextPos.y }}
+            >
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted transition hover:bg-accent hover:text-foreground"
+                onClick={() => {
+                  setContextOpen(false);
+                  setOpen(true);
+                }}
+              >
+                열기
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-rose-500 transition hover:bg-accent"
+                onClick={() => {
+                  setContextOpen(false);
+                  setOpen(false);
+                  setFloatingHidden(true);
+                  setFloatingPos(null);
+                  if (typeof window !== "undefined") {
+                    localStorage.removeItem(FLOATING_POS_KEY);
+                  }
+                }}
+              >
+                삭제하기
+              </button>
+            </div>
+          )}
+        </>
+      )}
 
       <Modal
         open={open}
@@ -586,7 +763,10 @@ export default function FloatingDm() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="truncate font-medium text-foreground">{friend.displayName}</span>
+                                <span className="truncate font-medium text-foreground">
+                                  {friend.displayName}
+                                  {friend.userId === profile?.id ? " (나)" : ""}
+                                </span>
                                 <span className="text-[10px] text-muted">
                                   {new Date(meta.at).toLocaleDateString()}
                                 </span>
@@ -613,7 +793,7 @@ export default function FloatingDm() {
                           }`}
                           onClick={() => handleSelectFriend(friend)}
                         >
-                          <div className="h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
+                          <div className="h-12 w-12 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
                             {friend.avatarUrl ? (
                               <img src={friend.avatarUrl} alt={friend.displayName} className="h-full w-full object-cover" />
                             ) : (
@@ -624,7 +804,10 @@ export default function FloatingDm() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="truncate">{friend.displayName}</span>
+                              <span className="truncate">
+                                {friend.displayName}
+                                {friend.userId === profile?.id ? " (나)" : ""}
+                              </span>
                               <div className="flex items-center gap-2">
                                 {unreadByFriend[friend.userId] ? (
                                   <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -664,7 +847,10 @@ export default function FloatingDm() {
                 >
                   <ArrowLeft size={14} />
                 </button>
-                <span>{selected?.displayName ?? ""}</span>
+                <span>
+                  {selected?.displayName ?? ""}
+                  {selected?.userId === profile?.id ? " (나)" : ""}
+                </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -786,8 +972,13 @@ export default function FloatingDm() {
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                  <div className="text-[14px] font-semibold text-foreground">
-                                    {mine ? profile?.displayName ?? profile?.name ?? "Me" : selected?.displayName ?? "Friend"}
+                                  <div className="flex items-center gap-2 text-[14px] font-semibold text-foreground">
+                                    <span>{mine ? profile?.displayName ?? profile?.name ?? "Me" : selected?.displayName ?? "Friend"}</span>
+                                    {mine && (
+                                      <span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-foreground">
+                                        나
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-[10px] text-muted">
                                     {getMessageTimeLabel(new Date(msg.createdAt))}
@@ -927,13 +1118,13 @@ export default function FloatingDm() {
                   <div className="flex items-center gap-3 rounded-full border border-border bg-panel/80 px-4 py-2">
                     <button
                       type="button"
-                      className="flex h-9 w-9 items-center justify-center rounded-full bg-panel text-muted hover:text-foreground"
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-panel text-muted hover:text-foreground"
                     >
                       +
                     </button>
                     <button
                       type="button"
-                      className="flex h-9 w-9 items-center justify-center rounded-full bg-panel text-muted hover:text-foreground"
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-panel text-muted hover:text-foreground"
                       onClick={() => setInputEmojiOpen((prev) => !prev)}
                     >
                       <Smile size={14} />
@@ -952,7 +1143,7 @@ export default function FloatingDm() {
                     />
                     <button
                       type="button"
-                      className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500 text-white disabled:opacity-50"
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-500 text-white disabled:opacity-50"
                       disabled={!canSend}
                       onClick={handleSend}
                     >

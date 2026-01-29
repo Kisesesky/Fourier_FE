@@ -43,16 +43,16 @@ export default function Modal({
     <div className="fixed inset-0 z-[100] text-foreground">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className={clsx(
-        'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] rounded-2xl border border-border bg-panel shadow-panel',
+        'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] rounded-2xl overflow-hidden border border-border bg-panel shadow-panel',
         widthClass, heightClass, className
       )}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-panel">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">{title}</h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-subtle" aria-label="Close modal">
             <X size={18} />
           </button>
         </div>
-        <div className={clsx("max-h-[78vh] overflow-auto bg-panel", bodyClassName)}>{children}</div>
+        <div className={clsx("max-h-[78vh] overflow-auto", bodyClassName)}>{children}</div>
       </div>
     </div>,
     document.body

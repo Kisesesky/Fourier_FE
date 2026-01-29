@@ -24,7 +24,7 @@ const ProjectToolbar = ({ viewMode, onChangeView, onCreateProject, onImportProje
             key={mode.id}
             type="button"
             className={clsx(
-              "inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-border bg-panel",
+              "inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-border bg-panel",
               viewMode === mode.id ? "text-foreground" : "text-muted hover:bg-accent"
             )}
             aria-label={mode.label}

@@ -456,7 +456,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                       className="flex items-center justify-between gap-3 rounded-xl border border-border bg-panel/80 px-3 py-2"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="relative h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
+                        <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
                           {request.avatarUrl ? (
                             <img src={request.avatarUrl} alt={request.displayName} className="h-full w-full object-cover" />
                           ) : (
@@ -515,7 +515,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                       className="flex items-center justify-between gap-3 rounded-xl border border-border bg-panel/80 px-3 py-2"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="relative h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
+                        <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
                           {request.avatarUrl ? (
                             <img src={request.avatarUrl} alt={request.displayName} className="h-full w-full object-cover" />
                           ) : (
@@ -578,7 +578,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="relative h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
+                      <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
                         {friend.avatarUrl ? (
                           <img src={friend.avatarUrl} alt={friend.displayName} className="h-full w-full object-cover" />
                         ) : (
@@ -594,10 +594,10 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-border/70 hover:text-foreground"
+                        className="rounded-full border border-border px-2 py-1 text-[11px] text-muted hover:border-border/70 hover:text-foreground"
                         disabled={actioningId === friend.memberId}
                         onClick={() => handleToggleHide(friend.memberId)}
                       >
@@ -605,7 +605,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                       </button>
                       <button
                         type="button"
-                        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-border/70 hover:text-foreground"
+                        className="rounded-full border border-border px-2 py-1 text-[11px] text-muted hover:border-border/70 hover:text-foreground"
                         disabled={actioningId === friend.memberId}
                         onClick={() => handleBlock(friend.memberId)}
                       >
@@ -613,7 +613,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                       </button>
                       <button
                         type="button"
-                        className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-border/70 hover:text-foreground"
+                        className="rounded-full border border-border px-2 py-1 text-[11px] text-muted hover:border-border/70 hover:text-foreground"
                         disabled={actioningId === friend.memberId}
                         onClick={() => handleRemove(friend.memberId)}
                       >

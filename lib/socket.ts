@@ -7,7 +7,7 @@ let chatSocket: Socket | null = null;
 export function getSocket() {
   if (typeof window === "undefined") return null;
   if (!socket) {
-    const url = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:4001";
+    const url = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
     socket = io(url, {
       transports: ["websocket"],
       withCredentials: true
@@ -26,7 +26,7 @@ export function closeSocket() {
 export function getChatSocket(token?: string | null) {
   if (typeof window === "undefined") return null;
   if (!chatSocket) {
-    const url = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:4001";
+    const url = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
     chatSocket = io(`${url}/chat`, {
       transports: ["websocket"],
       withCredentials: true,

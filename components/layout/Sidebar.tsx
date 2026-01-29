@@ -3,10 +3,10 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 
 import {
-  BookText, CalendarDays, Folder, FolderKanban, LifeBuoy, MessageSquare, Settings, Users, Home
+  BookText, CalendarDays, Folder, FolderKanban, LifeBuoy, MessageSquare, Settings, Users, Home, Plus
 } from "lucide-react";
 
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -168,6 +168,113 @@ const MembersPanel = () => {
   );
 };
 
+/* Chat */
+const ChatPanel = ({
+  channels,
+  activeChannelId,
+  onOpenChannel,
+  channelActivity,
+  onCreateChannel,
+  onOpenThreads,
+  threadsActive,
+}: {
+  channels: Array<{ id: string; name: string; isDM?: boolean }>;
+  activeChannelId?: string;
+  onOpenChannel: (id: string) => void;
+  channelActivity: Record<string, { unreadCount?: number }>;
+  onCreateChannel: () => void;
+  onOpenThreads: () => void;
+  threadsActive: boolean;
+}) => {
+  const channelList = channels.filter((c) => !(c.isDM || c.id.startsWith("dm:")));
+  const dmList = channels.filter((c) => c.isDM || c.id.startsWith("dm:"));
+
+  return (
+    <div className="space-y-4">
+      <Section title="Channels">
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 rounded-lg border border-border/60 bg-panel px-3 py-2 text-left text-xs transition hover:bg-accent"
+          onClick={onCreateChannel}
+        >
+          <Plus size={12} className="text-muted" />
+          <span>새 채널</span>
+        </button>
+        {channelList.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border/60 px-3 py-2 text-xs text-muted">
+            채널이 없습니다.
+          </div>
+        ) : (
+          channelList.map((channel) => {
+            const unreadCount = channelActivity[channel.id]?.unreadCount ?? 0;
+            const unreadLabel = unreadCount > 99 ? "99+" : unreadCount > 0 ? String(unreadCount) : "";
+            return (
+              <button
+                key={channel.id}
+                type="button"
+                className={clsx(
+                  "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
+                  channel.id === activeChannelId
+                    ? "border-border bg-accent text-foreground"
+                    : "border-border/60 bg-panel hover:bg-accent"
+                )}
+                onClick={() => onOpenChannel(channel.id)}
+              >
+                <span className="text-muted">#</span>
+                <span className="truncate">{channel.name?.replace(/^#\s*/, "") || channel.id}</span>
+                {unreadLabel && (
+                  <span className="ml-auto rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-500">
+                    {unreadLabel}
+                  </span>
+                )}
+              </button>
+            );
+          })
+        )}
+      </Section>
+      <Section title="DM">
+        {dmList.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border/60 px-3 py-2 text-xs text-muted">
+            DM이 없습니다.
+          </div>
+        ) : (
+          dmList.map((channel) => (
+            <button
+              key={channel.id}
+              type="button"
+              className={clsx(
+                "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
+                channel.id === activeChannelId
+                  ? "border-border bg-accent text-foreground"
+                  : "border-border/60 bg-panel hover:bg-accent"
+              )}
+              onClick={() => onOpenChannel(channel.id)}
+            >
+              <span className="text-muted">@</span>
+              <span className="truncate">{channel.name || channel.id}</span>
+            </button>
+          ))
+        )}
+      </Section>
+      <Section title="Threads">
+        <button
+          type="button"
+          className={clsx(
+            "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
+            threadsActive
+              ? "border-border bg-accent text-foreground"
+              : "border-border/60 bg-panel hover:bg-accent"
+          )}
+          onClick={onOpenThreads}
+        >
+          <span className="text-muted">#</span>
+          <span className="truncate">Threads</span>
+        </button>
+      </Section>
+    </div>
+  );
+};
+
 
 /* ────────────────────────────────────────────────
    MAIN SIDEBAR
@@ -175,16 +282,52 @@ const MembersPanel = () => {
 export default function Sidebar() {
   const router = useRouter();
   const { pathname, buildHref, isActive } = useWorkspacePath();
-  const { channels, allChannels, channelId, setChannel } = useChat();
+  const { channels, channelId, setChannel, loadChannels, channelActivity, refreshChannel } = useChat();
+  const threadsActive = Boolean(pathname?.includes("/chat/threads"));
 
   const activeSurface: SurfaceSlug | null = useMemo(() => {
     return NAV_LINKS.find(item => isActive(item.slug))?.slug ?? null;
   }, [pathname, isActive]);
 
+  useEffect(() => {
+    if (activeSurface === "chat") {
+      void loadChannels();
+    }
+  }, [activeSurface, loadChannels]);
+
+  useEffect(() => {
+    if (activeSurface !== "chat") return;
+    channels
+      .filter((c) => !(c.isDM || c.id.startsWith("dm:")))
+      .forEach((c) => {
+        void refreshChannel(c.id);
+      });
+  }, [activeSurface, channels, refreshChannel]);
+
   const renderPanel = () => {
     switch (activeSurface) {
       case "chat":
-        return <div className="p-3 text-xs">채팅 채널 목록 (생략 가능)</div>;
+        return (
+          <ChatPanel
+            channels={channels}
+            activeChannelId={channelId}
+            onOpenChannel={(id) => {
+              void setChannel(id);
+              const href = buildHref(["chat", encodeURIComponent(id)], `/chat/${encodeURIComponent(id)}`);
+              router.push(href);
+            }}
+            channelActivity={channelActivity}
+            onCreateChannel={() => window.dispatchEvent(new Event("chat:open-create-channel"))}
+            onOpenThreads={() => {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("chat:close-right"));
+              }
+              const href = buildHref(["chat", "threads"], `/chat/threads`);
+              router.push(href);
+            }}
+            threadsActive={threadsActive}
+          />
+        );
       case "issues":
         return <IssuesPanel />;
       case "calendar":

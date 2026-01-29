@@ -5,12 +5,16 @@ export type PresenceStatus = "online" | "away" | "offline" | "dnd";
 export interface Member {
   id: string;
   name: string;
+  displayName?: string;
+  username?: string;
+  nickname?: string | null;
   email: string;
   role: MemberRole;
   customRoleId?: string | null;
   customRoleName?: string | null;
   title?: string;
   avatarUrl?: string;
+  teamAvatarUrl?: string | null;
   location?: string;
   timezone?: string;
   description?: string;

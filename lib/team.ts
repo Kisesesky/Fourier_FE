@@ -17,9 +17,12 @@ export async function fetchTeams(workspaceId: string): Promise<Team[]> {
 export type TeamMember = {
   userId: string;
   name: string;
+  displayName?: string | null;
+  nickname?: string | null;
   role: string;
   email?: string | null;
   avatarUrl?: string | null;
+  teamAvatarUrl?: string | null;
   customRoleId?: string | null;
   customRoleName?: string | null;
 };
@@ -132,6 +135,30 @@ export async function updateTeamMemberRole(
   role: string
 ) {
   const res = await api.patch(`/workspace/${workspaceId}/team/${teamId}/members/${memberId}/role`, { role });
+  return res.data;
+}
+
+export async function updateTeamMemberNickname(
+  workspaceId: string,
+  teamId: string,
+  memberId: string,
+  nickname?: string | null
+) {
+  const res = await api.patch(`/workspace/${workspaceId}/team/${teamId}/members/${memberId}/nickname`, {
+    nickname,
+  });
+  return res.data;
+}
+
+export async function updateTeamMemberAvatar(
+  workspaceId: string,
+  teamId: string,
+  memberId: string,
+  avatarUrl?: string | null
+) {
+  const res = await api.patch(`/workspace/${workspaceId}/team/${teamId}/members/${memberId}/avatar`, {
+    avatarUrl,
+  });
   return res.data;
 }
 

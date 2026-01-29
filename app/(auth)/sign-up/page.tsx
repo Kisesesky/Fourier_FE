@@ -57,7 +57,7 @@ export default function SignUpPage() {
       }
 
       alert("회원가입 성공! 로그인 페이지로 이동합니다.");
-      window.location.href = "/login";
+      window.location.href = "/sign-in ";
     } catch (error) {
       console.error(error);
       alert("서버와 통신 중 오류가 발생했습니다.");
@@ -132,7 +132,7 @@ export default function SignUpPage() {
 
       <div className="flex items-center justify-between border-t border-border pt-4 text-sm text-muted">
         <span>이미 계정이 있나요?</span>
-        <Link href="/login" className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">
+        <Link href="/sign-in " className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">
           로그인
         </Link>
       </div>

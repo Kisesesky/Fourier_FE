@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
-import { CheckCircle, Search, UserPlus, X } from "lucide-react";
+import { CheckCircle, ChevronDown, Pencil, Search, UserPlus, X } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   createCustomTeamRole,
@@ -13,6 +13,8 @@ import {
   fetchTeamMembers,
   inviteTeamMember,
   removeTeamMember,
+  updateTeamMemberNickname,
+  updateTeamMemberAvatar,
   updateTeamMemberCustomRole,
   updateTeamMemberRole,
 } from "@/lib/team";
@@ -55,6 +57,8 @@ const defaultRolePermissions: Record<MemberRole, string[]> = {
   ],
   guest: ["읽기/댓글"],
 };
+
+const MAX_TEAM_NICKNAME_LENGTH = 32;
 
 const statusColor: Record<PresenceStatus, string> = {
   online: "bg-emerald-400/10 text-emerald-300",
@@ -153,16 +157,14 @@ const InviteMemberModal = ({
           </div>
           <div className="space-y-2">
             <label className="text-[11px] font-semibold uppercase tracking-[0.4em] text-muted">역할</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1 rounded-full border border-border bg-panel/80 p-1">
               {inviteRoles.map((option) => (
                 <button
                   key={option}
                   type="button"
                   className={clsx(
-                    "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.3em]",
-                    option === role
-                      ? "border-primary bg-accent text-foreground"
-                      : "border-border text-muted hover:bg-accent hover:text-foreground"
+                    "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] transition",
+                    option === role ? "bg-accent text-foreground" : "text-muted hover:text-foreground"
                   )}
                   onClick={() => onRoleChange(option)}
                 >
@@ -212,6 +214,10 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
   const [inviteMessage, setInviteMessage] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [nicknameDraft, setNicknameDraft] = useState("");
+  const [avatarDraft, setAvatarDraft] = useState("");
+  const [nicknameSaving, setNicknameSaving] = useState(false);
   const [customRoles, setCustomRoles] = useState<Array<{ id: string; name: string; description?: string | null; permissions: string[] }>>([]);
   const [customRoleModalOpen, setCustomRoleModalOpen] = useState(false);
   const [customRoleEditingId, setCustomRoleEditingId] = useState<string | null>(null);
@@ -230,6 +236,7 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
     message?: string;
   }>>([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
+  const editingMember = members.find((member) => member.id === editingMemberId) ?? null;
   const currentMember = members.find((member) => member.id === profile?.id);
   const isOwner = currentMember?.role === "owner";
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "manager";
@@ -242,17 +249,24 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
         const mapped = (data ?? []).map((member: {
           userId: string;
           name: string;
+          displayName?: string | null;
+          nickname?: string | null;
           role: string;
           email?: string | null;
           avatarUrl?: string | null;
+          teamAvatarUrl?: string | null;
           customRoleId?: string | null;
           customRoleName?: string | null;
         }) => ({
           id: member.userId,
-          name: member.name,
+          name: member.nickname ?? member.displayName ?? member.name ?? member.email ?? "User",
+          displayName: member.displayName ?? member.name ?? member.email ?? "User",
+          username: member.name ?? "",
+          nickname: member.nickname ?? null,
           email: member.email ?? "",
           role: mapTeamRole(member.role),
           avatarUrl: member.avatarUrl ?? undefined,
+          teamAvatarUrl: member.teamAvatarUrl ?? null,
           customRoleId: member.customRoleId ?? null,
           customRoleName: member.customRoleName ?? null,
           joinedAt: Date.now(),
@@ -449,6 +463,53 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
     setRemoveTarget({ id: memberId, name });
   };
 
+  const startNicknameEdit = (member: Member) => {
+    setEditingMemberId(member.id);
+    setNicknameDraft(member.nickname ?? "");
+    setAvatarDraft(member.teamAvatarUrl ?? "");
+  };
+
+  const cancelNicknameEdit = () => {
+    setEditingMemberId(null);
+    setNicknameDraft("");
+    setAvatarDraft("");
+  };
+
+  const saveNickname = async (member: Member) => {
+    if (!workspace?.id || !teamId) return;
+    try {
+      setNicknameSaving(true);
+      const trimmed = nicknameDraft.trim();
+      const avatarTrimmed = avatarDraft.trim();
+      await Promise.all([
+        updateTeamMemberNickname(workspace.id, teamId, member.id, trimmed.length ? trimmed : null),
+        updateTeamMemberAvatar(workspace.id, teamId, member.id, avatarTrimmed.length ? avatarTrimmed : null),
+      ]);
+      setMembers((prev) =>
+        prev.map((item) =>
+          item.id === member.id
+            ? {
+                ...item,
+                nickname: trimmed.length ? trimmed : null,
+                name: trimmed.length ? trimmed : item.displayName ?? item.name,
+                teamAvatarUrl: avatarTrimmed.length ? avatarTrimmed : null,
+              }
+            : item
+        )
+      );
+      cancelNicknameEdit();
+    } catch (err) {
+      console.error("Failed to update nickname", err);
+      show({
+        title: "닉네임 변경 실패",
+        description: "닉네임을 업데이트하지 못했습니다.",
+        variant: "error",
+      });
+    } finally {
+      setNicknameSaving(false);
+    }
+  };
+
   const normalizedSearch = search.trim().toLowerCase();
   const filteredMembers = useMemo(() => {
     if (!normalizedSearch) return members;
@@ -462,9 +523,8 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
 
   const renderMembers = () => (
     <div className="divide-y divide-border">
-      <div className="grid grid-cols-[1.6fr,1.4fr,1fr,1.2fr] px-3 pb-3 text-[11px] uppercase tracking-[0.4em] text-muted">
+      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] px-3 pb-3 text-[11px] uppercase tracking-[0.4em] text-muted">
         <span>Member</span>
-        <span>Email</span>
         <span>Role</span>
         <span>Status</span>
       </div>
@@ -474,56 +534,87 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
         filteredMembers.map((member) => {
           const presence = presenceMap[member.id];
           const presenceStatus = presence?.status ?? "offline";
+          const displayName = member.nickname ?? member.displayName ?? member.name;
+          const username = member.username ?? member.name;
+          const showUsername = username && username !== displayName;
+          const canEditNickname = member.id === profile?.id || isAdmin;
+          const effectiveAvatar = member.teamAvatarUrl ?? member.avatarUrl;
           return (
-            <div key={member.id} className="grid grid-cols-[1.6fr,1.4fr,1fr,1.2fr] items-center gap-4 px-3 py-4">
-              <div className="flex items-center gap-3">
+            <div
+              key={member.id}
+              className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] items-center gap-2 px-3 py-4"
+            >
+              <div className="flex min-w-0 items-center gap-3">
                 <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#3a3550] to-[#141826] text-sm font-semibold">
-                  {member.avatarUrl ? (
-                    <img src={member.avatarUrl} alt={member.name} className="h-full w-full object-cover" />
+                  {effectiveAvatar ? (
+                    <img src={effectiveAvatar} alt={member.name} className="h-full w-full object-cover" />
                   ) : (
                     getInitials(member.name)
                   )}
                 </span>
-                <div>
-                  <p className="font-semibold text-foreground">{member.name}</p>
-                  <p className="text-xs text-muted">{member.location ?? member.timezone ?? "—"}</p>
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate font-semibold text-foreground">{displayName}</p>
+                    {showUsername && (
+                      <span className="truncate text-[11px] text-muted">({username})</span>
+                    )}
+                    {canEditNickname && (
+                      <button
+                        type="button"
+                        className="rounded-full border border-transparent p-1 text-muted hover:border-border hover:text-foreground"
+                        onClick={() => startNicknameEdit(member)}
+                        aria-label="Edit nickname"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    )}
+                  </div>
+                  <p className="truncate text-xs text-muted">{member.email}</p>
+                  {(member.location || member.timezone) && (
+                    <p className="truncate text-[11px] text-muted/80">{member.location ?? member.timezone}</p>
+                  )}
                 </div>
               </div>
-              <p className="font-mono text-sm text-foreground">{member.email}</p>
               {isAdmin && member.id !== profile?.id && member.role !== "owner" ? (
-                <select
-                  value={member.customRoleId ? `custom:${member.customRoleId}` : member.role}
-                  onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                  className="w-36 rounded-full border border-border bg-panel px-3 py-1 text-center text-xs text-foreground"
-                >
-                  {(currentMember?.role === "manager"
-                    ? inviteRoles.filter((role) => role !== "manager")
-                    : inviteRoles
-                  ).map((role) => (
-                    <option key={role} value={role}>
-                      {roleLabels[role]}
-                    </option>
-                  ))}
-                  {customRoles.map((role) => (
-                    <option key={role.id} value={`custom:${role.id}`}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative w-24">
+                  <select
+                    value={member.customRoleId ? `custom:${member.customRoleId}` : member.role}
+                    onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                    className="w-full appearance-none rounded-full border border-border bg-panel px-3 py-1 pr-7 text-center text-[11px] text-foreground"
+                  >
+                    {(currentMember?.role === "manager"
+                      ? inviteRoles.filter((role) => role !== "manager")
+                      : inviteRoles
+                    ).map((role) => (
+                      <option key={role} value={role}>
+                        {roleLabels[role]}
+                      </option>
+                    ))}
+                    {customRoles.map((role) => (
+                      <option key={role.id} value={`custom:${role.id}`}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={12}
+                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted"
+                  />
+                </div>
               ) : (
-                <span className="w-36 rounded-full border border-border px-3 py-1 text-center text-xs text-muted">
+                <span className="inline-flex w-24 items-center justify-center rounded-full border border-border px-3 py-1 text-[11px] text-muted">
                   {member.customRoleName ?? roleLabels[member.role]}
                 </span>
               )}
-              <div className="flex items-center gap-2 text-sm text-muted">
+              <div className="flex min-w-0 items-center gap-2 text-sm text-muted">
                 <span className={clsx("rounded-full px-3 py-1 text-xs font-semibold uppercase", statusColor[presenceStatus])}>
                   {presenceStatus}
                 </span>
                 {isAdmin && member.id !== profile?.id && member.role !== "owner" && (
                   <button
                     type="button"
-                    className="rounded-full border border-rose-300/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-rose-300 transition hover:bg-rose-500/10"
-                    onClick={() => handleRemoveMember(member.id, member.name)}
+                    className="whitespace-nowrap rounded-full border border-rose-300/40 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.25em] text-rose-300 transition hover:bg-rose-500/10"
+                    onClick={() => handleRemoveMember(member.id, displayName)}
                     aria-label="Remove member"
                   >
                     Remove
@@ -951,6 +1042,82 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
               }}
             >
               삭제
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!editingMember}
+        title="프로필 변경"
+        onClose={cancelNicknameEdit}
+        widthClass="max-w-[640px]"
+      >
+        <div className="space-y-4 px-4 pb-4 pt-2 text-sm">
+          <div className="space-y-2">
+            <div className="text-xs uppercase tracking-[0.3em] text-muted">현재 표시 이름</div>
+            <div className="text-sm font-semibold text-foreground">
+              {nicknameDraft.trim() || editingMember?.displayName || editingMember?.name}
+              {editingMember?.username && editingMember.username !== (editingMember.displayName ?? editingMember.name)
+                ? ` (${editingMember.username})`
+                : ""}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs uppercase tracking-[0.3em] text-muted">팀 닉네임</label>
+            <input
+              value={nicknameDraft}
+              onChange={(e) => setNicknameDraft(e.target.value)}
+              placeholder={editingMember?.displayName ?? "닉네임을 입력하세요"}
+              maxLength={MAX_TEAM_NICKNAME_LENGTH}
+              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:outline-none"
+            />
+            <div className="flex items-center justify-between text-[11px] text-muted">
+              <span>최대 {MAX_TEAM_NICKNAME_LENGTH}자 · 비우면 기본 표시 이름으로 돌아갑니다.</span>
+              <span>{nicknameDraft.trim().length}/{MAX_TEAM_NICKNAME_LENGTH}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs uppercase tracking-[0.3em] text-muted">팀 아바타 URL</label>
+            <div className="flex items-center gap-3">
+              <div className="h-24 w-24 overflow-hidden rounded-2xl border border-border bg-panel">
+                {avatarDraft.trim() ? (
+                  <img src={avatarDraft.trim()} alt="Team avatar preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[10px] text-muted">No</div>
+                )}
+              </div>
+              <input
+                value={avatarDraft}
+                onChange={(e) => setAvatarDraft(e.target.value)}
+                placeholder="https://..."
+                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:outline-none"
+              />
+            </div>
+            <p className="text-[11px] text-muted">
+              비워두면 기본 아바타를 사용합니다.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-full border border-border px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-muted hover:bg-subtle/60"
+              onClick={cancelNicknameEdit}
+              disabled={nicknameSaving}
+            >
+              취소
+            </button>
+          <button
+            type="button"
+            className="rounded-full bg-foreground px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-background hover:bg-foreground/90"
+            onClick={() => {
+              if (editingMember) {
+                void saveNickname(editingMember);
+              }
+            }}
+            disabled={nicknameSaving || !editingMember}
+          >
+              저장
             </button>
           </div>
         </div>

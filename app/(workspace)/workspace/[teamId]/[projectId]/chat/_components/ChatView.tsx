@@ -11,15 +11,16 @@ import MessageContextMenu from "./MessageContextMenu";
 import HuddleBar from "./HuddleBar";
 import PinManager from "./PinManager";
 import SavedModal from "./SavedModal";
-import { CreateChannelModal, InviteModal } from "./ChannelModals";
+import { InviteModal } from "./ChannelModals";
 import ChannelSettingsModal from "./ChannelSettingsModal";
 import CommandPalette from "./CommandPalette";
 import LightboxHost from "./Lightbox";
 import LiveReadersBar, { broadcastReadCursor } from "./LiveReadersBar";
 import { MessageGroup } from "./MessageGroup";
 import { ChatHeader } from "./ChatHeader";
-import { ChatThreadTeaser } from "./ThreadTeaser";
 import { ChatSelectionBar } from "./SelectionBar";
+import ChatRightPanel from "./ChatRightPanel";
+import Drawer from "@/components/ui/Drawer";
 import { useMessageSections } from "@/workspace/chat/_model/hooks/useMessageSections";
 import { useChatLifecycle } from "@/workspace/chat/_model/hooks/useChatLifecycle";
 import { rtbroadcast, rtlisten } from "@/lib/realtime";
@@ -32,10 +33,12 @@ type ChatViewProps = {
 
 function DayDivider({ ts }: { ts:number }) {
   const d = new Date(ts);
-  const label = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  const label = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
   return (
-    <div className="relative my-4 text-center">
-      <span className="px-3 py-0.5 text-xs bg-panel border border-border rounded-md shadow-panel">{label}</span>
+    <div className="relative my-4 flex items-center">
+      <div className="h-px flex-1 bg-border/80" />
+      <span className="mx-3 rounded-full border border-border bg-panel/90 px-4 py-1 text-xs font-semibold text-muted">{label}</span>
+      <div className="h-px flex-1 bg-border/80" />
     </div>
   );
 }
@@ -53,10 +56,10 @@ function NewDivider() {
 export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   const {
     me, users, channelId, channels, messages, lastReadAt, typingUsers, pinnedByChannel, savedByUser, channelMembers,
-    send, setChannel, loadChannels, initRealtime, updateMessage, deleteMessage, restoreMessage,
+    send, setChannel, loadChannels, initRealtime, refreshChannel, updateMessage, deleteMessage, restoreMessage,
     toggleReaction, openThread, markChannelRead, setTyping,
     markUnreadAt, markSeenUpTo, togglePin, startHuddle, toggleSave,
-    channelTopics, threadFor, closeThread, getThread
+    channelTopics, threadFor, closeThread
   } = useChat();
   const { show } = useToast();
   const listRef = useRef<HTMLDivElement>(null);
@@ -76,7 +79,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     const stored = localStorage.getItem(VIEWMODE_KEY) as ViewMode | null;
     return stored === "compact" ? "compact" : "cozy";
   };
-  const [view, setView] = useState<ViewMode>(() => getStoredView());
+  const [view, setView] = useState<ViewMode>("cozy");
   const toggleView = () => {
     setView(prev => {
       const next: ViewMode = prev === "cozy" ? "compact" : "cozy";
@@ -92,14 +95,32 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [rightOpen, setRightOpen] = useState(false);
+  useEffect(() => {
+    const handleOpen = () => setRightOpen(true);
+    const handleClose = () => setRightOpen(false);
+    window.addEventListener("chat:open-right", handleOpen);
+    window.addEventListener("chat:close-right", handleClose);
+    return () => {
+      window.removeEventListener("chat:open-right", handleOpen);
+      window.removeEventListener("chat:close-right", handleClose);
+    };
+  }, []);
+
   /** 커맨드 팔레트 */
   const [cmdOpen, setCmdOpen] = useState(false);
 
   useEffect(() => {
     if (!initialChannelId) return;
     if (channelId === initialChannelId) return;
+    const isDm = initialChannelId.startsWith("dm:");
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      initialChannelId,
+    );
+    const exists = channels.some((c) => c.id === initialChannelId);
+    if (!isDm && !isUuid && !exists) return;
     void setChannel(initialChannelId);
-  }, [initialChannelId, channelId, setChannel]);
+  }, [initialChannelId, channelId, channels, setChannel]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -188,6 +209,10 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     switch (id) {
       case 'reply':
       case 'open-thread':
+        if (isDM) {
+          show({ variant: 'error', title: '스레드 불가', description: 'DM 메시지에는 스레드를 만들 수 없습니다.' });
+          break;
+        }
         openThread(m.parentId ? (m.parentId as string) : m.id);
         window.dispatchEvent(new Event('chat:open-right'));
         break;
@@ -253,8 +278,6 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     closeMenu();
   };
 
-  // 채널/DM 스위처 데이터
-
   const onTyping = (typing: boolean) => {
     setTyping(typing);
     rtbroadcast({ type: 'typing', channelId, userId: me.id, userName: me.name, on: typing });
@@ -262,16 +285,9 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   const [pinOpen, setPinOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
 
-  // 모달: 채널 생성/초대/설정
-  const [createOpen, setCreateOpen] = useState(false);
+  // 모달: 초대/설정
   const [inviteOpen, setInviteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  useEffect(() => {
-    const onOpenCreate = () => setCreateOpen(true);
-    window.addEventListener('chat:open-create-channel', onOpenCreate);
-    return () => window.removeEventListener('chat:open-create-channel', onOpenCreate);
-  }, []);
 
   const currentChannel = useMemo(() => channels.find(c => c.id === channelId), [channels, channelId]);
   const isDM = channelId.startsWith("dm:");
@@ -279,17 +295,50 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   const channelLabel = isDM
     ? `@ ${dmUser?.name ?? (channelId.slice(3) || "Direct Message")}`
     : (currentChannel?.name ?? channelId ?? "Channel");
-  const memberIds = isDM
-    ? Array.from(new Set([me.id, dmUser?.id].filter(Boolean) as string[]))
-    : channelMembers[channelId] || [];
-  const memberCount = memberIds.length;
+  const memberIds = useMemo(() => {
+    if (isDM) {
+      return Array.from(new Set([me.id, dmUser?.id].filter(Boolean) as string[]));
+    }
+    const ids = channelMembers[channelId] || [];
+    if (ids.length > 0) return ids;
+    return Object.keys(users);
+  }, [channelMembers, channelId, dmUser?.id, isDM, me.id, users]);
+  const memberNames = useMemo(
+    () => memberIds.map((id) => users[id]?.name || id),
+    [memberIds, users],
+  );
   const topic = channelTopics[channelId]?.topic || "";
-  const dmOptions = useMemo(() => Object.values(users).filter(u => u.id !== me.id), [users, me.id]);
   const channelDisplayName = isDM ? channelLabel : channelLabel.replace(/^#\s*/, "#");
   const quoteInline = (m: Msg) => {
     const ev = new CustomEvent('chat:insert-quote', { detail: { text: `${m.author} — ${new Date(m.ts).toLocaleString()}\n${m.text || ""}` } });
     window.dispatchEvent(ev);
   };
+  const pinnedIds = useMemo(() => new Set(pinnedByChannel[channelId] || []), [pinnedByChannel, channelId]);
+  const savedIds = useMemo(() => new Set(savedByUser[me.id] || []), [savedByUser, me.id]);
+  const replyMetaMap = useMemo(() => {
+    const map: Record<string, { count: number; lastTs?: number; lastAuthorId?: string }> = {};
+    messages.forEach((m) => {
+      if (!m.parentId) return;
+      const curr = map[m.parentId] || { count: 0 };
+      const nextCount = curr.count + 1;
+      const nextLastTs = !curr.lastTs || m.ts > curr.lastTs ? m.ts : curr.lastTs;
+      const nextLastAuthorId = !curr.lastTs || m.ts > curr.lastTs ? m.authorId : curr.lastAuthorId;
+      map[m.parentId] = { count: nextCount, lastTs: nextLastTs, lastAuthorId: nextLastAuthorId };
+    });
+    return map;
+  }, [messages]);
+
+  const handleOpenThread = useCallback(
+    (rootId: string) => {
+      if (isDM) {
+        show({ variant: 'error', title: '스레드 불가', description: 'DM 메시지에는 스레드를 만들 수 없습니다.' });
+        return;
+      }
+      openThread(rootId);
+      window.dispatchEvent(new Event('chat:open-right'));
+    },
+    [isDM, openThread, show],
+  );
 
   /** 일괄 작업 */
   const batchPin = () => { selectedIds.forEach(id => togglePin(id)); clearSelection(); };
@@ -315,14 +364,6 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     return () => un();
   }, [channelId, me.id]);
 
-  /** 스레드 티저 */
-  const threadTeaser = useMemo(() => {
-    if (!threadFor?.rootId) return null;
-    const { root, replies } = getThread(threadFor.rootId) || {};
-    if (!root) return null;
-    const excerpt = (root.text || "").replace(/\s+/g, " ").slice(0, 120);
-    return { author: root.author, excerpt, repliesCount: replies.length };
-  }, [threadFor, messages]);
   useChatLifecycle({
     channelId,
     messages,
@@ -330,6 +371,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     initRealtime,
     loadChannels,
     setChannel,
+    refreshChannel,
     markChannelRead,
     markSeenUpTo,
     me,
@@ -338,132 +380,145 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   });
 
   return (
-    <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_auto_auto_1fr_auto]">
-      <HuddleBar channelId={channelId} />
+    <div className={`grid min-h-0 flex-1 ${rightOpen ? "lg:grid-cols-[minmax(0,1fr)_390px]" : ""} gap-0`}>
+      <div className="flex min-h-0 flex-1 flex-col border border-border border-r-0 bg-panel/80 overflow-hidden">
+        <div className="sticky top-0 z-10 bg-panel/90 backdrop-blur">
+          <HuddleBar channelId={channelId} />
+          <LiveReadersBar meId={me.id} meName={me.name} channelId={channelId} />
+          <ChatHeader
+            isDM={isDM}
+            channelName={channelDisplayName}
+            memberNames={memberNames}
+            memberIds={memberIds}
+            users={users}
+            topic={topic}
+            view={view}
+            onOpenInvite={() => setInviteOpen(true)}
+            onOpenCmd={() => setCmdOpen(true)}
+            onOpenPins={() => setPinOpen(true)}
+            onOpenSaved={() => setSavedOpen(true)}
+            onLeaveChannel={() => show({ title: "채팅방 나가기", description: "준비중입니다." })}
+            onKickMember={() => show({ title: "멤버 강퇴", description: "준비중입니다." })}
+            onBlockMember={() => show({ title: "차단하기", description: "준비중입니다." })}
+            onOpenNotifications={() => show({ title: "알람 설정", description: "준비중입니다." })}
+            pinCount={(pinnedByChannel[channelId]?.length || 0)}
+            savedCount={(savedByUser[me.id]?.length || 0)}
+          />
+          <ChatSelectionBar
+            count={selectMode ? selectedIds.size : 0}
+            onPin={batchPin}
+            onSave={batchSave}
+            onDelete={batchDelete}
+            onReact={batchReact}
+            onClear={clearSelection}
+          />
+        </div>
 
-      {/* 실시간 읽는중 바 (다른 탭/브라우저와 브로드캐스트) */}
-      <LiveReadersBar meId={me.id} meName={me.name} channelId={channelId} />
-
-      <ChatHeader
-        isDM={isDM}
-        channelName={channelDisplayName}
-        memberCount={memberCount}
-        topic={topic}
-        view={view}
-        onToggleView={toggleView}
-        onOpenInvite={() => setInviteOpen(true)}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenCmd={() => setCmdOpen(true)}
-        onOpenCreateChannel={() => setCreateOpen(true)}
-        onOpenPins={() => setPinOpen(true)}
-        onOpenSaved={() => setSavedOpen(true)}
-        dmOptions={dmOptions}
-        pinCount={(pinnedByChannel[channelId]?.length || 0)}
-        savedCount={(savedByUser[me.id]?.length || 0)}
-        onSelectDM={(uid) => {
-          void setChannel(`dm:${uid}`);
-        }}
-      />
-      <ChatThreadTeaser
-        teaser={threadTeaser}
-        onClose={closeThread}
-        onOpenThread={() => window.dispatchEvent(new Event('chat:open-right'))}
-      />
-
-      <ChatSelectionBar
-        count={selectMode ? selectedIds.size : 0}
-        onPin={batchPin}
-        onSave={batchSave}
-        onDelete={batchDelete}
-        onReact={batchReact}
-        onClear={clearSelection}
-      />
-
-      {/* 메시지 리스트 */}
-      <div
-        ref={listRef}
-        className={`scroll-smooth overflow-y-auto p-3 sm:p-4 space-y-3 md:space-y-4 scrollbar-thin ${view === 'compact' ? 'text-[13px]' : 'text-[14px]'}`}
-        onClick={(e)=> {
-          if ((e.target as HTMLElement).closest('[data-mid]')) return;
-          if (selectMode) clearSelection();
-        }}
-      >
-        {sections.map((section) => {
-          const { head, items, showDayDivider, showNewDivider } = section;
-          const isCursor = cursorId === head.id;
-          return (
-            <div key={head.id} id={head.id} className={isCursor ? 'ring-1 ring-brand/60 rounded-md' : ''}>
-              {showDayDivider && <DayDivider ts={head.ts} />}
-              {showNewDivider && <NewDivider />}
-              <MessageGroup
-                items={items}
-                isMine={head.authorId === me.id}
-                view={view}
-                meId={me.id}
-                otherSeen={otherSeen}
-                users={users}
-                onEdit={(id, text) => {
-                  const msg = messages.find((m) => m.id === id);
-                  if (msg && msg.authorId !== me.id) {
-                    show({ variant: 'error', title: '권한 없음', description: '자신의 메시지만 수정할 수 있습니다.' });
-                    return;
-                  }
-                  updateMessage(id, { text });
-                }}
-                onDelete={onDelete}
-                onReact={(id, emoji) => toggleReaction(id, emoji)}
-                onReply={(rootId) => { openThread(rootId); window.dispatchEvent(new Event('chat:open-right')); }}
-                openMenu={openMenu}
+        <div
+          ref={listRef}
+          className={`scroll-smooth overflow-y-auto bg-panel/80 px-2 py-1.5 space-y-1.5 scrollbar-thin ${view === 'compact' ? 'text-[13px]' : 'text-[14px]'}`}
+          onClick={(e)=> {
+            if ((e.target as HTMLElement).closest('[data-mid]')) return;
+            if (selectMode) clearSelection();
+          }}
+        >
+          {sections.map((section) => {
+            const { head, items, showDayDivider, showNewDivider } = section;
+            const isCursor = cursorId === head.id;
+            return (
+              <div key={head.id} id={head.id} className={isCursor ? 'ring-1 ring-brand/60 rounded-md' : ''}>
+                {showDayDivider && <DayDivider ts={head.ts} />}
+                {showNewDivider && <NewDivider />}
+                <MessageGroup
+                  items={items}
+                  isMine={head.authorId === me.id}
+                  view={view}
+                  meId={me.id}
+                  otherSeen={otherSeen}
+                  users={users}
+                  threadMetaMap={replyMetaMap}
+                  onEdit={(id, text) => {
+                    const msg = messages.find((m) => m.id === id);
+                    if (msg && msg.authorId !== me.id) {
+                      show({ variant: 'error', title: '권한 없음', description: '자신의 메시지만 수정할 수 있습니다.' });
+                      return;
+                    }
+                    updateMessage(id, { text });
+                  }}
+                  onDelete={onDelete}
+                  onReact={(id, emoji) => toggleReaction(id, emoji)}
+                onReply={handleOpenThread}
+                  openMenu={openMenu}
                 onQuoteInline={quoteInline}
                 selectable={selectMode}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
+                pinnedIds={pinnedIds}
+                savedIds={savedIds}
+                onPin={togglePin}
+                onSave={toggleSave}
               />
             </div>
           );
         })}
+        </div>
+
+        {typingText && (
+          <div className="px-4 py-2 text-xs text-muted border-t border-border bg-panel/80">{typingText}</div>
+        )}
+
+        <div
+          className="border-t border-border bg-panel/80"
+          onFocus={()=> onTyping(true)}
+          onBlur={()=> onTyping(false)}
+          onKeyDown={()=> onTyping(true)}
+          onKeyUp={()=> onTyping(true)}
+        >
+          <Composer onSend={(text, files, extra)=> send(text, files, extra)} />
+        </div>
+
+        <MessageContextMenu
+          open={menu.open}
+          x={menu.x}
+          y={menu.y}
+          canEdit={!!(menu.msg && menu.msg.authorId === me.id)}
+          pinned={menu.msg ? ((pinnedByChannel[channelId] || []).includes(menu.msg.id)) : false}
+          saved={menu.msg ? ((savedByUser[me.id] || []).includes(menu.msg.id)) : false}
+          onAction={onMenuAction}
+          onClose={closeMenu}
+        />
+
+        <PinManager open={pinOpen} onOpenChange={setPinOpen} />
+        <SavedModal open={savedOpen} onOpenChange={setSavedOpen} />
+
+        {!channelId.startsWith("dm:") && (
+          <>
+            <InviteModal open={inviteOpen} onOpenChange={setInviteOpen} channelId={channelId} />
+            <ChannelSettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} channelId={channelId} />
+          </>
+        )}
+
+        <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
+        <LightboxHost />
       </div>
-
-      {typingText && (
-        <div className="px-4 py-1 text-xs text-muted border-t border-border">{typingText}</div>
+      {rightOpen && (
+        <aside className="hidden h-full min-h-0 overflow-hidden border border-border border-l bg-panel/80 lg:block">
+          <ChatRightPanel />
+        </aside>
       )}
-
-      <div
-        onFocus={()=> onTyping(true)}
-        onBlur={()=> onTyping(false)}
-        onKeyDown={()=> onTyping(true)}
-        onKeyUp={()=> onTyping(true)}
+      <Drawer
+        open={rightOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            window.dispatchEvent(new Event("chat:close-right"));
+          }
+        }}
+        title="Thread"
+        width={360}
+        side="right"
       >
-        <Composer onSend={(text, files, extra)=> send(text, files, extra)} />
-      </div>
-
-      <MessageContextMenu
-        open={menu.open}
-        x={menu.x}
-        y={menu.y}
-        canEdit={!!(menu.msg && menu.msg.authorId === me.id)}
-        pinned={menu.msg ? ((pinnedByChannel[channelId] || []).includes(menu.msg.id)) : false}
-        saved={menu.msg ? ((savedByUser[me.id] || []).includes(menu.msg.id)) : false}
-        onAction={onMenuAction}
-        onClose={closeMenu}
-      />
-
-      <PinManager open={pinOpen} onOpenChange={setPinOpen} />
-      <SavedModal open={savedOpen} onOpenChange={setSavedOpen} />
-
-      {/* 모달 */}
-      <CreateChannelModal open={createOpen} onOpenChange={setCreateOpen} />
-      {!channelId.startsWith("dm:") && (
-        <>
-          <InviteModal open={inviteOpen} onOpenChange={setInviteOpen} channelId={channelId} />
-          <ChannelSettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} channelId={channelId} />
-        </>
-      )}
-
-      {/* 커맨드 팔레트 & 라이트박스 호스트 */}
-      <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
-      <LightboxHost />
+        <ChatRightPanel />
+      </Drawer>
     </div>
   );
 }
-

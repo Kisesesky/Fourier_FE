@@ -70,11 +70,11 @@ const ToolbarIcon = ({
 }) => (
   <button
     type="button"
-    className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition hover:bg-accent hover:text-foreground"
+    className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition hover:bg-accent hover:text-foreground"
     aria-label={label}
     onClick={onClick}
   >
-    <Icon size={16} />
+    <Icon size={20} />
   </button>
 );
 
@@ -263,7 +263,7 @@ export default function Topbar({
       setUserMenuOpen(false);
 
       // 로그인 페이지로 이동
-      router.replace("/login");
+      router.replace("/sign-in ");
     }
   };
 
@@ -344,11 +344,11 @@ export default function Topbar({
     <div className="relative" ref={notificationRef}>
       <button
         type="button"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted transition hover:bg-accent hover:text-foreground"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full text-muted transition hover:bg-accent hover:text-foreground"
         aria-label="Notifications"
         onClick={toggleNotifications}
       >
-        <Bell size={16} />
+        <Bell size={20} />
         {unreadCount > 0 && (
           <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
             {unreadCount}
@@ -522,7 +522,7 @@ export default function Topbar({
               alt="Fourier logo"
               width={36}
               height={36}
-              className="h-9 w-9 rounded-xl object-cover"
+              className="h-12 w-12 rounded-xl object-cover"
               priority
             />
             <span className="text-lg font-semibold">Fourier</span>
@@ -596,13 +596,13 @@ export default function Topbar({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
-            className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs uppercase tracking-[0.3em] text-muted transition hover:text-foreground"
+            className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm uppercase tracking-[0.3em] text-muted transition hover:text-foreground"
             aria-label="Toggle theme"
             onClick={cycleTheme}
           >
-            <ThemeIcon size={16} />
+            <ThemeIcon size={18} />
             <span className="capitalize">{theme}</span>
           </button>
           <ToolbarIcon icon={RotateCcw} label="Refresh" onClick={() => window.location.reload()} />
@@ -625,7 +625,7 @@ export default function Topbar({
             aria-label="Toggle navigation"
             onClick={() => window.dispatchEvent(new Event("app:toggle-sidebar"))}
           >
-            <Menu size={20} />
+            <Menu size={24} />
           </button>
 
           {onToggleSidebarCollapse && (
@@ -636,7 +636,7 @@ export default function Topbar({
               onClick={onToggleSidebarCollapse}
             >
               <span aria-hidden="true" className="text-base leading-none">
-                <Menu size={20} />
+                <Menu size={24} />
               </span>
             </button>
           )}
@@ -677,7 +677,7 @@ export default function Topbar({
               className="hidden rounded-md px-3 py-2 text-xs font-medium text-muted transition hover:bg-accent hover:text-foreground sm:inline-flex"
               aria-label="Tips"
             >
-              <Info size={16} className="mr-1" />
+              <Info size={20} className="mr-1" />
               Help
             </button>
             <button
@@ -686,7 +686,7 @@ export default function Topbar({
               onClick={cycleTheme}
               title={THEME_LABELS[theme]}
             >
-              <ThemeIcon size={18} />
+              <ThemeIcon size={20} />
             </button>
             {renderNotifications()}
             <button
@@ -694,7 +694,7 @@ export default function Topbar({
               aria-label="Settings"
               onClick={() => setSettingsOpen(true)}
             >
-              <Settings size={18} />
+              <Settings size={20} />
             </button>
             {renderUserSection()}
             <CommandPalette />

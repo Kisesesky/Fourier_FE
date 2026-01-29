@@ -6,6 +6,7 @@ type ChannelResponse = {
   name: string;
   projectId?: string;
   isDefault?: boolean;
+  memberIds?: string[];
 };
 
 type MessageResponse = {
@@ -29,9 +30,32 @@ export async function listChannels(projectId: string): Promise<Channel[]> {
   }));
 }
 
+export async function createChannel(
+  projectId: string,
+  name: string,
+  memberIds: string[] = [],
+): Promise<ChannelResponse> {
+  const res = await api.post<ChannelResponse>("/chat/channels", {
+    projectId,
+    name,
+    memberIds,
+  });
+  return res.data;
+}
+
 export async function listMessages(channelId: string): Promise<MessageResponse[]> {
   const res = await api.get<MessageResponse[]>("/chat/channel/messages", { params: { channelId, limit: 100 } });
   return res.data ?? [];
+}
+
+export async function getPinnedMessages(channelId: string): Promise<string[]> {
+  const res = await api.get("/chat/channel/pins", { params: { channelId } });
+  return res.data?.messageIds ?? [];
+}
+
+export async function getSavedMessages(): Promise<string[]> {
+  const res = await api.get("/chat/messages/saved");
+  return res.data?.messageIds ?? [];
 }
 
 export async function sendChannelMessage(channelId: string, content: string, opts?: { replyToMessageId?: string | null; threadParentId?: string | null }) {
@@ -44,7 +68,33 @@ export async function sendChannelMessage(channelId: string, content: string, opt
   return res.data;
 }
 
+export async function sendThreadMessage(threadParentId: string, content: string, fileIds: string[] = []) {
+  const res = await api.post<MessageResponse>("/chat/thread/message", {
+    threadParentId,
+    content,
+    fileIds,
+  });
+  return res.data;
+}
+
 export async function listProjectMembers(teamId: string, projectId: string): Promise<Array<{ userId: string; name: string; avatarUrl?: string | null }>> {
   const res = await api.get(`/team/${teamId}/project/${projectId}/members`);
   return res.data ?? [];
+}
+
+export async function getChannelPreferences(projectId: string): Promise<{ pinnedChannelIds: string[]; archivedChannelIds: string[] }> {
+  const res = await api.get("/chat/channel/preferences", { params: { projectId } });
+  return res.data ?? { pinnedChannelIds: [], archivedChannelIds: [] };
+}
+
+export async function saveChannelPreferences(
+  projectId: string,
+  payload: { pinnedChannelIds: string[]; archivedChannelIds: string[] },
+) {
+  const res = await api.post("/chat/channel/preferences", {
+    projectId,
+    pinnedChannelIds: payload.pinnedChannelIds,
+    archivedChannelIds: payload.archivedChannelIds,
+  });
+  return res.data ?? payload;
 }

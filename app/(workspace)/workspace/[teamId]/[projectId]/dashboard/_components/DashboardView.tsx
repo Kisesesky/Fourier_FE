@@ -356,7 +356,7 @@ function MiniCalendar({ events }: { events: DashboardEvent[] }) {
       <div
         key={i}
         className={clsx(
-          'flex h-9 w-9 items-center justify-center rounded-lg text-xs transition',
+          'flex h-12 w-12 items-center justify-center rounded-lg text-xs transition',
           'text-muted',
           !inMonth && 'opacity-35',
           hasEvent && !today && 'bg-primary/10 text-primary border border-border',

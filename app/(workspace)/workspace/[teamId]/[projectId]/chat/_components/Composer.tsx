@@ -244,64 +244,63 @@ export default function Composer({
   const allReady = uploads.every(u => u.ready);
 
   return (
-    <div className={`border-t border-border p-2 ${dragOver ? 'ring-2 ring-brand/60' : ''}`}
-         onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
-      {/* 툴바 */}
-      <div className="flex items-center gap-1 px-1 pb-1">
-        <button className="p-1 rounded hover:bg-subtle/60" title="Bold **" onClick={()=> surroundSelection('**') }><Bold size={14}/></button>
-        <button className="p-1 rounded hover:bg-subtle/60" title="Inline code `code`" onClick={()=> surroundSelection('`') }><Code size={14}/></button>
-        <button className="p-1 rounded hover:bg-subtle/60" title="Quote > " onClick={()=> insertTextAtCursor('\n> ') }><Quote size={14}/></button>
-        <EmojiPicker onPick={onPickEmoji} />
-        <button className="p-1 rounded hover:bg-subtle/60" title="@mention" onClick={()=> { insertTextAtCursor('@'); const r = getCaretCoordinates(); setMentionXY({x:r.left,y:r.bottom+6}); setMentionOpen(true);} }><AtSign size={14}/></button>
-        <span className="ml-auto" />
-        <button className="px-2 py-1 text-xs rounded border border-border hover:bg-subtle/60 inline-flex items-center gap-1" onClick={()=> fileRef.current?.click()}>
-          <Paperclip size={14}/> Attach
-        </button>
-        <input ref={fileRef} type="file" hidden onChange={onPickFile} />
-      </div>
+    <div
+      className={`px-3 py-2 ${dragOver ? 'ring-2 ring-brand/60' : ''}`}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      <div className="rounded-md border border-border bg-panel/90">
+        <div
+          ref={ref}
+          className="min-h-[56px] max-h-56 overflow-y-auto px-3 py-3 text-sm outline-none"
+          contentEditable
+          onKeyDown={onKeyDown}
+          onInput={onInput}
+          data-placeholder="메시지 입력…"
+          style={{ whiteSpace: 'pre-wrap' }}
+        />
 
-      {/* 입력창 */}
-      <div
-        ref={ref}
-        className="min-h-[44px] max-h-40 overflow-y-auto rounded-md border border-border bg-subtle/40 px-3 py-2 text-sm outline-none"
-        contentEditable
-        onKeyDown={onKeyDown}
-        onInput={onInput}
-        data-placeholder="메시지를 입력하세요 (Shift+Enter 줄바꿈)"
-        style={{ whiteSpace: 'pre-wrap' }}
-      />
+        {uploads.length > 0 && (
+          <div className="border-t border-border px-3 py-2 space-y-2">
+            {uploads.map(u => (
+              <div key={u.id} className="rounded-md border border-border bg-subtle/30 px-3 py-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="truncate">{u.name}</div>
+                  <button className="ml-2 p-1 rounded hover:bg-subtle/60" onClick={()=> removeUpload(u.id)} title="제거">
+                    <X size={12}/>
+                  </button>
+                </div>
+                <div className="mt-1 h-2 rounded-full border border-border overflow-hidden">
+                  <div className="h-full bg-current opacity-60" style={{ width: `${u.progress}%` }} />
+                </div>
+                <div className="mt-0.5 text-right opacity-70">{u.progress}%</div>
+              </div>
+            ))}
+          </div>
+        )}
 
-      {/* 업로드 진행률 */}
-      {uploads.length > 0 && (
-        <div className="mt-2 flex flex-col gap-2">
-          {uploads.map(u => (
-            <div key={u.id} className="rounded border border-border bg-subtle/30 px-2 py-1 text-xs">
-              <div className="flex items-center justify-between">
-                <div className="truncate">{u.name}</div>
-                <button className="ml-2 p-1 rounded hover:bg-subtle/60" onClick={()=> removeUpload(u.id)} title="제거">
-                  <X size={12}/>
-                </button>
-              </div>
-              <div className="mt-1 h-2 rounded-full border border-border overflow-hidden">
-                <div className="h-full bg-current opacity-60" style={{ width: `${u.progress}%` }} />
-              </div>
-              <div className="mt-0.5 text-right opacity-70">{u.progress}%</div>
-            </div>
-          ))}
+        <div className="border-t border-border px-2 py-2 text-[11px] text-muted flex items-center gap-1">
+          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="Bold (Ctrl+B)" onClick={()=> surroundSelection('**') }><Bold size={14}/></button>
+          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="Inline code `code`" onClick={()=> surroundSelection('`') }><Code size={14}/></button>
+          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="Quote" onClick={()=> insertTextAtCursor('\n> ') }><Quote size={14}/></button>
+          <EmojiPicker onPick={onPickEmoji} />
+          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="@mention" onClick={()=> { insertTextAtCursor('@'); const r = getCaretCoordinates(); setMentionXY({x:r.left,y:r.bottom+6}); setMentionOpen(true);} }><AtSign size={14}/></button>
+          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="Attach file" onClick={()=> fileRef.current?.click()}>
+            <Paperclip size={14}/>
+          </button>
+          <input ref={fileRef} type="file" hidden onChange={onPickFile} />
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs ${(!uploads.length || allReady) ? 'bg-brand/20 text-foreground hover:bg-brand/30' : 'text-muted/60'}`}
+              onClick={doSend}
+              disabled={uploads.length > 0 && !allReady}
+              title={uploads.length > 0 && !allReady ? "업로드 중..." : "Send (Enter)"}
+            >
+              <Send size={14}/> 보내기
+            </button>
+          </div>
         </div>
-      )}
-
-      {/* 액션 */}
-      <div className="mt-2 flex items-center justify-between">
-        <div className="text-xs text-muted inline-flex items-center gap-1"><Upload size={12}/> drag & drop to attach</div>
-        <button
-          className={`px-3 py-1.5 text-sm rounded border border-border inline-flex items-center gap-1 ${(!uploads.length || allReady) ? 'hover:bg-subtle/60' : 'opacity-50 cursor-not-allowed'}`}
-          onClick={doSend}
-          disabled={uploads.length > 0 && !allReady}
-          title={uploads.length > 0 && !allReady ? "업로드 중..." : "Send"}
-        >
-          <Send size={14}/> Send
-        </button>
       </div>
 
       {/* 멘션 팝오버 */}

@@ -4,12 +4,10 @@ import { useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { Attachment, Msg, ChatUser } from '@/workspace/chat/_model/types';
 import MarkdownText from './MarkdownText';
-import EmojiPicker from './EmojiPicker';
-import ReactionBar from './ReactionBar';
 import LinkPreview, { extractUrls } from './LinkPreview';
 import CodeFencePreview, { extractFences } from './CodeFencePreview';
 import { LightboxItem, openLightbox } from './Lightbox';
-import { Eye, Film, File, FileText, Laugh, Pencil, Quote, Settings2, Trash } from 'lucide-react';
+import { Film, File, FileText, SmilePlus, Reply, MoreHorizontal, Pencil, Quote, Trash, Pin, Bookmark } from 'lucide-react';
 
 type MessageRowProps = {
   m: Msg;
@@ -20,6 +18,7 @@ type MessageRowProps = {
   showHeader: boolean;
   showAvatar: boolean;
   avatarUrl?: string;
+  threadMeta?: { count: number; lastTs?: number; lastAuthorId?: string };
   onEdit: (id: string, text: string) => void;
   onDelete: (id: string) => void;
   onReact: (id: string, emoji: string) => void;
@@ -29,6 +28,11 @@ type MessageRowProps = {
   selectable: boolean;
   selected: boolean;
   onToggleSelect: (id: string, multi?: boolean) => void;
+  pinned: boolean;
+  saved: boolean;
+  onPin: (id: string) => void;
+  onSave: (id: string) => void;
+  users: Record<string, ChatUser>;
 };
 
 type MessageGroupProps = {
@@ -38,6 +42,7 @@ type MessageGroupProps = {
   meId: string;
   otherSeen: Record<string, string[]>;
   users: Record<string, ChatUser>;
+  threadMetaMap?: Record<string, { count: number; lastTs?: number; lastAuthorId?: string }>;
   onEdit: (id: string, text: string) => void;
   onDelete: (id: string) => void;
   onReact: (id: string, emoji: string) => void;
@@ -47,6 +52,10 @@ type MessageGroupProps = {
   selectable: boolean;
   selectedIds: Set<string>;
   onToggleSelect: (id: string, multi?: boolean) => void;
+  pinnedIds: Set<string>;
+  savedIds: Set<string>;
+  onPin: (id: string) => void;
+  onSave: (id: string) => void;
 };
 
 function AttachmentBubble({ attachment, all, index }: { attachment: Attachment; all: Attachment[]; index: number }) {
@@ -105,32 +114,26 @@ function AttachmentBubble({ attachment, all, index }: { attachment: Attachment; 
   );
 }
 
-function ReactionPills({ m, onToggle }: { m: Msg; onToggle: (emoji: string) => void }) {
+function ReactionPills({ m, meId, onToggle }: { m: Msg; meId: string; onToggle: (emoji: string) => void }) {
   const entries = Object.entries(m.reactions || {});
   if (entries.length === 0) return null;
   return (
     <div className="mt-1 flex flex-wrap gap-1">
-      {entries.map(([emoji, users]) => (
+      {entries.map(([emoji, users]) => {
+        const reacted = users.includes(meId);
+        return (
         <button
           key={emoji}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-subtle/40 px-2 py-0.5 text-[11px] hover:bg-subtle/60"
+          className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] leading-none transition ${
+            reacted ? "border-border bg-subtle/80 text-foreground" : "border-border bg-subtle/40 text-foreground hover:bg-subtle/60"
+          }`}
           onClick={() => onToggle(emoji)}
           title={`${users.length}명`}
         >
           <span>{emoji}</span>
-          {users.length > 0 && <span className="text-muted">{users.length}</span>}
+          {users.length > 0 && <span className={reacted ? "text-background/80" : "text-muted"}>{users.length}</span>}
         </button>
-      ))}
-    </div>
-  );
-}
-
-function SeenBadge({ m, meId }: { m: Msg; meId: string }) {
-  const seen = new Set(m.seenBy || []);
-  if (!seen.has(meId)) return null;
-  return (
-    <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted">
-      <Eye size={12} /> Seen by you
+      )})}
     </div>
   );
 }
@@ -144,6 +147,7 @@ function MessageRow({
   showHeader,
   showAvatar,
   avatarUrl,
+  threadMeta,
   onEdit,
   onDelete,
   onReact,
@@ -153,8 +157,13 @@ function MessageRow({
   selectable,
   selected,
   onToggleSelect,
+  pinned,
+  saved,
+  onPin,
+  onSave,
+  users,
 }: MessageRowProps) {
-  const padClass = showHeader ? (view === 'compact' ? 'py-1' : 'py-1.5') : 'py-0.5';
+  const padClass = showHeader ? (view === 'compact' ? 'py-0.5' : 'py-1') : 'py-0';
   const urls = extractUrls(m.text);
   const fences = extractFences(m.text);
   const [editing, setEditing] = useState(false);
@@ -164,15 +173,18 @@ function MessageRow({
 
   const initials = (m.author || '?').slice(0, 2).toUpperCase();
   const ts = new Date(m.ts);
-  const timestampLabel = ts.toLocaleString();
+  const timestampLabel = ts.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
   const timestampIso = ts.toISOString();
-  const contentSpacing = showHeader ? 'space-y-2' : 'space-y-1';
-  const metaMargin = showHeader ? 'mt-2' : 'mt-1';
+  const contentSpacing = showHeader ? 'space-y-1' : 'space-y-0';
+  const metaMargin = showHeader ? 'mt-0.5' : 'mt-0';
 
+  const effectiveThread = threadMeta ?? (m.threadCount ? { count: m.threadCount } : undefined);
+  const lastReplyTime = effectiveThread?.lastTs ? new Date(effectiveThread.lastTs).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' }) : null;
+  const lastReplyUser = effectiveThread?.lastAuthorId ? users[effectiveThread.lastAuthorId] : undefined;
   return (
     <div
-      className={`group/message relative ${padClass} -mx-2 rounded-xl border border-transparent px-3 transition-all duration-150 ease-out ${
-        selected ? 'border-brand/50 bg-brand/10 shadow-sm ring-1 ring-brand/40' : 'hover:border-border/60 hover:bg-subtle/20 hover:shadow-sm'
+      className={`group/message relative px-3 ${padClass} transition-all duration-150 ease-out ${
+        selected ? 'bg-brand/10 ring-1 ring-brand/40' : 'hover:bg-subtle/40'
       }`}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -190,11 +202,11 @@ function MessageRow({
       )}
 
       {!editing ? (
-        <div className="flex gap-3">
-          <div className="pt-1">
+        <div className="flex gap-2.5">
+          <div className="pt-0.5">
             {showAvatar ? (
               <button
-                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-subtle/40 text-xs font-semibold text-muted"
+                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted/20 text-[12px] font-semibold text-foreground"
                 onClick={(e) => openMenu(e, m, isMine)}
                 aria-label={`${m.author} 메시지 메뉴 열기`}
               >
@@ -205,37 +217,30 @@ function MessageRow({
                 )}
               </button>
             ) : (
-              <div className="h-4 w-9" />
+              <div className="h-9 w-9 opacity-0" />
             )}
           </div>
           <div className={`min-w-0 flex-1 ${contentSpacing}`}>
             {showHeader && (
-              <div className="flex items-center gap-2 text-xs text-muted">
-                <span className="font-semibold text-text">{m.author}</span>
-                <time dateTime={timestampIso}>{timestampLabel}</time>
-                <button
-                  className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-muted opacity-0 transition group-hover/message:opacity-100 hover:text-text"
-                  onClick={(e) => openMenu(e, m, isMine)}
-                  aria-label="메시지 옵션 열기"
-                >
-                  <Settings2 size={14} />
-                </button>
+              <div className="flex items-center gap-2 text-[14px] text-muted">
+                <span className="font-semibold text-foreground">{m.author}</span>
+                <time className="text-[11px]" dateTime={timestampIso}>{timestampLabel}</time>
               </div>
             )}
-            <div className="text-sm whitespace-pre-wrap">
+            <div className="text-[14px] leading-snug text-foreground">
               <MarkdownText text={m.text} />
               {m.editedAt && <span className="ml-2 text-[11px] text-muted">(edited)</span>}
             </div>
             <CodeFencePreview fences={fences} />
             {urls.length > 0 && (
-              <div className="mt-2 space-y-2">
+              <div className="mt-1 space-y-1">
                 {urls.map((url) => (
                   <LinkPreview key={url} url={url} />
                 ))}
               </div>
             )}
             {m.attachments?.length ? (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1 flex flex-wrap gap-1.5">
                 {m.attachments.map((attachment, index) => (
                   <AttachmentBubble key={attachment.id} attachment={attachment} all={m.attachments!} index={index} />
                 ))}
@@ -267,61 +272,101 @@ function MessageRow({
         </div>
       )}
 
-      <div
-        className={`absolute top-1 ${isMine ? 'right-[-44px]' : 'left-[-44px]'} opacity-0 transition group-hover/message:opacity-100`}
-      >
-        <ReactionBar onPick={(emoji) => onReact(m.id, emoji)} />
+      <div className="absolute right-2 top-1 z-10 flex items-center gap-0.5 rounded-md border border-border bg-panel/90 px-1 py-0.5 opacity-0 transition group-hover/message:opacity-100">
+        <button
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+          onClick={() => onReact(m.id, "👍")}
+          aria-label="Add reaction"
+          title="Add reaction"
+        >
+          <SmilePlus size={14} />
+        </button>
+        <button
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+          onClick={() => onReply(m.parentId ? (m.parentId as string) : m.id)}
+          aria-label="Reply"
+          title="Reply in thread"
+        >
+          <Reply size={14} />
+        </button>
+        <button
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${pinned ? 'text-amber-500' : 'text-muted'} hover:bg-subtle/60`}
+          onClick={() => onPin(m.id)}
+          aria-label="Pin"
+          title="Pin message"
+        >
+          <Pin size={14} />
+        </button>
+        <button
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${saved ? 'text-emerald-500' : 'text-muted'} hover:bg-subtle/60`}
+          onClick={() => onSave(m.id)}
+          aria-label="Save"
+          title="Save message"
+        >
+          <Bookmark size={14} />
+        </button>
+        <button
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+          onClick={() => onQuoteInline(m)}
+          aria-label="Quote"
+          title="Quote message"
+        >
+          <Quote size={14} />
+        </button>
+        <button
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+          onClick={(e) => openMenu(e, m, isMine)}
+          aria-label="More actions"
+          title="More actions"
+        >
+          <MoreHorizontal size={14} />
+        </button>
       </div>
 
-      <div className={`${metaMargin} flex flex-wrap items-center gap-2 text-[11px] text-muted`}>
-        <div className="flex items-center gap-2 opacity-0 pointer-events-none transition group-hover/message:pointer-events-auto group-hover/message:opacity-100">
-          <button
-            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 transition hover:bg-subtle/50"
-            onClick={() => onReply(m.parentId ? (m.parentId as string) : m.id)}
-          >
-            <Quote size={12} /> Reply
-          </button>
-          {isMine && (
+      <div className={`pl-[36px] ${showHeader ? 'mt-1' : '-mt-2'}`}>
+        <div className="flex flex-wrap items-center gap-1 text-[12px] text-muted">
+          <ReactionPills m={m} meId={meId} onToggle={(emoji) => onReact(m.id, emoji)} />
+        </div>
+        {effectiveThread?.count && effectiveThread.count > 0 && (
+          <div className="mt-0.5 flex items-center gap-1 text-[12px] text-muted">
             <button
-              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 transition hover:bg-subtle/50"
-              onClick={() => setEditing(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-brand/5 px-1.5 py-0.5 text-[11px] text-brand hover:bg-brand/10"
+              onClick={() => onReply(m.parentId ? (m.parentId as string) : m.id)}
+              title="Open thread"
             >
+              <span className="text-muted">┗</span>
+              <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-border bg-muted/20 text-[9px] font-semibold text-foreground">
+                {lastReplyUser?.avatarUrl ? (
+                  <img src={lastReplyUser.avatarUrl} alt={lastReplyUser.name} className="h-full w-full object-cover" />
+                ) : (
+                  (lastReplyUser?.name || m.author || '?').slice(0, 2).toUpperCase()
+                )}
+              </div>
+              <span className="font-bold">{effectiveThread.count}개의 댓글</span>
+              {lastReplyTime && <span className="text-muted">· {lastReplyTime}</span>}
+            </button>
+          </div>
+        )}
+        {otherSeenNames.length > 0 && (
+          <span className="opacity-70">
+            Seen by {otherSeenNames.slice(0, 3).join(', ')}
+            {otherSeenNames.length > 3 ? ` 외 ${otherSeenNames.length - 3}명` : ''}
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-2 opacity-0 transition group-hover/message:opacity-100">
+          {isMine && (
+            <button className="inline-flex items-center gap-1 text-[11px] text-muted hover:text-foreground" onClick={() => setEditing(true)}>
               <Pencil size={12} /> Edit
             </button>
           )}
           {isMine && (
-            <button
-              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 transition hover:bg-subtle/50"
-              onClick={() => onDelete(m.id)}
-            >
+            <button className="inline-flex items-center gap-1 text-[11px] text-muted hover:text-foreground" onClick={() => onDelete(m.id)}>
               <Trash size={12} /> Delete
             </button>
           )}
-          <EmojiPicker
-            onPick={(emoji) => onReact(m.id, emoji)}
-            anchorClass="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 transition hover:bg-subtle/50"
-            triggerContent={
-              <>
-                <Laugh size={12} /> React
-              </>
-            }
-          />
-          <button
-            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 transition hover:bg-subtle/50"
-            onClick={() => onQuoteInline(m)}
-          >
-            <Settings2 size={12} /> Quote
+          <button className="inline-flex items-center gap-1 text-[11px] text-muted hover:text-foreground" onClick={() => onQuoteInline(m)}>
+            <Quote size={12} /> Quote
           </button>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <ReactionPills m={m} onToggle={(emoji) => onReact(m.id, emoji)} />
-          <SeenBadge m={m} meId={meId} />
-          {otherSeenNames.length > 0 && (
-            <span className="opacity-70">
-              Seen by {otherSeenNames.slice(0, 3).join(', ')}
-              {otherSeenNames.length > 3 ? ` 외 ${otherSeenNames.length - 3}명` : ''}
-            </span>
-          )}
         </div>
       </div>
     </div>
@@ -335,6 +380,7 @@ export function MessageGroup({
   meId,
   otherSeen,
   users,
+  threadMetaMap,
   onEdit,
   onDelete,
   onReact,
@@ -344,11 +390,15 @@ export function MessageGroup({
   selectable,
   selectedIds,
   onToggleSelect,
+  pinnedIds,
+  savedIds,
+  onPin,
+  onSave,
 }: MessageGroupProps) {
   const head = items[0];
   const seenNames = otherSeen[head.id] || [];
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-0">
       {items.map((item, index) => (
         <MessageRow
           key={item.id}
@@ -357,9 +407,11 @@ export function MessageGroup({
           view={view}
           meId={meId}
           avatarUrl={users[item.authorId]?.avatarUrl}
+          threadMeta={threadMetaMap?.[item.id]}
           otherSeenNames={index === items.length - 1 ? seenNames : []}
           showHeader={index === 0}
           showAvatar={index === 0}
+          users={users}
           onEdit={onEdit}
           onDelete={onDelete}
           onReact={onReact}
@@ -369,6 +421,10 @@ export function MessageGroup({
           selectable={selectable}
           selected={selectedIds.has(item.id)}
           onToggleSelect={onToggleSelect}
+          pinned={pinnedIds.has(item.id)}
+          saved={savedIds.has(item.id)}
+          onPin={onPin}
+          onSave={onSave}
         />
       ))}
     </div>

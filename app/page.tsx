@@ -250,7 +250,7 @@ export default function HomePage() {
           variant: "warning",
         });
         localStorage.removeItem("accessToken");
-        router.replace("/login");
+        router.replace("/sign-in ");
         return;
       }
       show({
@@ -567,7 +567,7 @@ export default function HomePage() {
       description: "다시 로그인해주세요.",
       variant: "warning",
     });
-    router.replace("/login");
+    router.replace("/sign-in ");
   }, [profileError, router, show]);
 
   useEffect(() => {
@@ -783,7 +783,7 @@ export default function HomePage() {
                       <button
                         key={mode}
                         type="button"
-                        className={`flex h-9 w-9 items-center justify-center rounded-full border ${
+                        className={`flex h-12 w-12 items-center justify-center rounded-full border ${
                           viewMode === mode
                             ? "border-white text-white"
                             : "border-white/20 text-white/50 hover:text-white"

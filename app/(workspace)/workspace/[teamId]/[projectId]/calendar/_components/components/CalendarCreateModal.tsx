@@ -6,6 +6,7 @@ type CalendarCreateModalProps = {
   open: boolean;
   name: string;
   color: string;
+  error?: string | null;
   onChangeName: (value: string) => void;
   onChangeColor: (value: string) => void;
   onSubmit: () => void;
@@ -16,6 +17,7 @@ export function CalendarCreateModal({
   open,
   name,
   color,
+  error,
   onChangeName,
   onChangeColor,
   onSubmit,
@@ -37,7 +39,7 @@ export function CalendarCreateModal({
       <div className="w-[min(420px,90vw)] rounded-xl border border-border bg-panel p-5 shadow-xl">
         <header className="mb-4">
           <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-            새 캘린더
+            일정 추가
           </div>
           <h2 className="text-lg font-semibold text-foreground">팀 또는 개인 캘린더 추가</h2>
         </header>
@@ -49,14 +51,10 @@ export function CalendarCreateModal({
 
             <div className="relative group">
               {/* 좌측 아이콘 뱃지 */}
-              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 rounded-md border border-border/70 bg-subtle/70 px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
-                ID
-              </span>
-
               <input
                 value={name}
                 onChange={(e) => onChangeName(e.target.value)}
-                className="w-full rounded-md border border-border bg-panel/80 pl-11 pr-9 py-2 text-sm shadow-inner outline-none ring-0 transition
+                className="w-full rounded-md border border-border bg-panel/80 pl-3 pr-9 py-2 text-sm shadow-inner outline-none ring-0 transition
                           focus:border-brand/50 focus:ring-2 focus:ring-brand/30"
                 placeholder="예: 개인 일정"
               />
@@ -66,11 +64,6 @@ export function CalendarCreateModal({
                 {(name || "").trim().length}/40
               </span>
             </div>
-
-            {/* 가이드라인 (선택) */}
-            <p className="text-[11px] text-muted">
-              팀/프로젝트명이면 약어 사용(예: <span className="font-medium text-foreground">OPS</span>).
-            </p>
           </div>
 
           {/* 색상 */}
@@ -122,11 +115,17 @@ export function CalendarCreateModal({
                 style={{ background: color }}
               >
                 <span className="h-2 w-2 rounded-full bg-white/90" />
-                {(name || "새 캘린더").trim()}
+                {(name || "일정 추가").trim()}
               </span>
             </div>
           </div>
         </div>
+
+        {error ? (
+          <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+            {error}
+          </p>
+        ) : null}
 
         <footer className="mt-6 flex items-center justify-end gap-2">
           <button

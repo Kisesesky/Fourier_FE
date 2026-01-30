@@ -184,7 +184,6 @@ export default function MembersView() {
     [teamMembers, members]
   );
   const total = orderedMembers.length;
-  const favorites = orderedMembers.filter((member) => member.isFavorite).length;
   const online = Object.values(presence).filter((record) => record.status === "online").length;
 
   return (
@@ -229,10 +228,9 @@ export default function MembersView() {
             </Dialog.Portal>
           </Dialog.Root>
         </div>
-        <div className="mt-4 grid gap-3 text-sm text-muted sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 text-sm text-muted sm:grid-cols-2">
           <StatsBlock label="총 멤버" value={`${total}명`} description="활성 상태 기준" />
           <StatsBlock label="온라인" value={`${online}명`} description="10분 이내 활동" />
-          <StatsBlock label="즐겨찾기" value={`${favorites}명`} description="중요한 멤버" />
         </div>
       </section>
 
@@ -249,7 +247,6 @@ export default function MembersView() {
                 />
               </div>
               <div className="flex items-center gap-2 text-xs text-muted">
-                <UsersBadge label="Favorites" value={favorites} />
                 <UsersBadge label="Online" value={online} />
               </div>
             </div>

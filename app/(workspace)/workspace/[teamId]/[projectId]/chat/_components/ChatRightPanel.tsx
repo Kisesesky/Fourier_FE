@@ -105,8 +105,8 @@ export default function ChatRightPanel() {
 
   return (
       <div className="flex h-full min-h-0 flex-1 flex-col bg-panel/80">
-        <div className="px-4 py-2.5 border-b border-border flex items-center gap-2 bg-panel/80">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <div className="px-3 py-2.5 border-b border-border flex items-center gap-2 bg-panel/80">
+          <div className="flex py-1 items-center gap-2 text-sm font-semibold text-foreground">
             <Info size={14} className="text-muted" />
             스레드
           </div>
@@ -236,7 +236,7 @@ export default function ChatRightPanel() {
           </div>
         )}
         {root && (
-          <div className="border-t border-border bg-panel/80 p-3">
+          <div className="border-t border-border bg-panel/80 px-3">
             <div className="border border-border bg-panel/70 p-2 rounded-md">
               <Composer
                 onSend={(text, files)=> {

@@ -18,6 +18,12 @@ export type Msg = {
   ts: number;
   editedAt?: number;
   channelId: string;
+  reply?: {
+    id: string;
+    content?: string;
+    sender: { id: string; name: string; avatar?: string };
+    isDeleted: boolean;
+  };
   attachments?: Attachment[];
   parentId?: string | null;
   threadCount?: number;

@@ -121,6 +121,10 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     if (!isDm && !isUuid && !exists) return;
     void setChannel(initialChannelId);
   }, [initialChannelId, channelId, channels, setChannel]);
+
+  useEffect(() => {
+    setReplyTarget(null);
+  }, [channelId]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -132,6 +136,22 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ id?: string }>).detail;
+      if (!detail?.id) return;
+      const container = listRef.current;
+      if (!container) return;
+      const target = container.querySelector<HTMLElement>(`[data-mid="${detail.id}"]`);
+      if (!target) return;
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+    };
+    window.addEventListener("chat:scroll-to", handler as EventListener);
+    return () => {
+      window.removeEventListener("chat:scroll-to", handler as EventListener);
+    };
+  }, [listRef]);
 
   /** 멀티선택 상태 */
   const [selectMode, setSelectMode] = useState(false);
@@ -224,9 +244,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
         show({ title: "복사됨", description: "메시지 텍스트를 복사했어요." });
         break;
       case 'quote': {
-        const ev = new CustomEvent('chat:insert-quote', { detail: { text: m.text || "" } });
-        window.dispatchEvent(ev);
-        show({ title: "인용 삽입", description: "입력창에 인용이 추가되었습니다." });
+        setReplyTarget(m);
         break;
       }
       case 'link': {
@@ -288,6 +306,8 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   // 모달: 초대/설정
   const [inviteOpen, setInviteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<Msg | null>(null);
+  const replyToId = replyTarget?.id;
 
   const currentChannel = useMemo(() => channels.find(c => c.id === channelId), [channels, channelId]);
   const isDM = channelId.startsWith("dm:");
@@ -310,8 +330,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   const topic = channelTopics[channelId]?.topic || "";
   const channelDisplayName = isDM ? channelLabel : channelLabel.replace(/^#\s*/, "#");
   const quoteInline = (m: Msg) => {
-    const ev = new CustomEvent('chat:insert-quote', { detail: { text: `${m.author} — ${new Date(m.ts).toLocaleString()}\n${m.text || ""}` } });
-    window.dispatchEvent(ev);
+    setReplyTarget(m);
   };
   const pinnedIds = useMemo(() => new Set(pinnedByChannel[channelId] || []), [pinnedByChannel, channelId]);
   const savedIds = useMemo(() => new Set(savedByUser[me.id] || []), [savedByUser, me.id]);
@@ -474,7 +493,72 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
           onKeyDown={()=> onTyping(true)}
           onKeyUp={()=> onTyping(true)}
         >
-          <Composer onSend={(text, files, extra)=> send(text, files, extra)} />
+          {replyTarget ? (
+            <div className="mx-4 mt-2 rounded-xl border border-border bg-panel/90 overflow-hidden">
+              <div
+                className="flex w-full items-center gap-3 border-b border-border bg-panel/90 px-3 py-2.5 text-left text-[11px] text-muted transition hover:bg-panel cursor-pointer border-l-4 border-l-indigo-500"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  const ev = new CustomEvent("chat:scroll-to", { detail: { id: replyTarget.id } });
+                  window.dispatchEvent(ev);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    const ev = new CustomEvent("chat:scroll-to", { detail: { id: replyTarget.id } });
+                    window.dispatchEvent(ev);
+                  }
+                }}
+              >
+                <span className="h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-[12px] font-semibold text-foreground">
+                  {users[replyTarget.authorId]?.avatarUrl ? (
+                    <img
+                      src={users[replyTarget.authorId].avatarUrl}
+                      alt={replyTarget.author}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center">
+                      {replyTarget.author.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2 text-[10px] text-muted">
+                    <div className="flex items-center gap-2 uppercase tracking-[0.18em] text-indigo-500">
+                      Replying to <span className="font-semibold text-foreground normal-case">{replyTarget.author}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="rounded-full border border-border px-2 py-0.5 text-[12px] text-muted hover:text-foreground"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setReplyTarget(null);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="truncate text-[11px] text-muted">{replyTarget.text || ""}</div>
+                </div>
+              </div>
+              <Composer
+                variant="merged"
+                onSend={async (text, files, extra) => {
+                  await send(text, files, { ...extra, replyToId });
+                  setReplyTarget(null);
+                }}
+              />
+            </div>
+          ) : (
+            <Composer
+              onSend={async (text, files, extra) => {
+                await send(text, files, { ...extra, replyToId });
+                setReplyTarget(null);
+              }}
+            />
+          )}
         </div>
 
         <MessageContextMenu

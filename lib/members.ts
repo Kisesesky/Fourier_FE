@@ -50,7 +50,7 @@ export async function searchFriends(keyword: string, workspaceId?: string) {
   return res.data?.data ?? [];
 }
 
-export async function fetchOnlineUsers(): Promise<string[]> {
+export async function fetchPresence(): Promise<{ onlineUserIds: string[]; statuses: Record<string, string> }> {
   const res = await api.get("/chat/presence");
-  return res.data?.onlineUserIds ?? [];
+  return res.data ?? { onlineUserIds: [], statuses: {} };
 }

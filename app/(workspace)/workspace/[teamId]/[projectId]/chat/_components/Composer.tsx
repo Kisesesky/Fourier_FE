@@ -23,9 +23,11 @@ function toFileItem(file: File): UploadItem {
 
 export default function Composer({
   onSend,
+  variant = "default",
 }: {
   onSend: (text: string, files?: FileItem[], extra?: { parentId?: string|null; mentions?: string[] }) => void;
   parentId?: string | null;
+  variant?: "default" | "merged";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -243,14 +245,20 @@ export default function Composer({
 
   const allReady = uploads.every(u => u.ready);
 
+  const outerClass = variant === "merged" ? "px-0 py-0" : "px-3 py-2";
+  const boxClass =
+    variant === "merged"
+      ? "rounded-none border-0 bg-panel/90"
+      : "rounded-md border border-border bg-panel/90";
+
   return (
     <div
-      className={`px-3 py-2 ${dragOver ? 'ring-2 ring-brand/60' : ''}`}
+      className={`${outerClass} ${dragOver ? 'ring-2 ring-brand/60' : ''}`}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div className="rounded-md border border-border bg-panel/90">
+      <div className={boxClass}>
         <div
           ref={ref}
           className="min-h-[56px] max-h-56 overflow-y-auto px-3 py-3 text-sm outline-none"

@@ -71,6 +71,15 @@ export async function listIssues(projectId?: string): Promise<Issue[]> {
   return data.map(mapIssue);
 }
 
+export async function getIssueAnalytics(projectId: string, params: { granularity: "hourly" | "daily" | "monthly"; date?: string; month?: string; year?: string }) {
+  const query = new URLSearchParams();
+  query.set("granularity", params.granularity);
+  if (params.date) query.set("date", params.date);
+  if (params.month) query.set("month", params.month);
+  if (params.year) query.set("year", params.year);
+  return http<{ counts: number[]; granularity: string }>(`/projects/${projectId}/issues/analytics?${query.toString()}`);
+}
+
 export async function getIssueById(id: ID): Promise<Issue | null> {
   try {
     const data = await http<any>(`/issues/${id}`);

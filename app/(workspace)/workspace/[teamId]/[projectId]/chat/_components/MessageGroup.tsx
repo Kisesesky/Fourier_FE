@@ -227,6 +227,43 @@ function MessageRow({
                 <time className="text-[11px]" dateTime={timestampIso}>{timestampLabel}</time>
               </div>
             )}
+            {m.reply && (
+              <div
+                className="mb-1 flex items-center gap-3 rounded-full border border-border/70 bg-panel/70 px-3 py-1.5 text-left text-[12px] text-muted transition hover:border-border/50 hover:bg-panel cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  const ev = new CustomEvent("chat:scroll-to", { detail: { id: m.reply?.id } });
+                  window.dispatchEvent(ev);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    const ev = new CustomEvent("chat:scroll-to", { detail: { id: m.reply?.id } });
+                    window.dispatchEvent(ev);
+                  }
+                }}
+              >
+                <span className="h-8 w-8 overflow-hidden rounded-full bg-muted/20 text-[11px] font-semibold text-foreground">
+                  {m.reply.sender?.avatar ? (
+                    <img
+                      src={m.reply.sender.avatar}
+                      alt={m.reply.sender.name ?? "User"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center">
+                      {(m.reply.sender?.name ?? "User").slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                </span>
+                <div className="min-w-0 flex-1 truncate text-[12px] text-muted">
+                  <span className="font-semibold text-foreground">{m.reply.sender?.name ?? "User"}</span>
+                  <span className="mx-1 text-muted">:</span>
+                  <span>{m.reply.isDeleted ? "삭제된 메시지입니다." : m.reply.content ?? ""}</span>
+                </div>
+              </div>
+            )}
             <div className="text-[14px] leading-snug text-foreground">
               <MarkdownText text={m.text} />
               {m.editedAt && <span className="ml-2 text-[11px] text-muted">(edited)</span>}
@@ -308,8 +345,8 @@ function MessageRow({
         <button
           className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
           onClick={() => onQuoteInline(m)}
-          aria-label="Quote"
-          title="Quote message"
+          aria-label="Reply"
+          title="Reply"
         >
           <Quote size={14} />
         </button>
@@ -323,7 +360,7 @@ function MessageRow({
         </button>
       </div>
 
-      <div className={`pl-[36px] ${showHeader ? 'mt-1' : '-mt-2'}`}>
+      <div className={`pl-[36px] ${showHeader ? 'mt-1' : 'mt-0.5'}`}>
         <div className="flex flex-wrap items-center gap-1 text-[12px] text-muted">
           <ReactionPills m={m} meId={meId} onToggle={(emoji) => onReact(m.id, emoji)} />
         </div>
@@ -365,7 +402,7 @@ function MessageRow({
             </button>
           )}
           <button className="inline-flex items-center gap-1 text-[11px] text-muted hover:text-foreground" onClick={() => onQuoteInline(m)}>
-            <Quote size={12} /> Quote
+            <Quote size={12} /> Reply
           </button>
         </div>
       </div>

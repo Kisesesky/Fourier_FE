@@ -83,7 +83,7 @@ type State = {
   togglePinnedChannel: (channelId: string) => void;
   toggleArchivedChannel: (channelId: string) => void;
 
-  send: (text: string, files?: FileItem[], opts?: { parentId?: string | null; mentions?: string[] }) => Promise<void>;
+  send: (text: string, files?: FileItem[], opts?: { parentId?: string | null; replyToId?: string | null; mentions?: string[] }) => Promise<void>;
   updateMessage: (id: string, patch: Partial<Pick<Msg, "text">>) => void;
   deleteMessage: (id: string) => { deleted?: Msg };
   restoreMessage: (msg: Msg) => void;
@@ -201,6 +201,7 @@ type ChannelMessageResponse = {
   content?: string;
   senderId: string;
   sender?: { id: string; name: string; avatar?: string };
+  reply?: { id: string; content?: string; sender: { id: string; name: string; avatar?: string }; isDeleted: boolean };
   createdAt: string;
   editedAt?: string;
   threadParentId?: string;
@@ -236,6 +237,18 @@ const mapChannelMessage = (message: ChannelMessageResponse, channelId: string, m
   ts: message.createdAt ? Date.parse(message.createdAt) : Date.now(),
   editedAt: message.editedAt ? Date.parse(message.editedAt) : undefined,
   channelId,
+  reply: message.reply
+    ? {
+        id: message.reply.id,
+        content: message.reply.content,
+        sender: {
+          id: message.reply.sender?.id,
+          name: message.reply.sender?.name ?? "Unknown",
+          avatar: message.reply.sender?.avatar,
+        },
+        isDeleted: message.reply.isDeleted,
+      }
+    : undefined,
   parentId: message.threadParentId ?? undefined,
   threadCount: message.thread?.count ?? undefined,
   reactions: mapReactions(message.reactions, meId),
@@ -699,8 +712,8 @@ export const useChat = create<State>((set, get) => ({
           text,
         )
       : await sendChannelMessage(channelId, text, {
-          replyToMessageId: opts?.parentId ?? undefined,
-          threadParentId: opts?.parentId ?? undefined,
+          replyToMessageId: opts?.replyToId ?? undefined,
+          threadParentId: undefined,
         });
     const msg = mapChannelMessage(response, channelId, get().me.id);
     localEchoIds.add(msg.id);
@@ -791,6 +804,7 @@ export const useChat = create<State>((set, get) => ({
     });
     set({ messages: next });
     lsSet(MSGS_KEY(channelId), next);
+    get().updateChannelActivity(channelId, next);
     bc?.postMessage({ type: "message:react", id, emoji, userId: me.id, channelId });
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     const socket = getChatSocket(token);

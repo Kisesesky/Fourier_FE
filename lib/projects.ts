@@ -44,6 +44,20 @@ export async function fetchProjectMembers(teamId: string, projectId: string) {
   return res.data ?? [];
 }
 
+export async function getProjectMemberAnalytics(
+  teamId: string,
+  projectId: string,
+  params: { granularity: "hourly" | "daily" | "monthly"; date?: string; month?: string; year?: string }
+) {
+  const query = new URLSearchParams();
+  query.set("granularity", params.granularity);
+  if (params.date) query.set("date", params.date);
+  if (params.month) query.set("month", params.month);
+  if (params.year) query.set("year", params.year);
+  const res = await api.get(`/team/${teamId}/project/${projectId}/members/analytics?${query.toString()}`);
+  return res.data ?? { counts: [] };
+}
+
 export async function removeProjectMember(teamId: string, projectId: string, userId: string) {
   const res = await api.delete(`/team/${teamId}/project/${projectId}/member/${userId}`);
   return res.data;

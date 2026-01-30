@@ -4,7 +4,7 @@
 import React from 'react';
 import {
   MessageSquare, SmilePlus, Copy, Link as LinkIcon, Pencil, Trash2,
-  Pin, PinOff, Megaphone, EyeOff, Bookmark, BookmarkX, CornerDownRight
+  Pin, PinOff, Megaphone, EyeOff, Bookmark, BookmarkX, CornerDownRight, Reply
 } from 'lucide-react';
 
 type Item =
@@ -41,7 +41,7 @@ export default function MessageContextMenu({
     { id: 'open-thread', label: 'Open in right panel', icon: <CornerDownRight size={14}/> },
     { id: 'react',  label: 'Add reaction',     icon: <SmilePlus size={14}/> },
     { id: 'copy',   label: 'Copy text',        icon: <Copy size={14}/> },
-    { id: 'quote',  label: 'Copy as quote',    icon: <Copy size={14}/> },
+    { id: 'quote',  label: 'Reply',            icon: <Reply size={14}/> },
     { id: 'link',   label: 'Copy message link',icon: <LinkIcon size={14}/> },
     pinned ? { id: 'unpin', label: 'Unpin message', icon: <PinOff size={14}/> } : { id: 'pin', label: 'Pin message', icon: <Pin size={14}/> },
     { id: 'unread', label: 'Mark unread from here', icon: <EyeOff size={14}/> },

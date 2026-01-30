@@ -1,255 +1,534 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Filter, Search } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
-import type { Msg } from "@/workspace/chat/_model/types";
-import { MessageGroup } from "./MessageGroup";
+import MarkdownText from "./MarkdownText";
 import Composer from "./Composer";
-import { useMessageSections } from "@/workspace/chat/_model/hooks/useMessageSections";
+import { useThreadItems } from "@/workspace/chat/_model/hooks/useThreadItems";
+import EmojiPicker from "./EmojiPicker";
 import { useToast } from "@/components/ui/Toast";
+import type { Msg } from "@/workspace/chat/_model/types";
 
-type ThreadItem = {
-  channelId: string;
-  channelName: string;
-  rootId: string;
-  lastTs: number;
-  unread: number;
-  lastPreview: string;
-  lastAuthor?: string;
-};
+function ThreadHeader({ channelName, lastTs }: { channelName: string; lastTs?: number }) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-[11px] text-muted">
+      <span className="font-semibold text-foreground">#{channelName}</span>
+    </div>
+  );
+}
 
-const MSGS_KEY = (id: string) => `fd.chat.messages:${id}`;
+function ReactionPills({
+  msg,
+  meId,
+  onToggle,
+}: {
+  msg: Msg;
+  meId: string;
+  onToggle: (emoji: string) => void;
+}) {
+  const entries = Object.entries(msg.reactions || {});
+  if (entries.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {entries.map(([emoji, users]) => {
+        const reacted = users.includes(meId);
+        return (
+          <button
+            key={emoji}
+            className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] leading-none transition ${
+              reacted ? "border-border bg-subtle/80 text-foreground" : "border-border bg-subtle/40 text-foreground hover:bg-subtle/60"
+            }`}
+            onClick={() => onToggle(emoji)}
+            title={`${users.length}명`}
+          >
+            <span>{emoji}</span>
+            {users.length > 0 && (
+              <span className={reacted ? "text-background/80" : "text-muted"}>{users.length}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-const summarize = (msg?: Msg) => {
-  if (!msg) return "";
-  if (msg.text?.trim()) return msg.text.trim().slice(0, 120);
-  return "";
-};
+function ThreadRow({
+  msg,
+  author,
+  avatarUrl,
+  isMine,
+  editing,
+  draft,
+  onDraftChange,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onDelete,
+  onReact,
+  meId,
+}: {
+  msg: Msg;
+  author: string;
+  avatarUrl?: string;
+  isMine: boolean;
+  editing: boolean;
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onStartEdit: () => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onDelete: () => void;
+  onReact: (emoji: string) => void;
+  meId: string;
+}) {
+  return (
+    <div className="group flex gap-3">
+      <div className="pt-0.5">
+        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted/20 text-[11px] font-semibold text-foreground">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={author} className="h-full w-full object-cover" />
+          ) : (
+            author.slice(0, 2).toUpperCase()
+          )}
+        </div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 text-[12px] text-muted">
+          <span className="font-semibold text-foreground">{author}</span>
+          <span>{new Date(msg.ts).toLocaleString()}</span>
+        </div>
+        {editing ? (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={draft}
+              onChange={(event) => onDraftChange(event.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-brand/60"
+            />
+            <div className="flex items-center gap-2 text-xs">
+              <button className="rounded-md border border-border px-2 py-1 hover:bg-subtle/60" onClick={onSaveEdit}>
+                저장
+              </button>
+              <button className="rounded-md border border-border px-2 py-1 hover:bg-subtle/60" onClick={onCancelEdit}>
+                취소
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-1 text-[14px] text-foreground">
+            <MarkdownText text={msg.text || ""} />
+          </div>
+        )}
+        <ReactionPills msg={msg} meId={meId} onToggle={onReact} />
+        {!editing && (
+          <div className="mt-2 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+            <EmojiPicker onPick={onReact} />
+            {isMine && (
+              <button className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground" onClick={onStartEdit}>
+                Edit
+              </button>
+            )}
+            {isMine && (
+              <button className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground" onClick={onDelete}>
+                Delete
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ThreadsView() {
-  const {
-    channels,
-    users,
-    me,
-    lastReadAt,
-    channelActivity,
-    setChannel,
-    send,
-    updateMessage,
-    deleteMessage,
-    restoreMessage,
-    toggleReaction,
-    togglePin,
-    toggleSave,
-    pinnedByChannel,
-    savedByUser,
-    openThread,
-  } = useChat();
+  const { channels, users, me, lastReadAt, send, setChannel, channelActivity, updateMessage, deleteMessage, restoreMessage, toggleReaction, channelId: activeChannelId } = useChat();
+  const threadItems = useThreadItems({ channels, lastReadAt, meId: me.id, activityKey: channelActivity });
+  const [sortMode, setSortMode] = useState<"recent" | "oldest">("recent");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [searchMode, setSearchMode] = useState<"content" | "author">("content");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const { show } = useToast();
-  const listRef = useRef<HTMLDivElement>(null);
-  const [selected, setSelected] = useState<{ channelId: string; rootId: string } | null>(null);
-  const [threadMessages, setThreadMessages] = useState<Msg[]>([]);
 
-  const threadItems = useMemo<ThreadItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    const items: ThreadItem[] = [];
-    const channelList = channels.filter((c) => !(c.isDM || c.id.startsWith("dm:")));
-    channelList.forEach((channel) => {
-      const raw = localStorage.getItem(MSGS_KEY(channel.id));
-      if (!raw) return;
-      let messages: Msg[] = [];
-      try {
-        messages = JSON.parse(raw) as Msg[];
-      } catch {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncFromHash = () => {
+      const hash = window.location.hash;
+      if (!hash.startsWith("#thread-")) {
+        setSelectedId(null);
         return;
       }
-      const rootMap = new Map<string, Msg>();
-      const repliesByRoot = new Map<string, Msg[]>();
-      messages.forEach((m) => {
-        if (!m.parentId) {
-          rootMap.set(m.id, m);
-          return;
-        }
-        const list = repliesByRoot.get(m.parentId) || [];
-        list.push(m);
-        repliesByRoot.set(m.parentId, list);
-      });
-      repliesByRoot.forEach((replies, rootId) => {
-        const root = rootMap.get(rootId);
-        if (!root) return;
-        const last = [...replies].sort((a, b) => b.ts - a.ts)[0] ?? root;
-        const unreadBase = lastReadAt[channel.id] || 0;
-        const unread = replies.filter((r) => r.ts > unreadBase).length;
-        items.push({
-          channelId: channel.id,
-          channelName: channel.name?.replace(/^#\s*/, "") || channel.id,
-          rootId,
-          lastTs: last.ts,
-          unread,
-          lastPreview: summarize(last),
-          lastAuthor: last.author,
-        });
-      });
+      const id = hash.replace("#thread-", "");
+      setSelectedId(id);
+      const el = document.getElementById(`thread-${id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    const handleSelect = (event: Event) => {
+      const detail = (event as CustomEvent<{ id?: string | null }>).detail;
+      if (!detail) return;
+      if (!detail.id) {
+        setSelectedId(null);
+        return;
+      }
+      setSelectedId(detail.id);
+      const el = document.getElementById(`thread-${detail.id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    window.addEventListener("threads:select", handleSelect as EventListener);
+    return () => {
+      window.removeEventListener("hashchange", syncFromHash);
+      window.removeEventListener("threads:select", handleSelect as EventListener);
+    };
+  }, [threadItems.length]);
+
+
+  const emptyLabel = useMemo(
+    () => (threadItems.length ? "" : "참여한 스레드가 없습니다."),
+    [threadItems.length],
+  );
+
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return threadItems;
+    return threadItems.filter((item) => {
+      const rootAuthor = users[item.root.authorId]?.name || item.root.author || "";
+      if (searchMode === "author") {
+        const authorStack = [
+          rootAuthor,
+          ...item.replies.map((r) => users[r.authorId]?.name || r.author || ""),
+        ]
+          .join(" ")
+          .toLowerCase();
+        return authorStack.includes(q);
+      }
+      const contentStack = [
+        item.channelName,
+        item.root.text || "",
+        ...item.replies.map((r) => r.text || ""),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return contentStack.includes(q);
     });
-    return items.sort((a, b) => b.lastTs - a.lastTs);
-  }, [channels, lastReadAt, channelActivity]);
+  }, [query, threadItems, users, searchMode]);
 
-  const currentChannelName = useMemo(() => {
-    if (!selected) return "";
-    const channel = channels.find((c) => c.id === selected.channelId);
-    return channel?.name?.replace(/^#\s*/, "") || selected.channelId;
-  }, [channels, selected]);
+  const sortedItems = useMemo(() => {
+    const list = [...filteredItems];
+    list.sort((a, b) => (sortMode === "recent" ? b.lastTs - a.lastTs : a.lastTs - b.lastTs));
+    return list;
+  }, [filteredItems, sortMode]);
 
-  useEffect(() => {
-    if (!selected) {
-      setThreadMessages([]);
-      return;
+  const visibleItems = useMemo(() => {
+    if (!selectedId) return sortedItems;
+    const direct = threadItems.find((item) => item.rootId === selectedId);
+    if (!direct) return [];
+    return [direct];
+  }, [selectedId, sortedItems]);
+  const selectedItem = useMemo(
+    () => visibleItems.find((item) => item.rootId === selectedId),
+    [selectedId, visibleItems],
+  );
+
+  const selectThread = (rootId: string) => {
+    if (typeof window !== "undefined") {
+      window.location.hash = `thread-${rootId}`;
     }
-    const raw = localStorage.getItem(MSGS_KEY(selected.channelId));
-    if (!raw) {
-      setThreadMessages([]);
-      return;
-    }
-    try {
-      const messages = JSON.parse(raw) as Msg[];
-      const items = messages.filter((m) => m.id === selected.rootId || m.parentId === selected.rootId);
-      items.sort((a, b) => a.ts - b.ts);
-      setThreadMessages(items);
-    } catch {
-      setThreadMessages([]);
-    }
-  }, [selected, channelActivity]);
-
-  useEffect(() => {
-    if (!selected) return;
-    void setChannel(selected.channelId);
-  }, [selected, setChannel]);
-
-  const lastReadTs = selected ? lastReadAt[selected.channelId] || 0 : 0;
-  const { sections, otherSeen } = useMessageSections({
-    messages: threadMessages,
-    lastReadTs,
-    meId: me.id,
-    users,
-  });
-  const replyMetaMap = useMemo(() => {
-    const map: Record<string, { count: number; lastTs?: number; lastAuthorId?: string }> = {};
-    threadMessages.forEach((m) => {
-      if (!m.parentId) return;
-      const curr = map[m.parentId] || { count: 0 };
-      const nextCount = curr.count + 1;
-      const nextLastTs = !curr.lastTs || m.ts > curr.lastTs ? m.ts : curr.lastTs;
-      const nextLastAuthorId = !curr.lastTs || m.ts > curr.lastTs ? m.authorId : curr.lastAuthorId;
-      map[m.parentId] = { count: nextCount, lastTs: nextLastTs, lastAuthorId: nextLastAuthorId };
-    });
-    return map;
-  }, [threadMessages]);
-
-  const handleOpenThread = (channelId: string, rootId: string) => {
-    setSelected({ channelId, rootId });
-    openThread(rootId);
+    setSelectedId(rootId);
   };
 
-  return (
-    <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <aside className="rounded-2xl border border-border bg-panel/80 p-4 shadow-panel">
-        <div className="flex items-center justify-between">
-          <div className="text-xs uppercase tracking-[0.3em] text-muted">Threads</div>
-          <span className="text-[11px] text-muted">{threadItems.length} items</span>
+  const clearSelection = () => {
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    setSelectedId(null);
+  };
+
+  const ensureChannel = async (channelId: string) => {
+    if (activeChannelId === channelId) return;
+    await setChannel(channelId);
+  };
+
+  const renderThreadCard = (item: typeof visibleItems[number]) => {
+    const unreadLabel = item.unread > 99 ? "99+" : item.unread > 0 ? String(item.unread) : "";
+    const root = item.root;
+    const rootAuthor = users[root.authorId]?.name || root.author || "알 수 없음";
+    const rootAvatar = users[root.authorId]?.avatarUrl;
+    const isExpanded = expanded.has(item.rootId);
+    const previewCount = 2;
+    const visibleReplies = isExpanded ? item.replies : item.replies.slice(-previewCount);
+    const hiddenCount = Math.max(0, item.replies.length - visibleReplies.length);
+
+    return (
+      <div
+        key={`${item.channelId}:${item.rootId}`}
+        id={`thread-${item.rootId}`}
+        className="rounded-2xl border border-border bg-background/60 p-4 shadow-sm"
+        role="button"
+        tabIndex={0}
+        onClick={(event) => {
+          const target = event.target as HTMLElement;
+          if (target.closest("button,textarea,input,a")) return;
+          selectThread(item.rootId);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            selectThread(item.rootId);
+          }
+        }}
+      >
+        <ThreadHeader channelName={item.channelName} lastTs={item.lastTs} />
+        <div className="mt-3 rounded-xl border border-border/70 bg-panel/70 p-3">
+          <div className="mt-2">
+            <ThreadRow
+              msg={root}
+              author={rootAuthor}
+              avatarUrl={rootAvatar}
+              isMine={root.authorId === me.id}
+              editing={editingId === root.id}
+              draft={editingId === root.id ? draft : root.text || ""}
+              onDraftChange={setDraft}
+              onStartEdit={() => {
+                setEditingId(root.id);
+                setDraft(root.text || "");
+              }}
+              onSaveEdit={() => {
+                void (async () => {
+                  await ensureChannel(item.channelId);
+                  updateMessage(root.id, { text: draft.trim() });
+                  setEditingId(null);
+                })();
+              }}
+              onCancelEdit={() => setEditingId(null)}
+              onDelete={() => {
+                void (async () => {
+                  await ensureChannel(item.channelId);
+                  const deleted = deleteMessage(root.id);
+                  if (!deleted.deleted) return;
+                  show({
+                    title: "메시지를 삭제했습니다",
+                    description: "되돌리려면 Undo를 누르세요.",
+                    actionLabel: "Undo",
+                    onAction: () => deleted.deleted && restoreMessage(deleted.deleted),
+                  });
+                })();
+              }}
+              onReact={(emoji) => {
+                void (async () => {
+                  await ensureChannel(item.channelId);
+                  toggleReaction(root.id, emoji);
+                })();
+              }}
+              meId={me.id}
+            />
+          </div>
         </div>
-        <div className="mt-4 space-y-2">
-          {threadItems.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border/70 bg-panel/60 p-4 text-xs text-muted">
-              참여한 스레드가 없습니다.
+
+        <div className="mt-3 flex items-center justify-between text-[11px] text-muted">
+          <span>댓글 {item.replies.length}개</span>
+        </div>
+
+        <div className="mt-3 space-y-3">
+          {item.replies.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border/70 bg-panel/60 px-3 py-2 text-xs text-muted">
+              첫 번째 답글을 남겨보세요.
             </div>
           ) : (
-            threadItems.map((item) => {
-              const unreadLabel = item.unread > 99 ? "99+" : item.unread > 0 ? String(item.unread) : "";
-              const isActive = selected?.rootId === item.rootId;
+            visibleReplies.map((reply) => {
+              const replyAuthor = users[reply.authorId]?.name || reply.author || "알 수 없음";
+              const replyAvatar = users[reply.authorId]?.avatarUrl;
               return (
-                <button
-                  key={`${item.channelId}:${item.rootId}`}
-                  type="button"
-                  className={`flex w-full flex-col gap-2 rounded-xl border px-4 py-3 text-left text-xs transition ${
-                    isActive ? "border-border bg-accent text-foreground" : "border-border/60 bg-panel/70 text-muted hover:bg-accent"
-                  }`}
-                  onClick={() => handleOpenThread(item.channelId, item.rootId)}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-semibold text-foreground">#{item.channelName}</span>
-                    {unreadLabel && (
-                      <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-500">
-                        {unreadLabel}
-                      </span>
-                    )}
-                  </div>
-                  <div className="truncate text-[11px] text-muted">
-                    {item.lastPreview || "메시지 없음"}
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-muted">
-                    <span className="truncate">{item.lastAuthor ?? "알 수 없음"}</span>
-                    <span>{new Date(item.lastTs).toLocaleString()}</span>
-                  </div>
-                </button>
+                <ThreadRow
+                  key={reply.id}
+                  msg={reply}
+                  author={replyAuthor}
+                  avatarUrl={replyAvatar}
+                  isMine={reply.authorId === me.id}
+                  editing={editingId === reply.id}
+                  draft={editingId === reply.id ? draft : reply.text || ""}
+                  onDraftChange={setDraft}
+                  onStartEdit={() => {
+                    setEditingId(reply.id);
+                    setDraft(reply.text || "");
+                  }}
+                  onSaveEdit={() => {
+                    void (async () => {
+                      await ensureChannel(item.channelId);
+                      updateMessage(reply.id, { text: draft.trim() });
+                      setEditingId(null);
+                    })();
+                  }}
+                  onCancelEdit={() => setEditingId(null)}
+                  onDelete={() => {
+                    void (async () => {
+                      await ensureChannel(item.channelId);
+                      const deleted = deleteMessage(reply.id);
+                      if (!deleted.deleted) return;
+                      show({
+                        title: "메시지를 삭제했습니다",
+                        description: "되돌리려면 Undo를 누르세요.",
+                        actionLabel: "Undo",
+                        onAction: () => deleted.deleted && restoreMessage(deleted.deleted),
+                      });
+                    })();
+                  }}
+                  onReact={(emoji) => {
+                    void (async () => {
+                      await ensureChannel(item.channelId);
+                      toggleReaction(reply.id, emoji);
+                    })();
+                  }}
+                  meId={me.id}
+                />
               );
             })
           )}
         </div>
-      </aside>
-      <section className="flex min-h-0 flex-col gap-3">
-        <div className="rounded-2xl border border-border bg-panel/80 px-4 py-3 text-sm text-muted shadow-panel">
-          {selected ? `#${currentChannelName} 스레드` : "스레드를 선택하세요"}
+        {hiddenCount > 0 && !isExpanded && (
+          <button
+            type="button"
+            className="mt-2 text-xs text-muted hover:text-foreground"
+            onClick={() => {
+              setExpanded((prev) => new Set(prev).add(item.rootId));
+            }}
+          >
+            댓글 {hiddenCount}개 더 보기
+          </button>
+        )}
+        {isExpanded && item.replies.length > previewCount && (
+          <button
+            type="button"
+            className="mt-2 text-xs text-muted hover:text-foreground"
+            onClick={() => {
+              setExpanded((prev) => {
+                const next = new Set(prev);
+                next.delete(item.rootId);
+                return next;
+              });
+            }}
+          >
+            접기
+          </button>
+        )}
+
+        <div className="mt-4 rounded-xl border border-border bg-panel/70 px-3 py-2">
+          <Composer
+            onSend={async (text, files, extra) => {
+              await setChannel(item.channelId);
+              await send(text, files, { ...extra, parentId: item.rootId });
+            }}
+          />
         </div>
-        <div
-          ref={listRef}
-          className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-panel/80 p-4"
-        >
-          {selected ? (
-            sections.map((section) => (
-              <div key={section.head.id} className="space-y-2">
-                <MessageGroup
-                  items={section.items}
-                  isMine={section.head.authorId === me.id}
-                  view="cozy"
-                  meId={me.id}
-                  otherSeen={otherSeen}
-                  users={users}
-                  threadMetaMap={replyMetaMap}
-                  onEdit={(id, text) => updateMessage(id, { text })}
-                  onDelete={(id) => {
-                    const deleted = deleteMessage(id);
-                    if (!deleted.deleted) return;
-                    show({
-                      title: "메시지를 삭제했습니다",
-                      description: "되돌리려면 Undo를 누르세요.",
-                      actionLabel: "Undo",
-                      onAction: () => deleted.deleted && restoreMessage(deleted.deleted),
-                    });
-                  }}
-                  onReact={(id, emoji) => toggleReaction(id, emoji)}
-                  onReply={(rootId) => openThread(rootId)}
-                  openMenu={() => {}}
-                  onQuoteInline={() => {}}
-                  selectable={false}
-                  selectedIds={new Set()}
-                  onToggleSelect={() => {}}
-                  pinnedIds={new Set(pinnedByChannel[selected.channelId] || [])}
-                  savedIds={new Set(savedByUser[me.id] || [])}
-                  onPin={togglePin}
-                  onSave={toggleSave}
-                />
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-panel/80">
+        {!selectedId && (
+          <div className="sticky top-0 z-10 border-b border-border bg-panel/90 px-4 py-4 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.32em] text-muted">Threads</div>
+                <div className="mt-1 flex items-center gap-2 text-base font-semibold text-foreground">
+                  <span>참여한 스레드</span>
+                  <span className="rounded-full border border-border bg-subtle/60 px-2 py-0.5 text-[11px] text-muted">
+                    {filteredItems.length}개
+                  </span>
+                </div>
               </div>
-            ))
-          ) : (
-            <div className="text-sm text-muted">왼쪽에서 스레드를 선택하세요.</div>
-          )}
-        </div>
-        {selected && (
-          <div className="rounded-2xl border border-border bg-panel/80 px-4 py-2">
-            <Composer onSend={(text, files, extra) => send(text, files, { ...extra, parentId: selected.rootId })} />
+              <div className="flex items-center gap-2">
+                <div className="rounded-full border border-border bg-panel/70 p-0.5">
+                  <button
+                    type="button"
+                    className={`rounded-full px-2 py-0.5 text-[10px] ${searchMode === "content" ? "bg-foreground text-background" : "text-muted"}`}
+                    onClick={() => setSearchMode("content")}
+                  >
+                    내용
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded-full px-2 py-0.5 text-[10px] ${searchMode === "author" ? "bg-foreground text-background" : "text-muted"}`}
+                    onClick={() => setSearchMode("author")}
+                  >
+                    작성자
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search
+                    size={14}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                  />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={searchMode === "author" ? "작성자 검색" : "내용 검색"}
+                    className="h-8 w-44 rounded-full border border-border bg-background/70 pl-8 pr-3 text-xs text-foreground outline-none focus:ring-1 focus:ring-brand/60"
+                  />
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-panel/70 text-muted hover:text-foreground"
+                    onClick={() => setFilterOpen((prev) => !prev)}
+                    aria-label="정렬 필터"
+                    aria-expanded={filterOpen}
+                    aria-haspopup="menu"
+                  >
+                    <Filter size={14} />
+                  </button>
+                  {filterOpen && (
+                    <div className="absolute right-0 top-9 z-20 w-36 rounded-lg border border-border bg-panel/95 p-1 shadow-panel">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-muted hover:bg-subtle/70 hover:text-foreground"
+                        onClick={() => {
+                          setSortMode("recent");
+                          setFilterOpen(false);
+                        }}
+                      >
+                        <span>최신순</span>
+                        {sortMode === "recent" && <Check size={12} className="text-foreground" />}
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-muted hover:bg-subtle/70 hover:text-foreground"
+                        onClick={() => {
+                          setSortMode("oldest");
+                          setFilterOpen(false);
+                        }}
+                      >
+                        <span>오래된순</span>
+                        {sortMode === "oldest" && <Check size={12} className="text-foreground" />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
-      </section>
+
+        <div className="space-y-4 p-4">
+          {visibleItems.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border/70 bg-panel/60 p-4 text-xs text-muted">
+              {selectedId
+                ? "해당 스레드를 찾을 수 없습니다."
+                : query
+                  ? "검색 결과가 없습니다."
+                  : emptyLabel}
+            </div>
+          )}
+
+          {visibleItems.map((item) => renderThreadCard(item))}
+        </div>
+      </div>
     </div>
   );
 }

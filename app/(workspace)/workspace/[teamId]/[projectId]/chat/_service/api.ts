@@ -87,6 +87,19 @@ export async function getChannelPreferences(projectId: string): Promise<{ pinned
   return res.data ?? { pinnedChannelIds: [], archivedChannelIds: [] };
 }
 
+export async function getMessageAnalytics(params: {
+  projectId: string;
+  granularity: "hourly" | "daily" | "monthly";
+  date?: string;
+  month?: string;
+  year?: string;
+}) {
+  const res = await api.get<{ counts: number[]; granularity: string }>("/chat/analytics/messages", {
+    params,
+  });
+  return res.data;
+}
+
 export async function saveChannelPreferences(
   projectId: string,
   payload: { pinnedChannelIds: string[]; archivedChannelIds: string[] },

@@ -71,7 +71,7 @@ export function CalendarManageModal({
             <label className="text-[11px] uppercase tracking-[0.08em] text-muted">색상</label>
             <div className="flex flex-wrap gap-2">
               {["#3b82f6","#22c55e","#ef4444","#f59e0b","#a855f7","#06b6d4","#ec4899","#64748b"].map((c) => {
-                const selected = c.toLowerCase() === color.toLowerCase();
+                const selected = c.toLowerCase() === (color ?? "").toLowerCase();
                 return (
                   <button
                     key={c}

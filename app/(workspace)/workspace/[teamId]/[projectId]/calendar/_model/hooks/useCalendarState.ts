@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addMonths,
   eachDayOfInterval,
@@ -14,12 +14,20 @@ import {
 } from "date-fns";
 import { ko } from "date-fns/locale";
 
-import { COLOR_PALETTE, DEFAULT_CALENDARS, DEFAULT_EVENTS } from "@/workspace/calendar/_model/mocks";
-import { persistStorage, readStorage, toDateKey } from "@/workspace/calendar/_model/utils";
+import { COLOR_PALETTE } from "@/workspace/calendar/_model/mocks";
+import { toDateKey } from "@/workspace/calendar/_model/utils";
 import type { CalendarEvent, CalendarSource, EventDraft, ViewMode } from "@/workspace/calendar/_model/types";
-
-const CAL_STORAGE_KEY = "fd.calendar.calendars";
-const EVENT_STORAGE_KEY = "fd.calendar.events";
+import { useParams } from "next/navigation";
+import {
+  createCalendarCategory,
+  createCalendarEvent,
+  deleteCalendarCategory,
+  deleteCalendarEvent,
+  getCalendarCategories,
+  getCalendarEvents,
+  updateCalendarCategory,
+  updateCalendarEvent,
+} from "@/workspace/calendar/_service/api";
 
 const createDraft = (date: string, calendarId?: string): EventDraft => ({
   title: "",
@@ -34,33 +42,69 @@ const createDraft = (date: string, calendarId?: string): EventDraft => ({
 });
 
 export function useCalendarState(initialDate: Date, initialView: ViewMode) {
+  const { projectId } = useParams<{ projectId: string }>();
+  const seededDefaultsRef = useRef(false);
+  const MAX_CALENDARS = 5;
   const [current, setCurrent] = useState<Date>(initialDate);
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
   const [view, setView] = useState<ViewMode>(initialView);
-  const [calendars, setCalendars] = useState<CalendarSource[]>(() =>
-    readStorage(CAL_STORAGE_KEY, DEFAULT_CALENDARS),
-  );
-  const [events, setEvents] = useState<CalendarEvent[]>(() =>
-    readStorage(EVENT_STORAGE_KEY, DEFAULT_EVENTS),
-  );
+  const [calendars, setCalendars] = useState<CalendarSource[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [draft, setDraft] = useState<EventDraft>(() =>
-    createDraft(toDateKey(initialDate), DEFAULT_CALENDARS[0]?.id),
+    createDraft(toDateKey(initialDate)),
   );
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [showCalendarForm, setShowCalendarForm] = useState(false);
   const [newCalendarName, setNewCalendarName] = useState("");
   const [newCalendarColor, setNewCalendarColor] = useState<string>(COLOR_PALETTE[0] ?? "#0c66e4");
+  const [calendarFormError, setCalendarFormError] = useState<string | null>(null);
+
+  const notifyCategoriesChanged = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new Event("calendar:categories:changed"));
+  };
 
   useEffect(() => {
-    persistStorage(CAL_STORAGE_KEY, calendars);
-  }, [calendars]);
-
-  useEffect(() => {
-    persistStorage(EVENT_STORAGE_KEY, events);
-  }, [events]);
+    if (!projectId) return;
+    let mounted = true;
+    const load = async () => {
+      try {
+        const [categories, eventRes] = await Promise.all([
+          getCalendarCategories(projectId),
+          getCalendarEvents({ projectId }),
+        ]);
+        if (!mounted) return;
+        setCalendars(categories);
+        setEvents(eventRes.events ?? []);
+        if (categories.length > 0 && !draft.calendarId) {
+          setDraft((prev) => createDraft(prev.startDate, categories[0].id));
+        }
+        if (categories.length === 0 && !seededDefaultsRef.current) {
+          seededDefaultsRef.current = true;
+          try {
+            const personal = await createCalendarCategory(projectId, { name: "개인 일정", color: COLOR_PALETTE[0] ?? "#3b82f6" });
+            const team = await createCalendarCategory(projectId, { name: "팀 일정", color: COLOR_PALETTE[1] ?? "#22c55e" });
+            if (!mounted) return;
+            const next = [personal, team];
+            setCalendars(next);
+            setDraft((prev) => createDraft(prev.startDate, personal.id));
+            notifyCategoriesChanged();
+          } catch {
+            return;
+          }
+        }
+      } catch {
+        return;
+      }
+    };
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, [draft.calendarId, projectId]);
 
   useEffect(() => {
     if (!calendars.some((calendar) => calendar.id === draft.calendarId)) {
@@ -124,34 +168,63 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     );
   };
 
-  const handleAddCalendar = () => {
+  const handleAddCalendar = async () => {
     const name = newCalendarName.trim();
     if (!name) {
       setShowCalendarForm(false);
       setNewCalendarName("");
-      return;
+      return null;
     }
 
-    const id = `calendar-${Date.now()}`;
+    if (!projectId) return null;
+    if (calendars.length >= MAX_CALENDARS) {
+      setCalendarFormError("캘린더는 최대 5개까지 추가할 수 있습니다.");
+      return null;
+    }
     const color =
       newCalendarColor || COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)] || "#0c66e4";
-
-    setCalendars((prev) => [...prev, { id, name, color, visible: true }]);
-    setNewCalendarName("");
-    setShowCalendarForm(false);
-    const nextIndex = (calendars.length + 1) % COLOR_PALETTE.length;
-    setNewCalendarColor(COLOR_PALETTE[nextIndex] ?? COLOR_PALETTE[0] ?? "#0c66e4");
+    try {
+      const created = await createCalendarCategory(projectId, { name, color });
+      setCalendars((prev) => [...prev, created]);
+      notifyCategoriesChanged();
+      setCalendarFormError(null);
+      setNewCalendarName("");
+      setShowCalendarForm(false);
+      const nextIndex = (calendars.length + 1) % COLOR_PALETTE.length;
+      setNewCalendarColor(COLOR_PALETTE[nextIndex] ?? COLOR_PALETTE[0] ?? "#0c66e4");
+      return created;
+    } catch {
+      return null;
+    }
   };
 
-  const handleUpdateCalendar = (id: string, patch: Partial<CalendarSource>) => {
-    setCalendars((prev) =>
-      prev.map((calendar) => (calendar.id === id ? { ...calendar, ...patch } : calendar)),
-    );
+  const handleUpdateCalendar = async (id: string, patch: Partial<CalendarSource>) => {
+    if (!projectId) return;
+    try {
+      const updated = await updateCalendarCategory(projectId, id, {
+        name: patch.name,
+        color: patch.color,
+      });
+      setCalendars((prev) =>
+        prev.map((calendar) => (calendar.id === id ? { ...calendar, ...updated, visible: calendar.visible } : calendar)),
+      );
+      notifyCategoriesChanged();
+    } catch {
+      return;
+    }
   };
 
-  const handleDeleteCalendar = (id: string) => {
-    setCalendars((prev) => prev.filter((calendar) => calendar.id !== id));
-    setEvents((prev) => prev.filter((event) => event.calendarId !== id));
+  const handleDeleteCalendar = async (id: string) => {
+    if (!projectId) return;
+    try {
+      await deleteCalendarCategory(projectId, id);
+      setCalendars((prev) => prev.filter((calendar) => calendar.id !== id));
+      setEvents((prev) => prev.filter((event) => event.calendarId !== id));
+      setCalendarFormError(null);
+      notifyCategoriesChanged();
+    } catch {
+      return;
+    }
   };
 
   const openForm = (date: Date) => {
@@ -184,7 +257,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     setSelectedDate(start);
   };
 
-  const handleSubmitEvent = () => {
+  const handleSubmitEvent = async () => {
     if (!draft.title.trim()) {
       setFormError("제목을 입력해주세요.");
       return;
@@ -231,25 +304,52 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
       description: draft.description.trim() || undefined,
     };
 
+    if (!projectId) return;
     if (editingEventId) {
-      setEvents((prev) =>
-        prev.map((event) => (event.id === editingEventId ? { ...event, ...updatedFields } : event)),
-      );
+      try {
+        const updated = await updateCalendarEvent(projectId, editingEventId, {
+          title: updatedFields.title,
+          categoryId: updatedFields.calendarId,
+          startAt: updatedFields.start,
+          endAt: updatedFields.end ?? updatedFields.start,
+          location: updatedFields.location,
+          memo: updatedFields.description,
+        });
+        setEvents((prev) =>
+          prev.map((event) => (event.id === editingEventId ? updated : event)),
+        );
+      } catch {
+        return;
+      }
     } else {
-      const newEvent: CalendarEvent = {
-        id: crypto.randomUUID?.() ?? `event-${Date.now()}`,
-        ...updatedFields,
-      };
-      setEvents((prev) => [...prev, newEvent]);
+      try {
+        const created = await createCalendarEvent(projectId, {
+          title: updatedFields.title,
+          categoryId: updatedFields.calendarId,
+          startAt: updatedFields.start,
+          endAt: updatedFields.end ?? updatedFields.start,
+          location: updatedFields.location,
+          memo: updatedFields.description,
+        });
+        setEvents((prev) => [...prev, created]);
+      } catch {
+        return;
+      }
     }
     setSelectedDate(parseISO(startIso));
     setIsFormOpen(false);
     setFormError(null);
     setEditingEventId(null);
   };
-  const handleDeleteEvent = (id: string) => {
-    setEvents((prev) => prev.filter((event) => event.id !== id));
-    setEditingEventId((currentId) => (currentId === id ? null : currentId));
+  const handleDeleteEvent = async (id: string) => {
+    if (!projectId) return;
+    try {
+      await deleteCalendarEvent(projectId, id);
+      setEvents((prev) => prev.filter((event) => event.id !== id));
+      setEditingEventId((currentId) => (currentId === id ? null : currentId));
+    } catch {
+      return;
+    }
   };
   const closeForm = () => {
     setIsFormOpen(false);
@@ -281,6 +381,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     setNewCalendarName,
     newCalendarColor,
     setNewCalendarColor,
+    calendarFormError,
     calendarMap,
     filteredEvents,
     eventsByDate,

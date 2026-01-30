@@ -16,6 +16,7 @@ import ChatCreateChannelHost from "@/components/layout/ChatCreateChannelHost";
 
 export default function WorkspaceProjectLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(360);
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
   const pathname = usePathname();
 
@@ -116,12 +117,23 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
+      if (!detail) return;
+      setSidebarWidth(detail.open ? 360 : 72);
+    };
+    window.addEventListener("sidebar:context", handler as EventListener);
+    return () => window.removeEventListener("sidebar:context", handler as EventListener);
+  }, []);
+
   return (
     <ToastProvider>
       <AppShell
         header={<Topbar workspaceMode onWorkspaceSettings={() => setShowWorkspaceSettings(true)} />}
         sidebar={<Sidebar />}
-        sidebarWidth={360}
+        sidebarWidth={sidebarWidth}
       >
         {children}
       </AppShell>

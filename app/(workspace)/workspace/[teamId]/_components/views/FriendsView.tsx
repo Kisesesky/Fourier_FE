@@ -9,7 +9,7 @@ import { getChatSocket } from "@/lib/socket";
 import {
   acceptFriendRequest,
   blockFriend,
-  fetchOnlineUsers,
+  fetchPresence,
   fetchFriendRequests,
   fetchFriends,
   fetchSentFriendRequests,
@@ -114,7 +114,8 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
     let active = true;
     const loadPresence = async () => {
       try {
-        const ids = await fetchOnlineUsers();
+        const presence = await fetchPresence();
+        const ids = presence?.onlineUserIds ?? [];
         if (active) setOnlineUserIds(ids);
       } catch (err) {
         console.error("Failed to load presence", err);

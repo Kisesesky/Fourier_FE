@@ -36,6 +36,8 @@ type HuddleState = {
   members?: string[];
 };
 
+const DEFAULT_HUDDLE_MEMBER_IDS: string[] = [];
+
 type State = {
   me: ChatUser;
   users: Record<string, ChatUser>;

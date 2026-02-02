@@ -14,6 +14,7 @@ export const DEFAULT_EVENTS: CalendarEvent[] = [
   {
     id: "event-1",
     calendarId: "personal",
+    categoryId: "personal",
     title: "가족 모임",
     start: "2025-10-02T00:00:00",
     end: "2025-10-02T23:59:00",
@@ -24,6 +25,7 @@ export const DEFAULT_EVENTS: CalendarEvent[] = [
   {
     id: "event-2",
     calendarId: "team",
+    categoryId: "team",
     title: "Sprint Review",
     start: "2025-10-05T14:00:00",
     end: "2025-10-05T15:00:00",
@@ -34,6 +36,7 @@ export const DEFAULT_EVENTS: CalendarEvent[] = [
   {
     id: "event-3",
     calendarId: "focus",
+    categoryId: "focus",
     title: "Deep Work · UI Polish",
     start: "2025-10-12T09:00:00",
     end: "2025-10-12T12:00:00",

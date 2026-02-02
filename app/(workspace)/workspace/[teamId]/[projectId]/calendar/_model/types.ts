@@ -5,11 +5,32 @@ export type CalendarSource = {
   name: string;
   color: string;
   visible: boolean;
+  calendarId?: string;
+  isDefault?: boolean;
+};
+
+export type ProjectCalendar = {
+  id: string;
+  name: string;
+  type: "TEAM" | "PERSONAL" | "PRIVATE";
+  color: string;
+  ownerId?: string | null;
+  folderId?: string | null;
+};
+
+export type CalendarFolder = {
+  id: string;
+  name: string;
+  createdById?: string | null;
+  isActive?: boolean;
 };
 
 export type CalendarEvent = {
   id: string;
   calendarId: string;
+  categoryId: string;
+  categoryName?: string;
+  categoryColor?: string;
   title: string;
   start: string;
   end?: string;
@@ -21,6 +42,7 @@ export type CalendarEvent = {
 export type EventDraft = {
   title: string;
   calendarId: string;
+  categoryId: string;
   startDate: string;
   endDate: string;
   allDay: boolean;

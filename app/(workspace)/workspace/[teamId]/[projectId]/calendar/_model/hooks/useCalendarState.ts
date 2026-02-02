@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   addMonths,
   eachDayOfInterval,
@@ -16,22 +16,29 @@ import { ko } from "date-fns/locale";
 
 import { COLOR_PALETTE } from "@/workspace/calendar/_model/mocks";
 import { toDateKey } from "@/workspace/calendar/_model/utils";
-import type { CalendarEvent, CalendarSource, EventDraft, ViewMode } from "@/workspace/calendar/_model/types";
+import type { CalendarEvent, CalendarSource, EventDraft, ViewMode, ProjectCalendar } from "@/workspace/calendar/_model/types";
 import { useParams } from "next/navigation";
 import {
+  createProjectCalendar,
   createCalendarCategory,
   createCalendarEvent,
+  deleteProjectCalendar,
   deleteCalendarCategory,
   deleteCalendarEvent,
+  getCalendarFolders,
   getCalendarCategories,
+  getProjectCalendarCategories,
   getCalendarEvents,
+  getProjectCalendars,
+  updateProjectCalendar,
   updateCalendarCategory,
   updateCalendarEvent,
 } from "@/workspace/calendar/_service/api";
 
-const createDraft = (date: string, calendarId?: string): EventDraft => ({
+const createDraft = (date: string, calendarId?: string, categoryId?: string): EventDraft => ({
   title: "",
   calendarId: calendarId ?? "",
+  categoryId: categoryId ?? "",
   startDate: date,
   endDate: date,
   allDay: true,
@@ -41,14 +48,15 @@ const createDraft = (date: string, calendarId?: string): EventDraft => ({
   description: "",
 });
 
-export function useCalendarState(initialDate: Date, initialView: ViewMode) {
+export function useCalendarState(initialDate: Date, initialView: ViewMode, focusCalendarId?: string) {
   const { projectId } = useParams<{ projectId: string }>();
-  const seededDefaultsRef = useRef(false);
-  const MAX_CALENDARS = 5;
   const [current, setCurrent] = useState<Date>(initialDate);
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
   const [view, setView] = useState<ViewMode>(initialView);
   const [calendars, setCalendars] = useState<CalendarSource[]>([]);
+  const [projectCalendars, setProjectCalendars] = useState<ProjectCalendar[]>([]);
+  const [calendarFolders, setCalendarFolders] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string>(focusCalendarId ?? "");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -59,7 +67,10 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [showCalendarForm, setShowCalendarForm] = useState(false);
   const [newCalendarName, setNewCalendarName] = useState("");
+  const [newCalendarType, setNewCalendarType] = useState<"TEAM" | "PERSONAL" | "PRIVATE">("TEAM");
   const [newCalendarColor, setNewCalendarColor] = useState<string>(COLOR_PALETTE[0] ?? "#0c66e4");
+  const [newCalendarMemberIds, setNewCalendarMemberIds] = useState<string[]>([]);
+  const [newCalendarFolderId, setNewCalendarFolderId] = useState<string>("");
   const [calendarFormError, setCalendarFormError] = useState<string | null>(null);
 
   const notifyCategoriesChanged = () => {
@@ -72,30 +83,23 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     let mounted = true;
     const load = async () => {
       try {
-        const [categories, eventRes] = await Promise.all([
-          getCalendarCategories(projectId),
-          getCalendarEvents({ projectId }),
+        const [calendarsRes, folderRes] = await Promise.all([
+          getProjectCalendars(projectId),
+          getCalendarFolders(projectId),
         ]);
         if (!mounted) return;
-        setCalendars(categories);
-        setEvents(eventRes.events ?? []);
-        if (categories.length > 0 && !draft.calendarId) {
-          setDraft((prev) => createDraft(prev.startDate, categories[0].id));
+        setProjectCalendars(calendarsRes ?? []);
+        setCalendarFolders(folderRes ?? []);
+        const fallbackCalendarId = focusCalendarId ?? selectedCalendarId ?? calendarsRes?.[0]?.id ?? "";
+        if (!fallbackCalendarId) {
+          setCalendars([]);
+          setEvents([]);
+          return;
         }
-        if (categories.length === 0 && !seededDefaultsRef.current) {
-          seededDefaultsRef.current = true;
-          try {
-            const personal = await createCalendarCategory(projectId, { name: "개인 일정", color: COLOR_PALETTE[0] ?? "#3b82f6" });
-            const team = await createCalendarCategory(projectId, { name: "팀 일정", color: COLOR_PALETTE[1] ?? "#22c55e" });
-            if (!mounted) return;
-            const next = [personal, team];
-            setCalendars(next);
-            setDraft((prev) => createDraft(prev.startDate, personal.id));
-            notifyCategoriesChanged();
-          } catch {
-            return;
-          }
+        if (fallbackCalendarId !== selectedCalendarId) {
+          setSelectedCalendarId(fallbackCalendarId);
         }
+        if (!mounted) return;
       } catch {
         return;
       }
@@ -104,13 +108,90 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     return () => {
       mounted = false;
     };
-  }, [draft.calendarId, projectId]);
+  }, [focusCalendarId, projectId, selectedCalendarId]);
 
   useEffect(() => {
-    if (!calendars.some((calendar) => calendar.id === draft.calendarId)) {
-      setDraft((prev) => createDraft(prev.startDate, calendars[0]?.id));
+    if (!projectId) return;
+    let mounted = true;
+    const loadEvents = async () => {
+      try {
+        const res = await getCalendarEvents({
+          projectId,
+          calendarId: focusCalendarId ? selectedCalendarId || focusCalendarId : null,
+        });
+        if (!mounted) return;
+        setEvents(res.events ?? []);
+      } catch {
+        if (!mounted) return;
+        setEvents([]);
+      }
+    };
+    void loadEvents();
+    return () => {
+      mounted = false;
+    };
+  }, [projectId, focusCalendarId, selectedCalendarId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    let mounted = true;
+    const loadCategories = async () => {
+      try {
+        let categoriesRes: CalendarSource[] = [];
+        if (focusCalendarId) {
+          categoriesRes = await getCalendarCategories(projectId, selectedCalendarId || focusCalendarId);
+        } else {
+          try {
+            categoriesRes = await getProjectCalendarCategories(projectId);
+          } catch {
+            categoriesRes = [];
+          }
+          if (categoriesRes.length === 0) {
+            const nonPersonalIds = (projectCalendars ?? [])
+              .filter((calendar) => calendar.type !== "PERSONAL")
+              .map((calendar) => calendar.id);
+            const fallbackResults = await Promise.allSettled(
+              nonPersonalIds.map((id) => getCalendarCategories(projectId, id)),
+            );
+            categoriesRes = fallbackResults
+              .filter((res) => res.status === "fulfilled")
+              .flatMap((res) => res.value);
+          }
+        }
+        if (!mounted) return;
+        const prevVisibility = new Map(calendars.map((cat) => [cat.id, cat.visible]));
+        const mergedCategories = (categoriesRes ?? [])
+          .map((cat) => ({
+            ...cat,
+            visible: prevVisibility.get(cat.id) ?? cat.visible,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+        setCalendars(mergedCategories);
+        if (mergedCategories.length > 0 && !draft.categoryId) {
+          setDraft((prev) => createDraft(prev.startDate, selectedCalendarId || focusCalendarId || "", mergedCategories[0].id));
+        }
+      } catch {
+        if (!mounted) return;
+        setCalendars([]);
+      }
+    };
+    void loadCategories();
+    return () => {
+      mounted = false;
+    };
+  }, [projectId, focusCalendarId, projectCalendars, selectedCalendarId]);
+
+  useEffect(() => {
+    if (!calendars.some((calendar) => calendar.id === draft.categoryId)) {
+      setDraft((prev) => createDraft(prev.startDate, selectedCalendarId, calendars[0]?.id));
     }
-  }, [calendars, draft.calendarId]);
+  }, [calendars, draft.categoryId, selectedCalendarId]);
+
+  useEffect(() => {
+    if (!selectedCalendarId) return;
+    if (draft.calendarId === selectedCalendarId) return;
+    setDraft((prev) => ({ ...prev, calendarId: selectedCalendarId }));
+  }, [draft.calendarId, selectedCalendarId]);
 
   const calendarMap = useMemo(() => {
     const map = new Map<string, CalendarSource>();
@@ -121,7 +202,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
   const filteredEvents = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return events
-      .filter((event) => calendarMap.get(event.calendarId)?.visible)
+      .filter((event) => calendarMap.get(event.categoryId)?.visible)
       .filter((event) => {
         if (!keyword) return true;
         const haystack = `${event.title} ${event.location ?? ""} ${event.description ?? ""}`.toLowerCase();
@@ -177,18 +258,22 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     }
 
     if (!projectId) return null;
-    if (calendars.length >= MAX_CALENDARS) {
-      setCalendarFormError("캘린더는 최대 5개까지 추가할 수 있습니다.");
-      return null;
-    }
     const color =
       newCalendarColor || COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)] || "#0c66e4";
     try {
-      const created = await createCalendarCategory(projectId, { name, color });
-      setCalendars((prev) => [...prev, created]);
+      const created = await createProjectCalendar(projectId, {
+        name,
+        type: newCalendarType,
+        color,
+        memberIds: newCalendarType === "PRIVATE" ? newCalendarMemberIds : undefined,
+        folderId: newCalendarFolderId || undefined,
+      });
+      setProjectCalendars((prev) => [...prev, created]);
       notifyCategoriesChanged();
       setCalendarFormError(null);
       setNewCalendarName("");
+      setNewCalendarMemberIds([]);
+      setNewCalendarFolderId("");
       setShowCalendarForm(false);
       const nextIndex = (calendars.length + 1) % COLOR_PALETTE.length;
       setNewCalendarColor(COLOR_PALETTE[nextIndex] ?? COLOR_PALETTE[0] ?? "#0c66e4");
@@ -198,15 +283,17 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     }
   };
 
-  const handleUpdateCalendar = async (id: string, patch: Partial<CalendarSource>) => {
+  const handleUpdateCalendar = async (id: string, patch: Partial<ProjectCalendar> & { memberIds?: string[] }) => {
     if (!projectId) return;
     try {
-      const updated = await updateCalendarCategory(projectId, id, {
+      const updated = await updateProjectCalendar(projectId, id, {
         name: patch.name,
         color: patch.color,
+        type: patch.type,
+        memberIds: patch.memberIds,
       });
-      setCalendars((prev) =>
-        prev.map((calendar) => (calendar.id === id ? { ...calendar, ...updated, visible: calendar.visible } : calendar)),
+      setProjectCalendars((prev) =>
+        prev.map((calendar) => (calendar.id === id ? { ...calendar, ...updated } : calendar)),
       );
       notifyCategoriesChanged();
     } catch {
@@ -217,10 +304,52 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
   const handleDeleteCalendar = async (id: string) => {
     if (!projectId) return;
     try {
-      await deleteCalendarCategory(projectId, id);
-      setCalendars((prev) => prev.filter((calendar) => calendar.id !== id));
+      await deleteProjectCalendar(projectId, id);
+      setProjectCalendars((prev) => prev.filter((calendar) => calendar.id !== id));
       setEvents((prev) => prev.filter((event) => event.calendarId !== id));
       setCalendarFormError(null);
+      notifyCategoriesChanged();
+    } catch {
+      return;
+    }
+  };
+
+  const handleAddCategory = async (payload: { name: string; color?: string }) => {
+    if (!projectId || !selectedCalendarId) return;
+    try {
+      const created = await createCalendarCategory(projectId, selectedCalendarId, payload);
+      setCalendars((prev) => [...prev, created]);
+      if (!draft.categoryId) {
+        setDraft((curr) => ({ ...curr, categoryId: created.id }));
+      }
+      notifyCategoriesChanged();
+    } catch {
+      return;
+    }
+  };
+
+  const handleUpdateCategory = async (id: string, patch: { name?: string; color?: string }) => {
+    if (!projectId || !selectedCalendarId) return;
+    try {
+      const updated = await updateCalendarCategory(projectId, selectedCalendarId, id, patch);
+      setCalendars((prev) => prev.map((cat) => (cat.id === id ? { ...cat, ...updated } : cat)));
+      notifyCategoriesChanged();
+    } catch {
+      return;
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!projectId || !selectedCalendarId) return;
+    try {
+      await deleteCalendarCategory(projectId, selectedCalendarId, id);
+      setCalendars((prev) => {
+        const next = prev.filter((cat) => cat.id !== id);
+        if (draft.categoryId === id) {
+          setDraft((curr) => ({ ...curr, categoryId: next[0]?.id ?? "" }));
+        }
+        return next;
+      });
       notifyCategoriesChanged();
     } catch {
       return;
@@ -230,7 +359,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
   const openForm = (date: Date) => {
     const dateKey = toDateKey(date);
     const fallback = calendars.find((calendar) => calendar.visible)?.id ?? calendars[0]?.id ?? "";
-    setDraft(createDraft(dateKey, fallback));
+    setDraft(createDraft(dateKey, selectedCalendarId, fallback));
     setFormError(null);
     setEditingEventId(null);
     setIsFormOpen(true);
@@ -243,6 +372,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     setDraft({
       title: event.title,
       calendarId: event.calendarId,
+      categoryId: event.categoryId,
       startDate: toDateKey(start),
       endDate: toDateKey(end),
       allDay: event.allDay,
@@ -264,6 +394,10 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     }
     if (!draft.calendarId) {
       setFormError("캘린더를 선택해주세요.");
+      return;
+    }
+    if (!draft.categoryId) {
+      setFormError("카테고리를 선택해주세요.");
       return;
     }
 
@@ -296,6 +430,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
 
     const updatedFields = {
       calendarId: draft.calendarId,
+      categoryId: draft.categoryId,
       title: draft.title.trim(),
       start: startIso,
       end: endIso,
@@ -309,7 +444,8 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
       try {
         const updated = await updateCalendarEvent(projectId, editingEventId, {
           title: updatedFields.title,
-          categoryId: updatedFields.calendarId,
+          calendarId: updatedFields.calendarId,
+          categoryId: updatedFields.categoryId,
           startAt: updatedFields.start,
           endAt: updatedFields.end ?? updatedFields.start,
           location: updatedFields.location,
@@ -323,14 +459,15 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
       }
     } else {
       try {
-        const created = await createCalendarEvent(projectId, {
-          title: updatedFields.title,
-          categoryId: updatedFields.calendarId,
-          startAt: updatedFields.start,
-          endAt: updatedFields.end ?? updatedFields.start,
-          location: updatedFields.location,
-          memo: updatedFields.description,
-        });
+      const created = await createCalendarEvent(projectId, {
+        title: updatedFields.title,
+        calendarId: updatedFields.calendarId,
+        categoryId: updatedFields.categoryId,
+        startAt: updatedFields.start,
+        endAt: updatedFields.end ?? updatedFields.start,
+        location: updatedFields.location,
+        memo: updatedFields.description,
+      });
         setEvents((prev) => [...prev, created]);
       } catch {
         return;
@@ -365,6 +502,10 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     setView,
     calendars,
     setCalendars,
+    projectCalendars,
+    calendarFolders,
+    selectedCalendarId,
+    setSelectedCalendarId,
     events,
     setEvents,
     searchTerm,
@@ -379,8 +520,14 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     setShowCalendarForm,
     newCalendarName,
     setNewCalendarName,
+    newCalendarType,
+    setNewCalendarType,
     newCalendarColor,
     setNewCalendarColor,
+    newCalendarMemberIds,
+    setNewCalendarMemberIds,
+    newCalendarFolderId,
+    setNewCalendarFolderId,
     calendarFormError,
     calendarMap,
     filteredEvents,
@@ -394,6 +541,9 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode) {
     handleAddCalendar,
     handleUpdateCalendar,
     handleDeleteCalendar,
+    handleAddCategory,
+    handleUpdateCategory,
+    handleDeleteCategory,
     openForm,
     openEditForm,
     handleSubmitEvent,

@@ -193,10 +193,10 @@ export function CalendarDetailsPanel({
               </div>
 
               <div className="space-y-1.5">
-                <label className={labelClass}>캘린더</label>
+                <label className={labelClass}>카테고리</label>
                 <select
-                  value={draft.calendarId}
-                  onChange={handleChange("calendarId")}
+                  value={draft.categoryId}
+                  onChange={handleChange("categoryId")}
                   className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
                 >
                   {calendars.map((calendar) => (
@@ -316,7 +316,7 @@ export function CalendarDetailsPanel({
               </div>
             ) : (
               events.map((event) => {
-                const source = calendarMap.get(event.calendarId);
+                const source = calendarMap.get(event.categoryId);
                 const isEditingEvent = editingEventId === event.id;
 
                 return (

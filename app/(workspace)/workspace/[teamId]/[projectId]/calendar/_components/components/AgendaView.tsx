@@ -89,8 +89,8 @@ export function AgendaView({
                     <UpcomingEventCard
                       key={event.id}
                       event={event}
-                      calendarName={calendarMap.get(event.calendarId)?.name}
-                      color={calendarMap.get(event.calendarId)?.color}
+                      calendarName={calendarMap.get(event.categoryId)?.name}
+                      color={calendarMap.get(event.categoryId)?.color}
                       onEdit={onRequestEdit}
                       onDelete={onDeleteEvent}
                     />

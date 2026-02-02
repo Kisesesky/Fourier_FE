@@ -27,21 +27,21 @@ export default function DeleteConfirmModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-black/40 flex items-center justify-center">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-[340px]">
-        <h3 className="font-semibold text-lg mb-2">{title}</h3>
-        <p className="text-sm text-gray-600 mb-5">{description}</p>
+    <div className="fixed inset-0 z-[1000] bg-black/60 flex items-center justify-center">
+      <div className="w-[340px] rounded-xl border border-border bg-panel p-6 text-foreground shadow-xl">
+        <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+        <p className="mb-5 text-sm text-muted">{description}</p>
 
         <div className="flex justify-end gap-2">
           <button
-            className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+            className="h-9 min-w-[88px] rounded-lg bg-rose-500 px-4 text-sm font-semibold text-white transition hover:bg-rose-600"
             onClick={onConfirm}
           >
             예
           </button>
 
           <button
-            className="px-4 py-2 rounded-lg border hover:bg-gray-100"
+            className="h-9 min-w-[88px] rounded-lg border border-border bg-transparent px-4 text-sm font-semibold text-muted transition hover:bg-sidebar-accent hover:text-foreground"
             onClick={onCancel}
           >
             아니오

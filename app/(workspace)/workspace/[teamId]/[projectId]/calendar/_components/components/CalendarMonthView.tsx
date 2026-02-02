@@ -245,7 +245,7 @@ export function CalendarMonthView({
                     >
                       <DayEventPill
                         event={entry.event}
-                        color={calendarMap.get(entry.event.calendarId)?.color}
+                        color={calendarMap.get(entry.event.categoryId)?.color}
                         variant={entry.variant}
                         showLabel={showLabel}
                         tooltip={entry.hint}

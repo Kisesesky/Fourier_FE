@@ -5,10 +5,18 @@ import { useEffect } from "react";
 type CalendarCreateModalProps = {
   open: boolean;
   name: string;
+  type: "TEAM" | "PERSONAL" | "PRIVATE";
   color: string;
+  folderOptions: Array<{ id: string; name: string }>;
+  folderId: string;
+  memberOptions: Array<{ id: string; name: string; avatarUrl?: string | null }>;
+  memberIds: string[];
   error?: string | null;
   onChangeName: (value: string) => void;
+  onChangeType: (value: "TEAM" | "PERSONAL" | "PRIVATE") => void;
   onChangeColor: (value: string) => void;
+  onChangeFolder: (value: string) => void;
+  onToggleMember: (id: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
 };
@@ -16,10 +24,18 @@ type CalendarCreateModalProps = {
 export function CalendarCreateModal({
   open,
   name,
+  type,
   color,
+  folderOptions,
+  folderId,
+  memberOptions,
+  memberIds,
   error,
   onChangeName,
+  onChangeType,
   onChangeColor,
+  onChangeFolder,
+  onToggleMember,
   onSubmit,
   onCancel,
 }: CalendarCreateModalProps) {
@@ -39,12 +55,73 @@ export function CalendarCreateModal({
       <div className="w-[min(420px,90vw)] rounded-xl border border-border bg-panel p-5 shadow-xl">
         <header className="mb-4">
           <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-            일정 추가
+            캘린더 추가
           </div>
-          <h2 className="text-lg font-semibold text-foreground">팀 또는 개인 캘린더 추가</h2>
+          <h2 className="text-lg font-semibold text-foreground">팀 또는 멤버 캘린더 추가</h2>
         </header>
 
         <div className="space-y-4">
+          {/* 유형 */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] uppercase tracking-[0.08em] text-muted">유형</label>
+            <select
+              value={type}
+              onChange={(e) => onChangeType(e.target.value as "TEAM" | "PERSONAL" | "PRIVATE")}
+              className="w-full rounded-md border border-border bg-panel/80 px-3 py-2 text-sm shadow-inner outline-none ring-0 transition focus:border-brand/50 focus:ring-2 focus:ring-brand/30"
+            >
+              <option value="TEAM">팀 캘린더</option>
+              <option value="PRIVATE">특정 멤버</option>
+            </select>
+            <p className="text-[11px] text-muted">
+              팀 캘린더는 매니저 이상만 생성할 수 있어요.
+            </p>
+          </div>
+
+          {type !== "PERSONAL" && (
+            <div className="space-y-1.5">
+              <label className="text-[11px] uppercase tracking-[0.08em] text-muted">폴더 위치</label>
+              <select
+                value={folderId}
+                onChange={(e) => onChangeFolder(e.target.value)}
+                className="w-full rounded-md border border-border bg-panel/80 px-3 py-2 text-sm shadow-inner outline-none ring-0 transition focus:border-brand/50 focus:ring-2 focus:ring-brand/30"
+              >
+                <option value="">분류 없음</option>
+                {folderOptions.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {type === "PRIVATE" && (
+            <div className="space-y-2">
+              <label className="text-[11px] uppercase tracking-[0.08em] text-muted">멤버 선택</label>
+              <div className="max-h-40 space-y-2 overflow-auto rounded-md border border-border bg-panel/60 p-3 text-xs">
+                {memberOptions.length === 0 && (
+                  <p className="text-muted">불러올 멤버가 없습니다.</p>
+                )}
+                {memberOptions.map((member) => {
+                  const checked = memberIds.includes(member.id);
+                  return (
+                    <label key={member.id} className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => onToggleMember(member.id)}
+                        className="size-4 accent-brand"
+                      />
+                      <span className="truncate text-foreground">{member.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted">
+                선택한 멤버만 이 캘린더를 볼 수 있습니다.
+              </p>
+            </div>
+          )}
           {/* 이름 */}
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-[0.08em] text-muted">이름</label>

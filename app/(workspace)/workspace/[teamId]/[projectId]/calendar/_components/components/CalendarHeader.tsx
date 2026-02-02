@@ -2,76 +2,60 @@
 
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { CalendarPlus, ChevronLeft, ChevronRight, Plus, Search, Settings } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Plus, Search, Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { CalendarSource, ViewMode } from "@/workspace/calendar/_model/types";
+import type { ViewMode, ProjectCalendar } from "@/workspace/calendar/_model/types";
 
 type CalendarHeaderProps = {
   current: Date;
   view: ViewMode;
   searchTerm: string;
-  calendars: CalendarSource[];
-  calendarMap: Map<string, CalendarSource>;
-  focusedCalendar?: CalendarSource | null;
+  categories: Array<{ key: string; name: string; color: string; visible: boolean }>;
+  focusedCalendar?: ProjectCalendar | null;
   hideCalendarList?: boolean;
-  onNavigateCalendar?: (id: string) => void;
   onSearch: (value: string) => void;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
   onChangeView: (mode: ViewMode) => void;
   onOpenCreate: () => void;
-  onToggleCalendar: (id: string) => void;
-  onRequestNewCalendar: () => void;
-  onRequestManageCalendar: (calendar: CalendarSource) => void;
+  onToggleCategoryGroup: (key: string) => void;
+  onAddCategory?: () => void;
+  onRequestManageCalendar: (calendar: { id: string; name: string; color: string }) => void;
 };
 
 export function CalendarHeader({
   current,
   view,
   searchTerm,
-  calendars,
-  calendarMap,
+  categories,
   focusedCalendar,
   hideCalendarList,
-  onNavigateCalendar,
   onSearch,
   onPrev,
   onNext,
   onToday,
   onChangeView,
   onOpenCreate,
-  onToggleCalendar,
-  onRequestNewCalendar,
+  onToggleCategoryGroup,
+  onAddCategory,
   onRequestManageCalendar,
 }: CalendarHeaderProps) {
   return (
-    <header className="flex flex-col gap-3 border-border bg-panel/80 px-4 py-3 backdrop-blur-md">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <header className="flex flex-col gap-3 border-b border-border/70 bg-panel/80 px-5 py-4 backdrop-blur-md">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-1 rounded-md border border-border bg-background p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={onPrev}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <div className="px-3 text-base font-semibold text-foreground">
-              {format(current, "yyyy.MM", { locale: ko })}
+          <CalendarDays size={18} className="text-brand" />
+          <div className="flex items-baseline gap-2">
+            <div className="text-xl font-semibold text-foreground">캘린더</div>
+            <div className="text-sm text-muted">
+              {focusedCalendar?.name ?? "전체 캘린더"}
             </div>
-            <button
-              type="button"
-              onClick={onNext}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
-            >
-              <ChevronRight size={16} />
-            </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-sm text-muted focus-within:ring-2 focus-within:ring-brand/40">
             <Search size={14} />
             <input
@@ -81,23 +65,6 @@ export function CalendarHeader({
               className="w-44 bg-transparent text-sm text-foreground focus:outline-none md:w-56"
             />
           </div>
-          {onNavigateCalendar && calendars.length > 0 && (
-            <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-sm text-muted">
-              <span className="text-xs">다른 캘린더로 이동</span>
-              <select
-                value={focusedCalendar?.id ?? "all"}
-                onChange={(event) => onNavigateCalendar(event.target.value)}
-                className="bg-transparent text-sm text-foreground focus:outline-none"
-              >
-                <option value="all">전체 캘린더</option>
-                {calendars.map((calendar) => (
-                  <option key={calendar.id} value={calendar.id}>
-                    {calendar.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
           <button
             type="button"
             onClick={onToday}
@@ -105,25 +72,6 @@ export function CalendarHeader({
           >
             오늘
           </button>
-          <div className="inline-flex items-center gap-1 rounded-md border border-border bg-background/80 p-1 text-xs font-medium shadow-sm">
-            {[
-              { value: "agenda", label: "Agenda" },
-              { value: "month", label: "Month" },
-              { value: "timeline", label: "Timeline" },
-            ].map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => onChangeView(value as ViewMode)}
-                className={cn(
-                  "rounded-md px-3 py-1 transition",
-                  view === value ? "bg-brand text-white shadow-sm" : "text-muted hover:bg-subtle/60",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           <button
             type="button"
             onClick={onOpenCreate}
@@ -135,74 +83,83 @@ export function CalendarHeader({
         </div>
       </div>
 
-      {!hideCalendarList ? (
-        <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-background/80 p-3 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            {calendars.map((calendar) => (
-              <div
-                key={calendar.id}
-                className="group inline-flex items-center gap-2 rounded-md border border-border/50 bg-background px-2 py-1.5 text-sm transition hover:border-brand/40 hover:bg-subtle/60"
-              >
-                <input
-                  id={`calendar-toggle-${calendar.id}`}
-                  type="checkbox"
-                  className="accent-brand"
-                  checked={calendar.visible}
-                  onChange={() => onToggleCalendar(calendar.id)}
-                />
-                <label
-                  htmlFor={`calendar-toggle-${calendar.id}`}
-                  className="flex cursor-pointer items-center gap-2"
-                >
-                  <span
-                    className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                    style={{ backgroundColor: calendar.color }}
-                  />
-                  <span className="truncate text-foreground/80">{calendar.name}</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => onRequestManageCalendar(calendar)}
-                  className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted opacity-0 transition group-hover:opacity-100 hover:text-foreground hover:bg-subtle/60 focus-visible:opacity-100"
-                  aria-label={`${calendar.name} 설정`}
-                >
-                  <Settings size={14} />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={onRequestNewCalendar}
-              className="inline-flex items-center gap-1 rounded-md border border-dashed border-border/70 bg-transparent px-3 py-1.5 text-xs text-muted transition hover:border-brand hover:text-brand"
-            >
-              <CalendarPlus size={14} />
-              캘린더 추가
-            </button>
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="inline-flex items-center gap-1 rounded-md border border-border bg-background p-1 shadow-sm">
+          <button
+            type="button"
+            onClick={onPrev}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <div className="px-3 text-base font-semibold text-foreground">
+            {format(current, "yyyy.MM", { locale: ko })}
           </div>
-        </section>
-      ) : (
-        <section className="flex items-center justify-between rounded-xl border border-border/60 bg-background/80 px-3 py-2 shadow-sm">
-          <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onNext}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        <div className="inline-flex items-center gap-1 rounded-md border border-border bg-background/80 p-1 text-xs font-medium shadow-sm">
+          {[
+            { value: "agenda", label: "Agenda" },
+            { value: "month", label: "Month" },
+            { value: "timeline", label: "Timeline" },
+          ].map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onChangeView(value as ViewMode)}
+              className={cn(
+                "rounded-md px-3 py-1 transition",
+                view === value ? "bg-brand text-white shadow-sm" : "text-muted hover:bg-subtle/60",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <section className="flex flex-wrap gap-2 rounded-xl border border-border/60 bg-background/80 p-3 shadow-sm">
+        {categories.map((calendar) => (
+          <label
+            key={calendar.key}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs transition",
+              calendar.visible
+                ? "border-border bg-panel/80 text-foreground"
+                : "border-border/60 bg-background text-muted hover:bg-sidebar-accent/40 hover:text-foreground",
+            )}
+          >
+            <input
+              type="checkbox"
+              className="accent-brand"
+              checked={calendar.visible}
+              onChange={() => onToggleCategoryGroup(calendar.key)}
+            />
             <span
               className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-              style={{ backgroundColor: focusedCalendar?.color ?? "#0c66e4" }}
+              style={{ backgroundColor: calendar.color }}
             />
-            <span className="text-sm font-medium text-foreground">
-              {focusedCalendar?.name ?? "캘린더"}
-            </span>
-          </div>
-          {focusedCalendar && (
-            <button
-              type="button"
-              onClick={() => onRequestManageCalendar(focusedCalendar)}
-              className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-transparent px-2 py-1 text-xs text-muted transition hover:border-border hover:text-foreground"
-            >
-              <Settings size={14} />
-              관리
-            </button>
-          )}
-        </section>
-      )}
+            <span className="truncate">{calendar.name}</span>
+          </label>
+        ))}
+        {onAddCategory && (
+          <button
+            type="button"
+            onClick={onAddCategory}
+            className="inline-flex items-center gap-1 rounded-md border border-dashed border-border/70 px-2.5 py-1 text-xs text-muted transition hover:border-brand hover:text-brand"
+          >
+            <CalendarPlus size={12} />
+            추가
+          </button>
+        )}
+      </section>
     </header>
   );
 }

@@ -1,14 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type CalendarManageModalProps = {
   open: boolean;
   name: string;
+  type: "TEAM" | "PERSONAL" | "PRIVATE";
   color: string;
+  categories: Array<{ id: string; name: string; color: string; isDefault?: boolean }>;
+  memberOptions: Array<{ id: string; name: string; avatarUrl?: string | null }>;
+  memberIds: string[];
   error?: string | null;
   onChangeName: (value: string) => void;
+  onChangeType: (value: "TEAM" | "PERSONAL" | "PRIVATE") => void;
   onChangeColor: (value: string) => void;
+  onToggleMember: (id: string) => void;
+  onAddCategory: (payload: { name: string; color?: string }) => void;
+  onUpdateCategory: (id: string, patch: { name?: string; color?: string }) => void;
+  onDeleteCategory: (id: string) => void;
   onSubmit: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -17,10 +26,19 @@ type CalendarManageModalProps = {
 export function CalendarManageModal({
   open,
   name,
+  type,
   color,
+  categories,
+  memberOptions,
+  memberIds,
   error,
   onChangeName,
+  onChangeType,
   onChangeColor,
+  onToggleMember,
+  onAddCategory,
+  onUpdateCategory,
+  onDeleteCategory,
   onSubmit,
   onDelete,
   onClose,
@@ -34,9 +52,18 @@ export function CalendarManageModal({
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   const trimmedLength = (name ?? "").trim().length;
+  const isPersonal = type === "PERSONAL";
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("#3b82f6");
+
+  useEffect(() => {
+    if (!open) return;
+    setNewCategoryName("");
+    setNewCategoryColor("#3b82f6");
+  }, [open]);
+
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -57,6 +84,7 @@ export function CalendarManageModal({
               <input
                 value={name}
                 onChange={(e) => onChangeName(e.target.value)}
+                disabled={isPersonal}
                 className="w-full rounded-md border border-border bg-panel/80 px-3 py-2 text-sm shadow-inner outline-none ring-0 transition focus:border-brand/50 focus:ring-2 focus:ring-brand/30"
                 placeholder="캘린더 이름"
               />
@@ -68,6 +96,51 @@ export function CalendarManageModal({
           </div>
 
           <div className="space-y-1.5">
+            <label className="text-[11px] uppercase tracking-[0.08em] text-muted">유형</label>
+            <select
+              value={type}
+              onChange={(e) => onChangeType(e.target.value as "TEAM" | "PERSONAL" | "PRIVATE")}
+              disabled={isPersonal}
+              className="w-full rounded-md border border-border bg-panel/80 px-3 py-2 text-sm shadow-inner outline-none ring-0 transition focus:border-brand/50 focus:ring-2 focus:ring-brand/30"
+            >
+              <option value="TEAM">팀 캘린더</option>
+              <option value="PERSONAL" disabled>개인 캘린더</option>
+              <option value="PRIVATE">특정 멤버</option>
+            </select>
+            {isPersonal ? (
+              <p className="text-[11px] text-muted">개인 캘린더는 기본 설정으로 수정/삭제할 수 없습니다.</p>
+            ) : (
+              <p className="text-[11px] text-muted">팀 캘린더는 매니저 이상만 변경할 수 있어요.</p>
+            )}
+          </div>
+
+          {type === "PRIVATE" && (
+            <div className="space-y-2">
+              <label className="text-[11px] uppercase tracking-[0.08em] text-muted">멤버</label>
+              <div className="max-h-40 space-y-2 overflow-auto rounded-md border border-border bg-panel/60 p-3 text-xs">
+                {memberOptions.length === 0 && (
+                  <p className="text-muted">불러올 멤버가 없습니다.</p>
+                )}
+                {memberOptions.map((member) => {
+                  const checked = memberIds.includes(member.id);
+                  return (
+                    <label key={member.id} className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => onToggleMember(member.id)}
+                        disabled={isPersonal}
+                        className="size-4 accent-brand"
+                      />
+                      <span className="truncate text-foreground">{member.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-[0.08em] text-muted">색상</label>
             <div className="flex flex-wrap gap-2">
               {["#3b82f6","#22c55e","#ef4444","#f59e0b","#a855f7","#06b6d4","#ec4899","#64748b"].map((c) => {
@@ -77,6 +150,7 @@ export function CalendarManageModal({
                     key={c}
                     type="button"
                     onClick={() => onChangeColor(c)}
+                    disabled={isPersonal}
                     aria-label={`색상 ${c}`}
                     className={`h-7 w-7 rounded-md border transition active:scale-[.98] ${
                       selected ? "ring-2 ring-offset-2 ring-brand ring-offset-panel" : "ring-0"
@@ -91,6 +165,7 @@ export function CalendarManageModal({
                   type="color"
                   value={color}
                   onChange={(e) => onChangeColor(e.target.value)}
+                  disabled={isPersonal}
                   className="h-6 w-10 cursor-pointer rounded border border-border"
                 />
               </label>
@@ -113,6 +188,65 @@ export function CalendarManageModal({
             </div>
           </div>
 
+          <div className="space-y-2">
+            <label className="text-[11px] uppercase tracking-[0.08em] text-muted">카테고리 관리</label>
+            <div className="space-y-2 rounded-md border border-border bg-panel/60 p-3">
+              {categories.map((category) => (
+                <div key={category.id} className="flex items-center gap-2">
+                  <input
+                    value={category.name}
+                    onChange={(e) => onUpdateCategory(category.id, { name: e.target.value })}
+                    disabled={isPersonal}
+                    className="flex-1 rounded-md border border-border bg-panel/80 px-2 py-1 text-xs"
+                  />
+                  <input
+                    type="color"
+                    value={category.color}
+                    onChange={(e) => onUpdateCategory(category.id, { color: e.target.value })}
+                    disabled={isPersonal}
+                    className="h-7 w-10 cursor-pointer rounded border border-border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onDeleteCategory(category.id)}
+                    disabled={category.isDefault || isPersonal}
+                    className={`text-xs ${category.isDefault ? "text-muted" : "text-rose-500"}`}
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  disabled={isPersonal}
+                  placeholder="새 카테고리"
+                  className="flex-1 rounded-md border border-border bg-panel/80 px-2 py-1 text-xs"
+                />
+                <input
+                  type="color"
+                  value={newCategoryColor}
+                  onChange={(e) => setNewCategoryColor(e.target.value)}
+                  disabled={isPersonal}
+                  className="h-7 w-10 cursor-pointer rounded border border-border"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newCategoryName.trim()) return;
+                    onAddCategory({ name: newCategoryName.trim(), color: newCategoryColor });
+                    setNewCategoryName("");
+                  }}
+                  disabled={isPersonal}
+                  className="rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground disabled:opacity-60 disabled:hover:text-muted"
+                >
+                  추가
+                </button>
+              </div>
+            </div>
+          </div>
+
           {error ? (
             <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
               {error}
@@ -124,7 +258,8 @@ export function CalendarManageModal({
           <button
             type="button"
             onClick={onDelete}
-            className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50"
+            disabled={isPersonal}
+            className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-60 disabled:hover:bg-transparent"
           >
             삭제
           </button>
@@ -139,7 +274,8 @@ export function CalendarManageModal({
             <button
               type="button"
               onClick={onSubmit}
-              className="rounded-md bg-brand px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand/90"
+              disabled={isPersonal}
+              className="rounded-md bg-brand px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand/90 disabled:opacity-60 disabled:hover:bg-brand"
             >
               저장
             </button>

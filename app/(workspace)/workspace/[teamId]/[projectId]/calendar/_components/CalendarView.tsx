@@ -2,12 +2,12 @@
 
 import { endOfMonth, parseISO, startOfMonth } from "date-fns";
 import { useMemo, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 import { COLOR_PALETTE } from "@/workspace/calendar/_model/mocks";
 import { toDateKey } from "@/workspace/calendar/_model/utils";
 import { useCalendarState } from "@/workspace/calendar/_model/hooks/useCalendarState";
-import type { CalendarEvent, EventDraft, ViewMode, CalendarSource } from "@/workspace/calendar/_model/types";
+import type { CalendarEvent, EventDraft, ViewMode } from "@/workspace/calendar/_model/types";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { CalendarHeader } from "./components/CalendarHeader";
 import { CalendarMonthView } from "./components/CalendarMonthView";
@@ -17,6 +17,8 @@ import { CalendarDetailsPanel } from "./components/CalendarDetailsPanel";
 import { CalendarCreateModal } from "./components/CalendarCreateModal";
 import { CalendarManageModal } from "./components/CalendarManageModal";
 import Drawer from "@/components/ui/Drawer";
+import { fetchProjectMembers } from "@/lib/projects";
+import { getCalendarMembers } from "@/workspace/calendar/_service/api";
 
 const MAX_VISIBLE_EVENTS_PER_DAY = 2;
 
@@ -36,6 +38,9 @@ export default function CalendarView({
     view,
     setView,
     calendars,
+    projectCalendars,
+    calendarFolders,
+    selectedCalendarId,
     events,
     searchTerm,
     setSearchTerm,
@@ -49,8 +54,14 @@ export default function CalendarView({
     setShowCalendarForm,
     newCalendarName,
     setNewCalendarName,
+    newCalendarType,
+    setNewCalendarType,
     newCalendarColor,
     setNewCalendarColor,
+    newCalendarMemberIds,
+    setNewCalendarMemberIds,
+    newCalendarFolderId,
+    setNewCalendarFolderId,
     calendarFormError,
     calendarMap,
     filteredEvents,
@@ -63,13 +74,18 @@ export default function CalendarView({
     handleAddCalendar,
     handleUpdateCalendar,
     handleDeleteCalendar,
+    handleAddCategory,
+    handleUpdateCategory,
+    handleDeleteCategory,
     openForm,
     openEditForm,
     handleSubmitEvent,
     handleDeleteEvent,
     closeForm,
-  } = useCalendarState(initialDate, initialView);
+    setCalendars,
+  } = useCalendarState(initialDate, initialView, focusCalendarId);
   const router = useRouter();
+  const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
   const { buildHref } = useWorkspacePath();
 
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -78,69 +94,66 @@ export default function CalendarView({
   const [manageName, setManageName] = useState("");
   const [manageColor, setManageColor] = useState("#0c66e4");
   const [manageError, setManageError] = useState<string | null>(null);
+  const [manageType, setManageType] = useState<"TEAM" | "PERSONAL" | "PRIVATE">("TEAM");
+  const [manageMemberIds, setManageMemberIds] = useState<string[]>([]);
+  const [memberOptions, setMemberOptions] = useState<Array<{ id: string; name: string; avatarUrl?: string | null }>>([]);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState<string>(COLOR_PALETTE[0] ?? "#0c66e4");
+
+  useEffect(() => {
+    if (newCalendarType !== "PRIVATE" && newCalendarMemberIds.length > 0) {
+      setNewCalendarMemberIds([]);
+    }
+  }, [newCalendarMemberIds.length, newCalendarType, setNewCalendarMemberIds]);
 
   const monthStart = useMemo(() => startOfMonth(current), [current]);
   const monthEnd = useMemo(() => endOfMonth(current), [current]);
 
   const focusedCalendar = useMemo(
-    () => calendars.find((calendar) => calendar.id === focusCalendarId),
-    [calendars, focusCalendarId],
+    () => projectCalendars.find((calendar) => calendar.id === focusCalendarId),
+    [projectCalendars, focusCalendarId],
   );
-
-  const scopedCalendars = useMemo(() => {
-    if (!focusedCalendar) return calendars;
-    return [{ ...focusedCalendar, visible: true }];
-  }, [calendars, focusedCalendar]);
-
-  const scopedCalendarMap = useMemo(() => {
-    const map = new Map<string, CalendarSource>();
-    scopedCalendars.forEach((calendar) => map.set(calendar.id, calendar));
-    return map;
-  }, [scopedCalendars]);
-
-  const scopedFilteredEvents = useMemo(() => {
-    if (!focusCalendarId) return filteredEvents;
-    const keyword = searchTerm.trim().toLowerCase();
-    return events
-      .filter((event) => scopedCalendarMap.get(event.calendarId)?.visible)
-      .filter((event) => {
-        if (!keyword) return true;
-        const haystack = `${event.title} ${event.location ?? ""} ${event.description ?? ""}`.toLowerCase();
-        return haystack.includes(keyword);
-      })
-      .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime());
-  }, [events, filteredEvents, focusCalendarId, scopedCalendarMap, searchTerm]);
-
-  const scopedEventsByDate = useMemo(() => {
-    if (!focusCalendarId) return eventsByDate;
-    const map = new Map<string, CalendarEvent[]>();
-    scopedFilteredEvents.forEach((event) => {
-      const key = toDateKey(parseISO(event.start));
-      const list = map.get(key) ?? [];
-      list.push(event);
-      map.set(key, list);
-    });
-    return map;
-  }, [eventsByDate, focusCalendarId, scopedFilteredEvents]);
-
-  useEffect(() => {
-    if (!focusCalendarId) return;
-    if (!calendars.some((calendar) => calendar.id === focusCalendarId)) return;
-    setDraft((prev) => ({ ...prev, calendarId: focusCalendarId }));
-  }, [calendars, focusCalendarId, setDraft]);
 
   const agendaEvents = useMemo(
     () =>
-      scopedFilteredEvents.filter((event) => {
+      filteredEvents.filter((event) => {
         const start = parseISO(event.start);
         const end = event.end ? parseISO(event.end) : start;
         return end >= monthStart && start <= monthEnd;
       }),
-    [scopedFilteredEvents, monthStart, monthEnd],
+    [filteredEvents, monthStart, monthEnd],
   );
 
   const selectedKey = toDateKey(selectedDate);
-  const selectedEvents = scopedEventsByDate.get(selectedKey) ?? [];
+  const selectedEvents = eventsByDate.get(selectedKey) ?? [];
+
+  const groupedCategories = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; color: string; visible: boolean }>();
+    calendars.forEach((cat) => {
+      const key = `${cat.name}||${cat.color}`;
+      const entry = map.get(key);
+      if (entry) {
+        entry.visible = entry.visible || cat.visible;
+      } else {
+        map.set(key, { key, name: cat.name, color: cat.color, visible: cat.visible });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  }, [calendars]);
+
+  const handleToggleCategoryGroup = (key: string) => {
+    const group = groupedCategories.find((item) => item.key === key);
+    if (!group) return;
+    const nextVisible = !group.visible;
+    setCalendars((prev: typeof calendars) =>
+      prev.map((cat) =>
+        cat.name === group.name && cat.color === group.color
+          ? { ...cat, visible: nextVisible }
+          : cat,
+      ),
+    );
+  };
 
   const handleChangeDraft = (patch: Partial<EventDraft>) => {
     setDraft((prev) => {
@@ -164,14 +177,30 @@ export default function CalendarView({
     setFormError(null);
   };
 
-  const handleRequestNewCalendar = () => {
+  const handleRequestNewCalendar = (folderId?: string) => {
     if (!showCalendarForm) {
       const nextColor =
         COLOR_PALETTE[calendars.length % COLOR_PALETTE.length] ?? COLOR_PALETTE[0] ?? "#0c66e4";
       setNewCalendarColor(nextColor);
       setNewCalendarName("");
+      setNewCalendarType("TEAM");
+      setNewCalendarMemberIds([]);
+      setNewCalendarFolderId(folderId ?? "");
     }
     setShowCalendarForm(true);
+  };
+
+  const handleOpenCategoryModal = () => {
+    setNewCategoryName("");
+    setNewCategoryColor(COLOR_PALETTE[0] ?? "#0c66e4");
+    setCategoryModalOpen(true);
+  };
+
+  const handleSubmitCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    await handleAddCategory({ name, color: newCategoryColor });
+    setCategoryModalOpen(false);
   };
 
   const handleSubmitCalendar = async () => {
@@ -181,24 +210,22 @@ export default function CalendarView({
     }
   };
 
-  const handleNavigateCalendar = (id: string) => {
-    if (id === "all") {
-      router.push(buildHref("calendar", "/calendar"));
-      return;
-    }
-    router.push(buildHref(["calendar", id], `/calendar/${id}`));
-  };
-
   useEffect(() => {
-    const handler = () => handleRequestNewCalendar();
-    window.addEventListener("calendar:open-create", handler);
-    return () => window.removeEventListener("calendar:open-create", handler);
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ folderId?: string }>).detail;
+      handleRequestNewCalendar(detail?.folderId);
+    };
+    window.addEventListener("calendar:open-create", handler as EventListener);
+    return () => window.removeEventListener("calendar:open-create", handler as EventListener);
   }, [handleRequestNewCalendar]);
 
   const handleCancelNewCalendar = () => {
     setShowCalendarForm(false);
     setNewCalendarName("");
+    setNewCalendarType("TEAM");
     setNewCalendarColor(COLOR_PALETTE[0] ?? "#0c66e4");
+    setNewCalendarMemberIds([]);
+    setNewCalendarFolderId("");
   };
 
   const handleSelectDate = (date: Date) => {
@@ -238,7 +265,7 @@ export default function CalendarView({
     closeForm();
   };
 
-  const handleOpenManageCalendar = (calendar: CalendarSource) => {
+  const handleOpenManageCalendar = (calendar: { id: string; name: string; color: string }) => {
     setManageCalendarId(calendar.id);
     setManageName(calendar.name);
     setManageColor(calendar.color);
@@ -250,21 +277,21 @@ export default function CalendarView({
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<{ id?: string; name?: string; color?: string }>).detail;
       if (!detail?.id) return;
-      const calendar = calendars.find((item) => item.id === detail.id);
+      const calendar = projectCalendars.find((item) => item.id === detail.id);
       if (calendar) {
         handleOpenManageCalendar(calendar);
+        setManageType(calendar.type);
         return;
       }
       handleOpenManageCalendar({
         id: detail.id,
         name: detail.name ?? "캘린더",
         color: detail.color ?? "#0c66e4",
-        visible: true,
       });
     };
     window.addEventListener("calendar:open-manage", handler);
     return () => window.removeEventListener("calendar:open-manage", handler);
-  }, [calendars, handleOpenManageCalendar]);
+  }, [projectCalendars, handleOpenManageCalendar]);
 
   const handleSubmitManageCalendar = () => {
     if (!manageCalendarId) return;
@@ -273,7 +300,12 @@ export default function CalendarView({
       setManageError("이름을 입력해주세요.");
       return;
     }
-    handleUpdateCalendar(manageCalendarId, { name: nextName, color: manageColor });
+    handleUpdateCalendar(manageCalendarId, {
+      name: nextName,
+      color: manageColor,
+      type: manageType,
+      memberIds: manageType === "PRIVATE" ? manageMemberIds : undefined,
+    });
     setManageOpen(false);
   };
 
@@ -283,25 +315,81 @@ export default function CalendarView({
     setManageOpen(false);
   };
 
+  useEffect(() => {
+    if (!teamId || !projectId) return;
+    if (!showCalendarForm && !manageOpen) return;
+    let active = true;
+    fetchProjectMembers(teamId, projectId)
+      .then((data) => {
+        if (!active) return;
+        const mapped = (data ?? []).map((member: { userId: string; name: string; avatarUrl?: string | null }) => ({
+          id: member.userId,
+          name: member.name,
+          avatarUrl: member.avatarUrl ?? null,
+        }));
+        setMemberOptions(mapped);
+      })
+      .catch(() => {
+        if (!active) return;
+        setMemberOptions([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [teamId, projectId, showCalendarForm, manageOpen]);
+
+  useEffect(() => {
+    if (!manageOpen || !manageCalendarId || !projectId) return;
+    let active = true;
+    getCalendarMembers(projectId, manageCalendarId)
+      .then((members) => {
+        if (!active) return;
+        setManageMemberIds((members ?? []).map((member) => member.userId));
+      })
+      .catch(() => {
+        if (!active) return;
+        setManageMemberIds([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [manageCalendarId, manageOpen, projectId]);
+
+  useEffect(() => {
+    if (manageType !== "PRIVATE" && manageMemberIds.length > 0) {
+      setManageMemberIds([]);
+    }
+  }, [manageMemberIds.length, manageType]);
+
+  const toggleNewMember = (id: string) => {
+    setNewCalendarMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const toggleManageMember = (id: string) => {
+    setManageMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <CalendarHeader
         current={current}
         view={view}
         searchTerm={searchTerm}
-        calendars={calendars}
-        calendarMap={scopedCalendarMap}
+        categories={groupedCategories}
         focusedCalendar={focusedCalendar}
-        hideCalendarList={Boolean(focusCalendarId)}
-        onNavigateCalendar={handleNavigateCalendar}
+        hideCalendarList={false}
         onSearch={setSearchTerm}
         onPrev={goPrev}
         onNext={goNext}
         onToday={goToday}
         onChangeView={setView}
         onOpenCreate={() => handleOpenForm(selectedDate)}
-        onToggleCalendar={focusCalendarId ? () => {} : handleToggleCalendar}
-        onRequestNewCalendar={handleRequestNewCalendar}
+        onToggleCategoryGroup={handleToggleCategoryGroup}
+        onAddCategory={focusCalendarId ? handleOpenCategoryModal : undefined}
         onRequestManageCalendar={handleOpenManageCalendar}
       />
 
@@ -312,7 +400,7 @@ export default function CalendarView({
               <AgendaView
                 current={current}
                 events={agendaEvents}
-                calendarMap={scopedCalendarMap}
+                calendarMap={calendarMap}
                 onRequestCreate={handleOpenForm}
                 onRequestEdit={handleEditEvent}
                 onDeleteEvent={handleDeleteEvent}
@@ -322,8 +410,8 @@ export default function CalendarView({
                 current={current}
                 selectedDate={selectedDate}
                 days={monthDays}
-                eventsByDate={scopedEventsByDate}
-                calendarMap={scopedCalendarMap}
+                eventsByDate={eventsByDate}
+                calendarMap={calendarMap}
                 maxVisible={MAX_VISIBLE_EVENTS_PER_DAY}
                 onSelectDate={handleSelectDate}
                 onRequestDetails={handleRequestDetails}
@@ -331,8 +419,8 @@ export default function CalendarView({
             ) : (
               <CalendarTimelineView
                 current={current}
-                events={scopedFilteredEvents}
-                calendarMap={scopedCalendarMap}
+                events={filteredEvents}
+                calendarMap={calendarMap}
                 onRequestCreate={handleOpenForm}
                 onSelectDate={handleSelectDate}
                 onRequestDetails={handleRequestDetails}
@@ -349,8 +437,8 @@ export default function CalendarView({
                 <CalendarDetailsPanel
                   selectedDate={selectedDate}
                   events={selectedEvents}
-                  calendars={scopedCalendars}
-                  calendarMap={scopedCalendarMap}
+                  calendars={calendars}
+                  calendarMap={calendarMap}
                   draft={draft}
                   isFormOpen={isFormOpen}
                   formError={formError}
@@ -383,8 +471,8 @@ export default function CalendarView({
         <CalendarDetailsPanel
           selectedDate={selectedDate}
           events={selectedEvents}
-          calendars={scopedCalendars}
-          calendarMap={scopedCalendarMap}
+          calendars={calendars}
+          calendarMap={calendarMap}
           draft={draft}
           isFormOpen={isFormOpen}
           formError={formError}
@@ -402,10 +490,18 @@ export default function CalendarView({
       <CalendarCreateModal
         open={showCalendarForm}
         name={newCalendarName}
+        type={newCalendarType}
         color={newCalendarColor}
         error={calendarFormError}
+        folderOptions={calendarFolders}
+        folderId={newCalendarFolderId}
+        memberOptions={memberOptions}
+        memberIds={newCalendarMemberIds}
         onChangeName={setNewCalendarName}
+        onChangeType={setNewCalendarType}
         onChangeColor={setNewCalendarColor}
+        onChangeFolder={setNewCalendarFolderId}
+        onToggleMember={toggleNewMember}
         onSubmit={handleSubmitCalendar}
         onCancel={handleCancelNewCalendar}
       />
@@ -413,14 +509,88 @@ export default function CalendarView({
       <CalendarManageModal
         open={manageOpen}
         name={manageName}
+        type={manageType}
         color={manageColor}
+        categories={calendars}
+        memberOptions={memberOptions}
+        memberIds={manageMemberIds}
         error={manageError}
         onChangeName={setManageName}
+        onChangeType={setManageType}
         onChangeColor={setManageColor}
+        onToggleMember={toggleManageMember}
+        onAddCategory={handleAddCategory}
+        onUpdateCategory={handleUpdateCategory}
+        onDeleteCategory={handleDeleteCategory}
         onSubmit={handleSubmitManageCalendar}
         onDelete={handleDeleteManageCalendar}
         onClose={() => setManageOpen(false)}
       />
+
+      {categoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-[360px] rounded-xl border border-border bg-panel p-5 text-foreground shadow-xl">
+            <h3 className="text-base font-semibold">카테고리 추가</h3>
+            <p className="mt-1 text-xs text-muted">카테고리 이름과 색상을 설정하세요.</p>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs text-muted">이름</label>
+                <input
+                  value={newCategoryName}
+                  onChange={(event) => setNewCategoryName(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-border bg-panel px-3 py-2 text-sm text-foreground"
+                  placeholder="예: 회의"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted">색상</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {COLOR_PALETTE.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewCategoryColor(color)}
+                      className={`h-6 w-6 rounded-md border ${
+                        newCategoryColor === color ? "ring-2 ring-brand ring-offset-2 ring-offset-panel" : ""
+                      }`}
+                      style={{ backgroundColor: color }}
+                      aria-label={`색상 ${color}`}
+                    />
+                  ))}
+                  <label className="group inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-2 py-1 text-xs text-muted hover:bg-subtle/60">
+                    직접 선택
+                    <input
+                      type="color"
+                      value={newCategoryColor}
+                      onChange={(event) => setNewCategoryColor(event.target.value)}
+                      className="h-6 w-10 cursor-pointer rounded border border-border"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCategoryModalOpen(false)}
+                className="h-9 min-w-[88px] rounded-lg border border-border px-4 text-sm font-semibold text-muted hover:bg-sidebar-accent hover:text-foreground"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitCategory}
+                className="h-9 min-w-[88px] rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand/90"
+              >
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

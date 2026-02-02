@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { eachDayOfInterval, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Download, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import Button from "@/components/ui/button";
 import type { CalendarEvent, CalendarSource } from "@/workspace/calendar/_model/types";
@@ -52,53 +52,6 @@ const formatRange = (start: Date, end: Date, allDay: boolean) => {
   return `${format(start, template)} ~ ${format(end, template)}`;
 };
 
-const exportJson = (tasks: TimelineTask[]) => {
-  if (typeof window === "undefined") return;
-  const payload = {
-    exportedAt: new Date().toISOString(),
-    items: tasks.map((task) => ({
-      id: task.id,
-      title: task.title,
-      start: task.start.toISOString(),
-      end: task.end.toISOString(),
-      color: task.color,
-      calendarName: task.calendarName,
-      allDay: task.allDay,
-    })),
-  };
-
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "timeline-export.json";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
-
-const exportCsv = (tasks: TimelineTask[]) => {
-  if (typeof window === "undefined") return;
-  const header = ["제목", "캘린더", "시작", "종료", "종일 여부"];
-  const rows = tasks.map((task) => [
-    `"${task.title.replace(/"/g, '""')}"`,
-    `"${task.calendarName.replace(/"/g, '""')}"`,
-    task.start.toISOString(),
-    task.end.toISOString(),
-    task.allDay ? "true" : "false",
-  ]);
-  const csv = [header.join(","), ...rows.map((row) => row.join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "timeline-export.csv";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
 
 export function CalendarTimelineView({
   current,
@@ -127,11 +80,11 @@ export function CalendarTimelineView({
         const start = parseISO(event.start);
         const end = event.end ? parseISO(event.end) : start;
         const safeEnd = end < start ? start : end;
-        const calendar = calendarMap.get(event.calendarId);
+        const calendar = calendarMap.get(event.categoryId);
         const color = calendar?.color ?? "#2563eb";
         const title = event.title?.trim() || "Untitled event";
         return {
-          calendarId: event.calendarId,
+          calendarId: event.categoryId,
           id: event.id,
           title,
           start,
@@ -245,14 +198,6 @@ export function CalendarTimelineView({
             <p className="mt-1 text-sm text-muted-foreground">선택한 캘린더 일정을 시간 순으로 정리했습니다.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => exportCsv(tasks)}>
-              <Download className="mr-2 h-4 w-4" />
-              CSV 내보내기
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => exportJson(tasks)}>
-              <Download className="mr-2 h-4 w-4" />
-              JSON 내보내기
-            </Button>
             <Button size="sm" onClick={() => onRequestCreate(current)}>
               <Plus className="mr-2 h-4 w-4" />
               일정 추가

@@ -48,7 +48,7 @@ const toEvent = (event: CalendarEventResponse): CalendarEvent => {
     calendarId: event.calendarId ?? "",
     categoryId: event.category.id,
     categoryName: event.category.name,
-    categoryColor: event.category.categoryColor ?? event.category.color,
+    categoryColor: event.category.categoryColor,
     title: event.title,
     start: event.startAt,
     end: event.endAt,

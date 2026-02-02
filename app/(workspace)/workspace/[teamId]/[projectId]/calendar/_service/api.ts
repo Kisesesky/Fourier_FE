@@ -45,7 +45,7 @@ const toEvent = (event: CalendarEventResponse): CalendarEvent => {
   const isAllDay = start.getHours() === 0 && start.getMinutes() === 0 && end.getHours() === 23 && end.getMinutes() >= 59;
   return {
     id: event.id,
-    calendarId: event.calendarId ?? event.category.calendarId ?? "",
+    calendarId: event.calendarId ?? "",
     categoryId: event.category.id,
     categoryName: event.category.name,
     categoryColor: event.category.categoryColor ?? event.category.color,

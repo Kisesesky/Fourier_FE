@@ -11,7 +11,11 @@ export interface Issue {
   status: IssueStatus;
   priority: Priority;
   assignee?: string;
+  assigneeId?: string;
   reporter?: string;
+  startAt?: string;
+  endAt?: string;
+  progress?: number;
   createdAt: string;
   updatedAt: string;
 }

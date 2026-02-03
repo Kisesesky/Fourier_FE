@@ -43,3 +43,8 @@ next-env.d.ts
 # .role
 /.roles
 AGENTS.md
+
+# docs
+*_summary.md
+*CORE_GUIDE.md
+*DOMAIN_GUIDE.md

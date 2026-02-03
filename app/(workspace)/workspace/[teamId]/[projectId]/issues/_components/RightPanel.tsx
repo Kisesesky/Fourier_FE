@@ -2,7 +2,7 @@
 'use client';
 import { Tabs } from "@/components/ui/Tabs";
 import type { ActivityType, Issue } from "@/workspace/issues/_model/types";
-import { addComment, getIssueById, listActivities, listComments, searchUsers } from "@/workspace/issues/_service/api";
+import { addComment, getIssueById, listActivities, listComments, searchUsers, updateIssue, updateIssueStatus } from "@/workspace/issues/_service/api";
 import clsx from "clsx";
 import { useParams, useRouter } from "next/navigation";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -17,10 +17,11 @@ export default function RightPanel({
   onClose?: () => void;
   onUpdate?: (patch: Partial<Issue>) => void;
 }) {
-  const params = useParams<{ id?: string }>();
+  const params = useParams<{ teamId?: string; projectId?: string; id?: string }>();
   const router = useRouter();
   const { buildHref } = useWorkspacePath();
   const routeId = (params?.id as string) || undefined;
+  const projectId = (params?.projectId as string) || undefined;
 
   const [issue, setIssue] = useState<Issue | null>(issueProp ?? null);
   const [tab, setTab] = useState<"details" | "comments" | "activity">("details");
@@ -36,10 +37,10 @@ export default function RightPanel({
     async function load() {
       const id = issueProp?.id || routeId;
       if (!id) { setIssue(null); return; }
-      const it = await getIssueById(id);
+      const it = await getIssueById(id, projectId);
       if (!mounted) return;
       setIssue(it);
-      const [c, a] = await Promise.all([listComments(id), listActivities(id)]);
+      const [c, a] = await Promise.all([listComments(id, projectId), listActivities(id, projectId)]);
       if (!mounted) return;
       setComments(c);
       setActivity(a);
@@ -47,6 +48,26 @@ export default function RightPanel({
     load();
     return () => { mounted = false; };
   }, [issueProp?.id, routeId]);
+
+  const updateField = async (patch: Partial<Issue>) => {
+    if (!issue?.id || !projectId) return;
+    try {
+      const updated = await updateIssue(projectId, issue.id, patch);
+      setIssue(updated);
+    } catch {
+      // ignore
+    }
+  };
+
+  const updateStatus = async (status: Issue["status"]) => {
+    if (!issue?.id || !projectId) return;
+    try {
+      const updated = await updateIssueStatus(projectId, issue.id, status);
+      setIssue(updated);
+    } catch {
+      // ignore
+    }
+  };
 
   const title = useMemo(() => issue?.title ?? "Details", [issue]);
 
@@ -92,7 +113,7 @@ export default function RightPanel({
       />
 
       <div className="p-3">
-        {tab === "details" && <DetailsView issue={issue} />}
+        {tab === "details" && <DetailsView issue={issue} onUpdate={updateField} onStatusChange={updateStatus} />}
 
         {tab === "comments" && (
           <CommentsView
@@ -100,10 +121,10 @@ export default function RightPanel({
             comments={comments}
             onAdd={async (body) => {
               if (!issue) return;
-              const created = await addComment(issue.id, "You", body);
+              const created = await addComment(issue.id, "You", body, projectId);
               setComments(prev => [...prev, created]);
               // 활동 로그도 새로고침
-              const acts = await listActivities(issue.id);
+              const acts = await listActivities(issue.id, projectId);
               setActivity(acts);
             }}
           />
@@ -116,7 +137,7 @@ export default function RightPanel({
             onFilterChange={setActFilter}
             onRefresh={async () => {
               if (!issue) return;
-              const acts = await listActivities(issue.id);
+              const acts = await listActivities(issue.id, projectId);
               setActivity(acts);
             }}
           />
@@ -127,7 +148,21 @@ export default function RightPanel({
 }
 
 /* ───────── Details ───────── */
-function DetailsView({ issue }: { issue: Issue | null }) {
+function DetailsView({
+  issue,
+  onUpdate,
+  onStatusChange,
+}: {
+  issue: Issue | null;
+  onUpdate: (patch: Partial<Issue>) => void;
+  onStatusChange: (status: Issue["status"]) => void;
+}) {
+  const [titleDraft, setTitleDraft] = useState("");
+
+  useEffect(() => {
+    setTitleDraft(issue?.title ?? "");
+  }, [issue?.title]);
+
   if (!issue) {
     return (
       <div className="rounded border border-border p-3 text-sm text-muted">
@@ -138,12 +173,37 @@ function DetailsView({ issue }: { issue: Issue | null }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="rounded border border-border p-3">
-        <div className="text-xs text-muted mb-1">Key</div>
-        <div>{issue.key}</div>
+        <div className="text-xs text-muted mb-1">제목</div>
+        <input
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          value={titleDraft}
+          onChange={(e) => setTitleDraft(e.target.value)}
+          onBlur={() => {
+            if (titleDraft.trim() && titleDraft !== issue.title) {
+              onUpdate({ title: titleDraft.trim() });
+            }
+          }}
+        />
       </div>
-      <div className="rounded border border-border p-3">
-        <div className="text-xs text-muted mb-1">Status · Priority</div>
-        <div>{issue.status} · {issue.priority}</div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded border border-border p-3">
+          <div className="text-xs text-muted mb-1">상태</div>
+          <select
+            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
+            value={issue.status}
+            onChange={(e) => onStatusChange(e.target.value as Issue["status"])}
+          >
+            <option value="backlog">백로그</option>
+            <option value="todo">할 일</option>
+            <option value="in_progress">작업 중</option>
+            <option value="review">리뷰 대기</option>
+            <option value="done">완료</option>
+          </select>
+        </div>
+        <div className="rounded border border-border p-3">
+          <div className="text-xs text-muted mb-1">우선순위</div>
+          <div>{issue.priority}</div>
+        </div>
       </div>
       <div className="rounded border border-border p-3">
         <div className="text-xs text-muted mb-1">Assignee · Reporter</div>

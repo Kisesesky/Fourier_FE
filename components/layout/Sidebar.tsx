@@ -337,7 +337,7 @@ const CalendarPanel = () => {
   const renderCalendarRow = (cal: ProjectCalendar, depth = 1) => (
     <div
       key={cal.id}
-      className="group flex h-9 w-full items-center rounded-md px-2 text-[13px] text-foreground/80 transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
+      className="group flex h-9 w-full items-center rounded-md px-2 text-[11px] text-foreground/80 transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
       style={{ paddingLeft: depth * 14 + 8 }}
       onContextMenu={
         cal.type === "PERSONAL"
@@ -363,7 +363,7 @@ const CalendarPanel = () => {
         className="flex h-6 w-6 items-center justify-center rounded-md"
         style={{ color: cal.color }}
       >
-        <CalendarDays size={16} />
+        <CalendarDays size={14} />
       </span>
       <button
         type="button"
@@ -381,7 +381,7 @@ const CalendarPanel = () => {
               className="rounded-md p-1 text-muted opacity-0 transition hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
               aria-label="캘린더 관리"
             >
-              <Settings size={14} />
+              <Settings size={12} />
             </button>
             <button
               type="button"
@@ -389,7 +389,7 @@ const CalendarPanel = () => {
               className="rounded-md p-1 text-rose-500/80 opacity-0 transition hover:text-rose-500 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
               aria-label="캘린더 삭제"
             >
-              <Trash2 size={14} />
+              <Trash2 size={12} />
             </button>
           </>
         )}
@@ -420,7 +420,7 @@ const CalendarPanel = () => {
         <button
           type="button"
           onClick={() => setOpenGroups((prev) => ({ ...prev, [folder.id]: !open }))}
-          className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] font-bold text-muted-500 transition hover:bg-sidebar-accent hover:text-sky-600"
+          className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] font-medium text-muted-500 transition hover:bg-sidebar-accent hover:text-sky-600"
           style={{ paddingLeft: 22 }}
           onContextMenu={
             folder.id === "uncategorized"
@@ -435,7 +435,7 @@ const CalendarPanel = () => {
                 }
           }
         >
-          {open ? <ChevronDown size={18} className="text-muted" /> : <ChevronRight size={18} className="text-muted" />}
+          {open ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
           <Folder size={16} className="text-sky-500" />
           <span className="truncate">{folder.name}</span>
         </button>
@@ -447,7 +447,6 @@ const CalendarPanel = () => {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
-        <span className="text-sm font-semibold text-foreground/90">캘린더</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -474,11 +473,11 @@ const CalendarPanel = () => {
             <button
               type="button"
               onClick={() => setOpenRoot((prev) => !prev)}
-              className="flex h-9 flex-1 items-center gap-2 rounded-md px-2 text-left text-[15px] font-medium text-muted transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              className="flex h-9 flex-1 items-center gap-2 rounded-md px-2 text-left text-[12px] font-medium text-muted transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => handleDropCalendar(null, event)}
             >
-              {openRoot ? <ChevronDown size={18} className="text-muted" /> : <ChevronRight size={18} className="text-muted" />}
+              {openRoot ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
               <Folder size={18} className="text-amber-400" />
               <span className="truncate">캘린더 트리</span>
             </button>
@@ -512,16 +511,16 @@ const CalendarPanel = () => {
             <button
               type="button"
               onClick={() => setOpenPersonal((prev) => !prev)}
-              className="flex h-9 flex-1 items-center gap-2 rounded-md px-2 text-left text-[15px] font-bold text-muted transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              className="flex h-9 flex-1 items-center gap-2 rounded-md px-2 text-left text-[12px] font-medium text-muted transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
-              {openPersonal ? <ChevronDown size={18} className="text-muted" /> : <ChevronRight size={18} className="text-muted" />}
+              {openPersonal ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
               <Folder size={18} className="text-lime-500" />
               <span className="truncate">
                 개인 캘린더
               </span>
             </button>
           </div>
-      {openPersonal && (
+          {openPersonal && (
             <div className="mt-[2px] space-y-[2px]">
               {personalCalendars.length > 0 ? (
                 personalCalendars.map((cal) => renderCalendarRow(cal, 2))

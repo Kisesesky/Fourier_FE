@@ -7,15 +7,14 @@ import { useEffect, useState } from "react";
 export default function NewIssueDialog({
   onCreate
 }: {
-  onCreate: (title:string, column:'todo'|'doing'|'done', labels: string[], due?: string, assignee?: string, points?: number)=>void
+  onCreate: (title: string, column: "todo" | "doing" | "done", priority: "very_low" | "low" | "medium" | "high" | "very_high", tags: string[], due?: string) => void
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [col, setCol] = useState<'todo'|'doing'|'done'>('todo');
-  const [labels, setLabels] = useState<string>("");
+  const [tags, setTags] = useState<string>("");
   const [due, setDue] = useState<string>("");
-  const [assignee, setAssignee] = useState<string>("Alice");
-  const [points, setPoints] = useState<string>("");
+  const [priority, setPriority] = useState<"very_low" | "low" | "medium" | "high" | "very_high">("medium");
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -48,13 +47,23 @@ export default function NewIssueDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <input value={assignee} onChange={(e)=>setAssignee(e.target.value)} placeholder="담당자 (예: Alice)"
-                   className="w-full bg-subtle/60 border border-border rounded-md px-3 py-2 text-sm outline-none" />
-            <input value={points} onChange={(e)=>setPoints(e.target.value)} placeholder="스토리 포인트 (숫자)"
-                   className="w-full bg-subtle/60 border border-border rounded-md px-3 py-2 text-sm outline-none" />
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as typeof priority)}
+              className="w-full bg-subtle/60 border border-border rounded-md px-3 py-2 text-sm outline-none"
+            >
+              <option value="very_low">매우 낮음</option>
+              <option value="low">낮음</option>
+              <option value="medium">중간</option>
+              <option value="high">높음</option>
+              <option value="very_high">매우 높음</option>
+            </select>
+            <div className="w-full rounded-md border border-border bg-subtle/30 px-3 py-2 text-xs text-muted">
+              담당자: 본인
+            </div>
           </div>
 
-          <input value={labels} onChange={(e)=>setLabels(e.target.value)} placeholder="라벨 (쉼표로 구분: design,api,urgent)"
+          <input value={tags} onChange={(e)=>setTags(e.target.value)} placeholder="태그 (쉼표로 구분: design,api,urgent)"
                  className="w-full bg-subtle/60 border border-border rounded-md px-3 py-2 text-sm outline-none" />
 
           <div className="flex justify-end gap-2">
@@ -64,12 +73,11 @@ export default function NewIssueDialog({
                 onCreate(
                   title.trim(),
                   col,
-                  labels.split(',').map(s=>s.trim()).filter(Boolean),
-                  due || undefined,
-                  assignee || undefined,
-                  Number.isNaN(Number(points)) || points==="" ? undefined : Number(points)
+                  priority,
+                  tags.split(',').map(s=>s.trim()).filter(Boolean),
+                  due || undefined
                 );
-                setTitle(""); setLabels(""); setDue(""); setAssignee("Alice"); setPoints("");
+                setTitle(""); setTags(""); setDue(""); setPriority("medium");
                 setOpen(false);
               }}>
               생성

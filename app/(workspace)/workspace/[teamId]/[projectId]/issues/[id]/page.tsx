@@ -1,7 +1,7 @@
 "use client";
 
-import KanbanView from "@/workspace/issues/_components/KanbanView";
+import IssuesBoardView from "@/workspace/issues/_components/IssuesBoardView";
 
 export default function WorkspaceIssueDetailRoutePage() {
-  return <KanbanView />;
+  return <IssuesBoardView />;
 }

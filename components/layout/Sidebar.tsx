@@ -1170,7 +1170,7 @@ export default function Sidebar() {
 
       {/* Context Panel */}
       {panelOpen ? (
-        <div className="group/ctx relative hidden flex-1 flex-col bg-panel px-4 py-5 text-foreground md:flex">
+        <div className="group/ctx relative flex-1 flex-col bg-panel px-4 py-5 text-foreground">
           {activeSurface !== "docs" && (
             <div className="pb-3">
               <div className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted">

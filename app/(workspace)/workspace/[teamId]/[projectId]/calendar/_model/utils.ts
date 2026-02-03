@@ -2,6 +2,24 @@ import { format, parseISO } from "date-fns";
 
 export const toDateKey = (date: Date) => format(date, "yyyy-MM-dd");
 
+export const toZonedDate = (iso: string, timeZone = "Asia/Seoul") => {
+  const date = new Date(iso);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "01";
+  const year = Number(get("year"));
+  const month = Number(get("month"));
+  const day = Number(get("day"));
+  return new Date(year, month - 1, day);
+};
+
+export const toZonedDateKey = (iso: string, timeZone = "Asia/Seoul") =>
+  toDateKey(toZonedDate(iso, timeZone));
+
 export const readStorage = <T,>(key: string, fallback: T[]): T[] => {
   if (typeof window === "undefined") return fallback;
   try {

@@ -56,7 +56,7 @@ export function AgendaView({
   }, [events]);
 
   return (
-    <div className="flex flex-col rounded-2xl border border-border bg-panel shadow-sm">
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-panel shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <div className="text-xs uppercase tracking-[0.08em] text-muted">월간 스케줄</div>
@@ -71,7 +71,7 @@ export function AgendaView({
         </button>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="flex-1 overflow-auto px-4 py-4">
         {groupedByDay.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/60 bg-subtle/40 px-4 py-6 text-sm text-muted">
             등록된 일정이 없습니다. 새 일정을 추가해보세요.

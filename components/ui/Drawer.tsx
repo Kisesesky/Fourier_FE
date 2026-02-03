@@ -11,6 +11,7 @@ type DrawerProps = {
   title?: string;
   side?: 'left' | 'right';
   headerContent?: (close: () => void) => React.ReactNode;
+  hideHeader?: boolean;
 };
 
 export default function Drawer({
@@ -21,6 +22,7 @@ export default function Drawer({
   title = 'Details',
   side = 'right',
   headerContent,
+  hideHeader = false,
 }: DrawerProps) {
   const [dragDistance, setDragDistance] = useState(0);
   const startX = useRef<number | null>(null);
@@ -108,10 +110,12 @@ export default function Drawer({
           transform: `translateX(${translate}px)`
         }}
       >
-        <div className="flex h-12 items-center justify-between border-b border-border px-4">
-          {renderHeader}
-        </div>
-        <div className="h-[calc(100%-48px)] overflow-auto">
+        {!hideHeader && (
+          <div className="flex h-12 items-center justify-between border-b border-border px-4">
+            {renderHeader}
+          </div>
+        )}
+        <div className={clsx('overflow-auto', hideHeader ? 'h-full' : 'h-[calc(100%-48px)]')}>
           {children}
         </div>
       </div>

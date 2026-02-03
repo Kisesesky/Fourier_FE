@@ -12,7 +12,7 @@ type AppShellProps = {
   rightWidth?: number;
   className?: string;
   mainScrollable?: boolean;
-  sidebarWidth?: number;
+  sidebarWidth?: number | string;
 };
 
 export default function AppShell({

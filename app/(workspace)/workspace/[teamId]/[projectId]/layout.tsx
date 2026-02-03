@@ -16,7 +16,7 @@ import ChatCreateChannelHost from "@/components/layout/ChatCreateChannelHost";
 
 export default function WorkspaceProjectLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(360);
+  const [sidebarWidth, setSidebarWidth] = useState<number | string>("clamp(240px, 28vw, 360px)");
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
   const pathname = usePathname();
 
@@ -122,7 +122,7 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<{ open?: boolean }>).detail;
       if (!detail) return;
-      setSidebarWidth(detail.open ? 360 : 72);
+      setSidebarWidth(detail.open ? "clamp(240px, 28vw, 360px)" : 72);
     };
     window.addEventListener("sidebar:context", handler as EventListener);
     return () => window.removeEventListener("sidebar:context", handler as EventListener);
@@ -131,6 +131,7 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
   return (
     <ToastProvider>
       <AppShell
+        className="text-[clamp(12px,0.85vw+8px,14px)]"
         header={<Topbar workspaceMode onWorkspaceSettings={() => setShowWorkspaceSettings(true)} />}
         sidebar={<Sidebar />}
         sidebarWidth={sidebarWidth}
@@ -144,7 +145,7 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
         title="Navigation"
         width={320}
         side="left"
-        headerContent={(close) => <MobileNavHeader onClose={close} />}
+        hideHeader
       >
         <Sidebar />
       </Drawer>

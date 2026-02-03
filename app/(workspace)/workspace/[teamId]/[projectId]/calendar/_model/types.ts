@@ -31,6 +31,7 @@ export type CalendarEvent = {
   categoryId: string;
   categoryName?: string;
   categoryColor?: string;
+  createdBy?: { id: string; name: string; avatarUrl?: string | null };
   title: string;
   start: string;
   end?: string;

@@ -28,6 +28,9 @@ type TimelineTask = {
   color: string;
   calendarName: string;
   allDay: boolean;
+  createdBy?: { id: string; name: string; avatarUrl?: string | null };
+  location?: string;
+  description?: string;
 };
 
 type TimelineGroup = {
@@ -38,7 +41,7 @@ type TimelineGroup = {
 };
 
 const MONTH_COLORS = ["bg-blue-50", "bg-orange-50", "bg-emerald-50", "bg-purple-50", "bg-rose-50"];
-const DAY_CELL_MIN_WIDTH = 48;
+const DAY_CELL_MIN_WIDTH = 100;
 const DAY_CELL_MIN_WIDTH_COMPACT = 36;
 const DEFAULT_VISIBLE_DAYS = 14;
 
@@ -92,6 +95,9 @@ export function CalendarTimelineView({
           color,
           calendarName: calendar?.name ?? "Calendar",
           allDay: event.allDay,
+          createdBy: event.createdBy,
+          location: event.location,
+          description: event.description,
         };
       })
       .sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -190,8 +196,8 @@ export function CalendarTimelineView({
   }, [monthSegments]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-border bg-panel shadow-sm">
+    <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col rounded-2xl border border-border bg-panel shadow-sm">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-foreground">타임라인</h2>
@@ -205,7 +211,7 @@ export function CalendarTimelineView({
           </div>
         </div>
 
-        <div className="max-w-full overflow-x-auto overflow-y-hidden scrollbar-thin">
+        <div className="flex-1 max-w-full overflow-x-auto overflow-y-hidden scrollbar-thin">
           <div
             className="inline-block w-max"
             style={{ width: `${GRID_FIXED_WIDTH + 140}px` }} // w-40 ≈ 160px
@@ -256,7 +262,7 @@ export function CalendarTimelineView({
               </div>
             ) : (
               groupedByCalendar.map((group) => {
-                const barHeight = 24;
+                const barHeight = 38;
                 const verticalPadding = 6;
                 const stackSpacing = 6;
                 const contentHeight =
@@ -318,6 +324,11 @@ export function CalendarTimelineView({
                           timelineStart={timelineMeta.start}
                           totalDays={totalDays}
                           hint={`${formatRange(task.start, task.end, task.allDay)} · ${task.calendarName}`}
+                          createdBy={task.createdBy}
+                          calendarName={task.calendarName}
+                          location={task.location}
+                          description={task.description}
+                          allDay={task.allDay}
                           offsetIndex={index}
                           barHeight={barHeight}
                           verticalPadding={verticalPadding}

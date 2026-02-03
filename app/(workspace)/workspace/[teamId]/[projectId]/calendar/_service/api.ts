@@ -12,6 +12,7 @@ type CalendarEventResponse = {
   memo?: string | null;
   calendarId?: string;
   category: { id: string; name: string; categoryColor: string };
+  createdBy?: { id: string; name: string; avatarUrl?: string | null };
 };
 
 type CalendarCategoryResponse = {
@@ -49,6 +50,9 @@ const toEvent = (event: CalendarEventResponse): CalendarEvent => {
     categoryId: event.category.id,
     categoryName: event.category.name,
     categoryColor: event.category.categoryColor,
+    createdBy: event.createdBy
+      ? { id: event.createdBy.id, name: event.createdBy.name, avatarUrl: event.createdBy.avatarUrl ?? null }
+      : undefined,
     title: event.title,
     start: event.startAt,
     end: event.endAt,

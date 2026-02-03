@@ -1,11 +1,11 @@
 "use client";
 
-import { endOfMonth, parseISO, startOfMonth } from "date-fns";
+import { endOfMonth, parseISO, startOfMonth, startOfDay } from "date-fns";
 import { useMemo, useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 
 import { COLOR_PALETTE } from "@/workspace/calendar/_model/mocks";
-import { toDateKey } from "@/workspace/calendar/_model/utils";
+import { toDateKey, toZonedDate } from "@/workspace/calendar/_model/utils";
 import { useCalendarState } from "@/workspace/calendar/_model/hooks/useCalendarState";
 import type { CalendarEvent, EventDraft, ViewMode } from "@/workspace/calendar/_model/types";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -16,11 +16,11 @@ import { AgendaView } from "./components/AgendaView";
 import { CalendarDetailsPanel } from "./components/CalendarDetailsPanel";
 import { CalendarCreateModal } from "./components/CalendarCreateModal";
 import { CalendarManageModal } from "./components/CalendarManageModal";
-import Drawer from "@/components/ui/Drawer";
+import Modal from "@/components/common/Modal";
 import { fetchProjectMembers } from "@/lib/projects";
 import { getCalendarMembers } from "@/workspace/calendar/_service/api";
 
-const MAX_VISIBLE_EVENTS_PER_DAY = 2;
+const MAX_VISIBLE_EVENTS_PER_DAY = 3;
 
 export default function CalendarView({
   initialDate = new Date(),
@@ -125,8 +125,14 @@ export default function CalendarView({
     [filteredEvents, monthStart, monthEnd],
   );
 
-  const selectedKey = toDateKey(selectedDate);
-  const selectedEvents = eventsByDate.get(selectedKey) ?? [];
+  const selectedEvents = useMemo(() => {
+    const target = startOfDay(toZonedDate(selectedDate.toISOString()));
+    return filteredEvents.filter((event) => {
+      const start = startOfDay(toZonedDate(event.start));
+      const end = startOfDay(toZonedDate(event.end ?? event.start));
+      return target >= start && target <= end;
+    });
+  }, [filteredEvents, selectedDate]);
 
   const groupedCategories = useMemo(() => {
     const map = new Map<string, { key: string; name: string; color: string; visible: boolean }>();
@@ -430,43 +436,13 @@ export default function CalendarView({
           </div>
         </section>
 
-        {detailsOpen && (
-          <div className="pointer-events-none hidden md:block">
-            <div className="pointer-events-auto fixed bottom-6 right-6 top-[calc(64px+16px)] z-40 w-[360px]">
-              <div className="h-full overflow-hidden rounded-2xl border border-border bg-panel shadow-2xl">
-                <CalendarDetailsPanel
-                  selectedDate={selectedDate}
-                  events={selectedEvents}
-                  calendars={calendars}
-                  calendarMap={calendarMap}
-                  draft={draft}
-                  isFormOpen={isFormOpen}
-                  formError={formError}
-                  editingEventId={editingEventId}
-                  onChangeDraft={handleChangeDraft}
-                  onRequestCreate={() => handleOpenForm(selectedDate)}
-                  onRequestEdit={handleEditEvent}
-                  onCancelCreate={handleCloseForm}
-                  onSubmit={handleSubmitEvent}
-                  onDeleteEvent={handleDeleteEvent}
-                  onClose={handleCloseDetails}
-                />
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-
-      <Drawer
+      <Modal
         open={detailsOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            handleCloseDetails();
-          }
-        }}
-        title="선택한 날짜"
-        side="right"
-        width={360}
+        onClose={handleCloseDetails}
+        widthClass="max-w-[560px]"
+        bodyClassName="p-0"
+        hideHeader
       >
         <CalendarDetailsPanel
           selectedDate={selectedDate}
@@ -484,8 +460,9 @@ export default function CalendarView({
           onSubmit={handleSubmitEvent}
           onDeleteEvent={handleDeleteEvent}
           onClose={handleCloseDetails}
+          variant="modal"
         />
-    </Drawer>
+      </Modal>
 
       <CalendarCreateModal
         open={showCalendarForm}

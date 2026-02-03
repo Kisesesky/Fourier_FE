@@ -15,6 +15,7 @@ import { DAY_LABELS } from "@/workspace/calendar/_model/mocks";
 import type { CalendarEvent, CalendarSource } from "@/workspace/calendar/_model/types";
 import { cn } from "@/lib/utils";
 import { DayEventPill } from "./DayEventPill";
+import { toZonedDate } from "@/workspace/calendar/_model/utils";
 
 type CalendarMonthViewProps = {
   current: Date;
@@ -76,7 +77,7 @@ export function CalendarMonthView({
         ))}
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col">
         {Array.from({ length: Math.ceil(days.length / 7) }).map((_, weekIndex) => {
           const week = days.slice(weekIndex * 7, weekIndex * 7 + 7);
           if (week.length === 0) return null;
@@ -84,8 +85,8 @@ export function CalendarMonthView({
           const weekEnd = startOfDay(week[week.length - 1]);
           const weeklyEvents = allEvents
             .map((event) => {
-              const eventStart = startOfDay(parseISO(event.start));
-              const eventEnd = startOfDay(event.end ? parseISO(event.end) : parseISO(event.start));
+              const eventStart = startOfDay(toZonedDate(event.start));
+              const eventEnd = startOfDay(toZonedDate(event.end ?? event.start));
               if (isAfter(eventStart, weekEnd) || isBefore(eventEnd, weekStart)) {
                 return null;
               }
@@ -123,15 +124,13 @@ export function CalendarMonthView({
             let variant: "single" | "start" | "middle" | "end" = "single";
             if (spanDays > 1) {
               const isStart = startIndex === differenceInCalendarDays(
-                startOfDay(parseISO(entry.event.start)),
+                startOfDay(toZonedDate(entry.event.start)),
                 weekStart,
               );
               const isEnd =
                 endIndex ===
                 differenceInCalendarDays(
-                  startOfDay(
-                    entry.event.end ? parseISO(entry.event.end) : parseISO(entry.event.start),
-                  ),
+                  startOfDay(toZonedDate(entry.event.end ?? entry.event.start)),
                   weekStart,
                 );
               if (isStart && isEnd) variant = "single";
@@ -153,22 +152,25 @@ export function CalendarMonthView({
             };
           });
 
-          const laneHeight = 20;
-          const laneGap = 4;
-          const maxLanes = Math.min(2, lanes.length);
+          const laneHeight = 54;
+          const laneGap = 6;
+          const maxLanes = Math.min(maxVisible, lanes.length);
           const filteredEvents = laidOutEvents.filter((entry) => entry.laneIndex < maxLanes);
           const railHeight = maxLanes * (laneHeight + laneGap);
 
           return (
-            <div key={weekIndex} className="relative border-b border-border last:border-b-0">
-              <div className="grid grid-cols-7">
+            <div
+              key={weekIndex}
+              className="relative flex-1 min-h-0 overflow-visible border-b border-border last:border-b-0"
+            >
+              <div className="grid h-full grid-cols-7">
                 {week.map((date) => {
                   const key = format(date, "yyyy-MM-dd");
                   const dayStart = startOfDay(date);
                   const dayCount = laidOutEvents.filter(
                     (entry) =>
-                      dayStart >= startOfDay(parseISO(entry.event.start)) &&
-                      dayStart <= startOfDay(entry.event.end ? parseISO(entry.event.end) : parseISO(entry.event.start)),
+                      dayStart >= startOfDay(toZonedDate(entry.event.start)) &&
+                      dayStart <= startOfDay(toZonedDate(entry.event.end ?? entry.event.start)),
                   ).length;
                   const isCurrentMonth = format(date, "yyyy-MM") === format(current, "yyyy-MM");
                   const isSelected =
@@ -190,7 +192,7 @@ export function CalendarMonthView({
                         onRequestDetails?.(date);
                       }}
                       className={cn(
-                        "relative flex min-h-[92px] flex-col gap-1 border border-border/20 px-2 py-1 text-left transition hover:bg-subtle/40 focus-visible:ring-2 focus-visible:ring-brand/50",
+                        "relative flex h-full min-h-0 flex-col gap-1 border border-border/20 px-2 py-1 text-left transition hover:bg-subtle/40 focus-visible:ring-2 focus-visible:ring-brand/50",
                         !isCurrentMonth &&
                           "bg-zinc-200/30 text-zinc-500 dark:bg-zinc-800/30 dark:text-zinc-500",
                         isSelected && "border-brand/40 ring-2 ring-brand/40",
@@ -209,7 +211,7 @@ export function CalendarMonthView({
                         {date.getDate()}
                       </div>
                       {dayCount > 0 && (
-                        <span className="absolute right-1 top-1 inline-flex items-center rounded-full bg-subtitle px-2 py-[2px] text-[10px] font-medium text-muted shadow">
+                        <span className="absolute right-1 top-1 hidden items-center rounded-full bg-subtitle px-2 py-[2px] text-[10px] font-medium text-muted shadow md:inline-flex">
                           {dayCount}개 일정
                         </span>
                       )}
@@ -219,7 +221,7 @@ export function CalendarMonthView({
               </div>
 
               <div
-                className="pointer-events-none absolute inset-x-0 top-9 px-2"
+                className="absolute inset-x-0 top-9 z-20 overflow-visible px-2"
                 style={{ height: railHeight }}
               >
                 {filteredEvents.map((entry) => {
@@ -237,7 +239,7 @@ export function CalendarMonthView({
                       className="absolute flex items-center"
                       onClickCapture={(event) => {
                         event.stopPropagation();
-                        const targetDate = parseISO(entry.event.start);
+                        const targetDate = toZonedDate(entry.event.start);
                         onSelectDate(targetDate);
                         onRequestDetails?.(targetDate);
                       }}

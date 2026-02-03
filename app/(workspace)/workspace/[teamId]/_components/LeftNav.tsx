@@ -2,7 +2,7 @@
 'use client';
 
 import clsx from "clsx";
-import { ChevronDown, ChevronRight, MoreHorizontal, Share2 } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Team } from "@/types/workspace";
 import { shortcuts } from "@/workspace/root-model/workspaceData";
@@ -23,6 +23,9 @@ interface LeftNavProps {
   recentCount: number;
   friendCount: number;
   onSelectTeam: (teamId: string) => void;
+  variant?: "sidebar" | "panel";
+  className?: string;
+  onNavigate?: () => void;
 }
 
 const LeftNav = ({
@@ -38,6 +41,9 @@ const LeftNav = ({
   recentCount,
   friendCount,
   onSelectTeam,
+  variant = "sidebar",
+  className,
+  onNavigate,
 }: LeftNavProps) => {
   const [openMenuTeamId, setOpenMenuTeamId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -92,8 +98,13 @@ const LeftNav = ({
     []
   );
 
+  const containerClass =
+    variant === "panel"
+      ? "flex h-full flex-col overflow-y-auto"
+      : "w-80 shrink-0 flex-col border-r border-border bg-panel px-6 py-6 text-sm text-muted transition-colors md:sticky md:top-0 md:h-full md:overflow-y-auto md:flex md:w-64 lg:w-72 xl:w-80";
+
   return (
-    <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-panel px-6 py-6 text-sm text-muted transition-colors md:sticky md:top-0 md:h-full md:overflow-y-auto md:flex md:w-64 lg:w-72 xl:w-80">
+    <aside className={clsx(containerClass, className)}>
       <div className="mb-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Workspace</p>
         <div className="relative mt-3" ref={workspaceMenuRef}>
@@ -122,13 +133,14 @@ const LeftNav = ({
                       "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-foreground hover:bg-accent",
                       activeWorkspaceId === item.id && "bg-accent/70"
                     )}
-                    onClick={() => {
-                      localStorage.setItem("activeWorkspaceId", item.id);
-                      setActiveWorkspaceId(item.id);
-                      window.dispatchEvent(new CustomEvent("workspace:select", { detail: { workspaceId: item.id } }));
-                      window.dispatchEvent(new Event("teams:refresh"));
-                      setWorkspaceMenuOpen(false);
-                    }}
+                  onClick={() => {
+                    localStorage.setItem("activeWorkspaceId", item.id);
+                    setActiveWorkspaceId(item.id);
+                    window.dispatchEvent(new CustomEvent("workspace:select", { detail: { workspaceId: item.id } }));
+                    window.dispatchEvent(new Event("teams:refresh"));
+                    setWorkspaceMenuOpen(false);
+                    onNavigate?.();
+                  }}
                   >
                     <span className="font-medium">{item.name}</span>
                     {activeWorkspaceId === item.id && (
@@ -180,7 +192,10 @@ const LeftNav = ({
                     "group relative w-full rounded-2xl border border-border px-4 py-3 text-left transition",
                     team.active ? "bg-accent/30 text-foreground shadow-[0_3px_12px_rgba(0,0,0,0.04)]" : "hover:bg-accent"
                   )}
-                  onClick={() => onSelectTeam(team.id)}
+                  onClick={() => {
+                    onSelectTeam(team.id);
+                    onNavigate?.();
+                  }}
                   role="button"
                   tabIndex={0}
                 >
@@ -271,11 +286,12 @@ const LeftNav = ({
               "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition",
               isActive ? "bg-accent text-foreground" : "text-muted hover:bg-accent"
             )}
-            onClick={() =>
+            onClick={() => {
               onChangeView(
                 isRecent ? "recent" : isFavorite ? "favorites" : isFriends ? "friends" : "projects"
-              )
-            }
+              );
+              onNavigate?.();
+            }}
           >
             <span className="flex items-center gap-2 text-[13px] font-medium">
               <item.icon size={14} className={clsx("text-muted", isActive && "text-foreground")} />
@@ -287,15 +303,7 @@ const LeftNav = ({
       })}
     </div>
 
-    <div className="mt-auto border-t border-border pt-6">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm text-muted transition hover:bg-accent"
-      >
-        <span className="font-medium tracking-wide">Organizations</span>
-        <Share2 size={14} />
-      </button>
-    </div>
+    
   </aside>
   );
 };

@@ -15,6 +15,7 @@ type ModalProps = {
   widthClass?: string; // e.g. "max-w-4xl"
   heightClass?: string;
   bodyClassName?: string;
+  hideHeader?: boolean;
 };
 
 export default function Modal({
@@ -25,7 +26,8 @@ export default function Modal({
   className,
   widthClass = 'max-w-5xl',
   heightClass,
-  bodyClassName
+  bodyClassName,
+  hideHeader = false
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -46,12 +48,14 @@ export default function Modal({
         'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] rounded-2xl overflow-hidden border border-border bg-panel shadow-panel',
         widthClass, heightClass, className
       )}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <button onClick={onClose} className="p-1 rounded hover:bg-subtle" aria-label="Close modal">
-            <X size={18} />
-          </button>
-        </div>
+        {!hideHeader && (
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <button onClick={onClose} className="p-1 rounded hover:bg-subtle" aria-label="Close modal">
+              <X size={18} />
+            </button>
+          </div>
+        )}
         <div className={clsx("max-h-[78vh] overflow-auto", bodyClassName)}>{children}</div>
       </div>
     </div>,

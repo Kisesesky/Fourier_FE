@@ -15,7 +15,7 @@ import {
 import { ko } from "date-fns/locale";
 
 import { COLOR_PALETTE } from "@/workspace/calendar/_model/mocks";
-import { toDateKey } from "@/workspace/calendar/_model/utils";
+import { toDateKey, toZonedDate, toZonedDateKey } from "@/workspace/calendar/_model/utils";
 import type { CalendarEvent, CalendarSource, EventDraft, ViewMode, ProjectCalendar } from "@/workspace/calendar/_model/types";
 import { useParams } from "next/navigation";
 import {
@@ -50,8 +50,10 @@ const createDraft = (date: string, calendarId?: string, categoryId?: string): Ev
 
 export function useCalendarState(initialDate: Date, initialView: ViewMode, focusCalendarId?: string) {
   const { projectId } = useParams<{ projectId: string }>();
-  const [current, setCurrent] = useState<Date>(initialDate);
-  const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
+  const calendarTimeZone = "Asia/Seoul";
+  const zonedInitial = toZonedDate(initialDate.toISOString(), calendarTimeZone);
+  const [current, setCurrent] = useState<Date>(zonedInitial);
+  const [selectedDate, setSelectedDate] = useState<Date>(zonedInitial);
   const [view, setView] = useState<ViewMode>(initialView);
   const [calendars, setCalendars] = useState<CalendarSource[]>([]);
   const [projectCalendars, setProjectCalendars] = useState<ProjectCalendar[]>([]);
@@ -62,7 +64,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [draft, setDraft] = useState<EventDraft>(() =>
-    createDraft(toDateKey(initialDate)),
+    createDraft(toDateKey(zonedInitial)),
   );
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [showCalendarForm, setShowCalendarForm] = useState(false);
@@ -214,7 +216,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     filteredEvents.forEach((event) => {
-      const key = toDateKey(parseISO(event.start));
+      const key = toZonedDateKey(event.start);
       const list = map.get(key) ?? [];
       list.push(event);
       map.set(key, list);
@@ -223,10 +225,11 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
   }, [filteredEvents]);
 
   const monthDays = useMemo(() => {
-    const start = startOfWeek(startOfMonth(current), { locale: ko });
-    const end = endOfWeek(endOfMonth(current), { locale: ko });
+    const zonedCurrent = toZonedDate(current.toISOString(), calendarTimeZone);
+    const start = startOfWeek(startOfMonth(zonedCurrent), { locale: ko });
+    const end = endOfWeek(endOfMonth(zonedCurrent), { locale: ko });
     return eachDayOfInterval({ start, end });
-  }, [current]);
+  }, [calendarTimeZone, current]);
 
   const upcomingEvents = useMemo(() => {
     const today = startOfDay(new Date());
@@ -236,7 +239,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
   const goPrev = () => setCurrent((prev) => subMonths(prev, 1));
   const goNext = () => setCurrent((prev) => addMonths(prev, 1));
   const goToday = () => {
-    const today = new Date();
+    const today = toZonedDate(new Date().toISOString(), calendarTimeZone);
     setCurrent(today);
     setSelectedDate(today);
   };

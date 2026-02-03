@@ -24,6 +24,7 @@ import { createTeam, deleteTeam, updateTeam } from "@/lib/team";
 import { cloneProject, createProject, deleteProject, favoriteProject, unfavoriteProject, updateProject } from "@/lib/projects";
 import { useToast } from "@/components/ui/Toast";
 import Modal from "@/components/common/Modal";
+import Drawer from "@/components/ui/Drawer";
 import { uploadImage } from "@/lib/uploads";
 import TeamMembersView from "./(workspace)/workspace/[teamId]/_components/views/TeamMembersView";
 import { fetchFriends } from "@/lib/members";
@@ -37,6 +38,7 @@ export default function HomePage() {
   const { show } = useToast();
   const [teams, setTeams] = useState<typeof fetchedTeams>([]);
   const [teamsOpen, setTeamsOpen] = useState(true);
+  const [workspaceNavOpen, setWorkspaceNavOpen] = useState(false);
   const [showNewTeamModal, setShowNewTeamModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [creatingTeam, setCreatingTeam] = useState(false);
@@ -734,11 +736,16 @@ export default function HomePage() {
   return (
     <div className="h-screen overflow-hidden bg-background text-foreground transition-colors">
       <div className="sticky top-0 z-40 h-14 shrink-0 border-b border-border bg-panel shadow-panel">
-        <Topbar workspaceMode onWorkspaceSettings={() => setShowWorkspaceSettings(true)} />
+        <Topbar
+          workspaceMode
+          onWorkspaceSettings={() => setShowWorkspaceSettings(true)}
+          onOpenWorkspaceNav={() => setWorkspaceNavOpen(true)}
+        />
       </div>
 
       <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
         <LeftNav
+          className="hidden md:flex"
           teams={teams}
           teamsOpen={teamsOpen}
           onToggleTeams={() => setTeamsOpen((prev) => !prev)}
@@ -852,6 +859,35 @@ export default function HomePage() {
           </div>
         </main>
       </div>
+
+      <Drawer
+        open={workspaceNavOpen}
+        onOpenChange={setWorkspaceNavOpen}
+        width={320}
+        side="left"
+        hideHeader
+      >
+        <LeftNav
+          variant="panel"
+          className="flex-1 bg-panel px-4 py-5 text-foreground"
+          teams={teams}
+          teamsOpen={teamsOpen}
+          onToggleTeams={() => setTeamsOpen((prev) => !prev)}
+          onAddTeam={() => setShowNewTeamModal(true)}
+          onRenameTeam={(teamId, name) => openTeamRenameModal(teamId, name)}
+          onDeleteTeam={(teamId, name) => openTeamDeleteModal(teamId, name)}
+          activeView={leftNavView}
+          onChangeView={setLeftNavView}
+          favoriteCount={favoriteProjects.length}
+          recentCount={recentCount}
+          friendCount={friendCount}
+          onNavigate={() => setWorkspaceNavOpen(false)}
+          onSelectTeam={(teamId) => {
+            handleSelectTeam(teamId);
+            setWorkspaceNavOpen(false);
+          }}
+        />
+      </Drawer>
 
       {showNewTeamModal && (
         <div

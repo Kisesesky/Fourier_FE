@@ -50,6 +50,7 @@ type TopbarProps = {
   sidebarCollapsed?: boolean;
   workspaceMode?: boolean;
   onWorkspaceSettings?: () => void;
+  onOpenWorkspaceNav?: () => void;
 };
 
 type WorkspaceTab = {
@@ -83,6 +84,7 @@ export default function Topbar({
   sidebarCollapsed,
   workspaceMode = false,
   onWorkspaceSettings,
+  onOpenWorkspaceNav,
 }: TopbarProps = {}) {
   const { show } = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -510,7 +512,21 @@ export default function Topbar({
   if (workspaceMode) {
     return (
       <header className="flex h-[56px] w-full items-center justify-between border-b border-border bg-panel px-4 text-foreground shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-colors md:px-8">
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex min-w-0 flex-1 items-center gap-3 text-sm">
+          <button
+            type="button"
+            className="rounded-md p-2 text-muted transition-colors hover:bg-accent md:hidden"
+            aria-label="Open navigation"
+            onClick={() => {
+              if (onOpenWorkspaceNav) {
+                onOpenWorkspaceNav();
+              } else {
+                window.dispatchEvent(new Event("app:toggle-sidebar"));
+              }
+            }}
+          >
+            <Menu size={22} />
+          </button>
           <button
             type="button"
             className="flex items-center gap-2"
@@ -525,9 +541,9 @@ export default function Topbar({
               className="h-12 w-12 rounded-xl object-cover"
               priority
             />
-            <span className="text-lg font-semibold">Fourier</span>
+            <span className="hidden text-lg font-semibold md:inline">Fourier</span>
           </button>
-          <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-3 md:flex">
             {tabs.map((tab) => (
               <div
                 key={tab.id}
@@ -598,14 +614,16 @@ export default function Topbar({
 
         <div className="flex items-center gap-2">
           <button
-            className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm uppercase tracking-[0.3em] text-muted transition hover:text-foreground"
+            className="hidden items-center gap-2 rounded-full border border-border px-3 py-2 text-sm uppercase tracking-[0.3em] text-muted transition hover:text-foreground md:flex"
             aria-label="Toggle theme"
             onClick={cycleTheme}
           >
             <ThemeIcon size={18} />
             <span className="capitalize">{theme}</span>
           </button>
-          <ToolbarIcon icon={RotateCcw} label="Refresh" onClick={() => window.location.reload()} />
+          <div className="hidden md:block">
+            <ToolbarIcon icon={RotateCcw} label="Refresh" onClick={() => window.location.reload()} />
+          </div>
           <ToolbarIcon icon={MessageSquare} label="DM" onClick={() => window.dispatchEvent(new Event("dm:open"))} />
           {renderNotifications()}
           <ToolbarIcon icon={Settings} label="Settings" onClick={onWorkspaceSettings} />
@@ -621,7 +639,7 @@ export default function Topbar({
         <div className="flex flex-1 items-center">
           <button
             type="button"
-            className="rounded-md p-2 text-muted transition-colors hover:bg-accent md:hidden"
+            className="hidden rounded-md p-2 text-muted transition-colors hover:bg-accent md:inline-flex"
             aria-label="Toggle navigation"
             onClick={() => window.dispatchEvent(new Event("app:toggle-sidebar"))}
           >
@@ -643,7 +661,7 @@ export default function Topbar({
 
           <button
             type="button"
-            className="hidden items-center gap-2 md:flex"
+            className="flex items-center gap-2"
             onClick={() => router.push("/")}
             aria-label="Go home"
           >
@@ -655,14 +673,14 @@ export default function Topbar({
               className="h-7 w-7 rounded-md object-cover"
               priority
             />
-            <div className="flex flex-col leading-tight">
+            <div className="hidden flex-col leading-tight md:flex">
               <span className="text-sm font-semibold text-foreground">FOURIER</span>
             </div>
           </button>
         </div>
 
         <div className="flex flex-1 items-center justify-end gap-3">
-          <div className="w-full max-w-sm">
+          <div className="hidden w-full max-w-sm md:block">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-2.5 text-muted" size={16} />
               <input
@@ -681,16 +699,16 @@ export default function Topbar({
               Help
             </button>
             <button
-              className="rounded-md p-2 text-muted transition hover:bg-accent"
+              className="hidden rounded-md p-2 text-muted transition hover:bg-accent md:inline-flex"
               aria-label={THEME_LABELS[theme]}
               onClick={cycleTheme}
               title={THEME_LABELS[theme]}
             >
               <ThemeIcon size={20} />
             </button>
-            {renderNotifications()}
+            <div className="hidden md:block">{renderNotifications()}</div>
             <button
-              className="rounded-md p-2 text-muted transition hover:bg-accent"
+              className="hidden rounded-md p-2 text-muted transition hover:bg-accent md:inline-flex"
               aria-label="Settings"
               onClick={() => setSettingsOpen(true)}
             >

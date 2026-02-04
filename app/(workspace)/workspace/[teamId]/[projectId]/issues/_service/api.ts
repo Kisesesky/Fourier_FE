@@ -1,5 +1,5 @@
 import api from "@/lib/api";
-import type { ActivityType, ID, Issue, IssueActivity, IssueComment, User } from "@/workspace/issues/_model/types";
+import type { ActivityType, ID, Issue, IssueActivity, IssueComment, IssueGroup, User } from "@/workspace/issues/_model/types";
 
 const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID;
 
@@ -18,6 +18,40 @@ const mapStatus = (status?: string): Issue["status"] => {
       return "in_progress";
     default:
       return "todo";
+  }
+};
+
+const mapPriority = (value?: string): Issue["priority"] => {
+  switch ((value || "").toUpperCase()) {
+    case "VERY_LOW":
+      return "very_low";
+    case "LOW":
+      return "low";
+    case "MEDIUM":
+      return "medium";
+    case "HIGH":
+      return "high";
+    case "URGENT":
+      return "urgent";
+    default:
+      return "medium";
+  }
+};
+
+const toBackendPriority = (value?: Issue["priority"]) => {
+  switch (value) {
+    case "very_low":
+      return "VERY_LOW";
+    case "low":
+      return "LOW";
+    case "medium":
+      return "MEDIUM";
+    case "high":
+      return "HIGH";
+    case "urgent":
+      return "URGENT";
+    default:
+      return undefined;
   }
 };
 
@@ -43,21 +77,35 @@ const mapIssue = (item: any): Issue => ({
   title: item.title ?? "",
   description: item.description ?? item.content ?? "",
   status: mapStatus(item.status),
-  priority: item.priority ?? "medium",
+  priority: mapPriority(item.priority),
   assignee: item.assignee?.name || item.assigneeId || "",
   assigneeId: item.assignee?.id || item.assigneeId || "",
   reporter: item.reporter?.name || item.creator?.name || item.reporterId || "",
+  group: item.group
+    ? {
+        id: item.group.id,
+        name: item.group.name,
+        color: item.group.color,
+        sortOrder: item.group.sortOrder ?? 0,
+        createdAt: item.group.createdAt ?? new Date().toISOString(),
+      }
+    : undefined,
   startAt: item.startAt ?? undefined,
   endAt: item.endAt ?? undefined,
   progress: typeof item.progress === "number" ? item.progress : undefined,
+  parentId: item.parentId ?? item.parent?.id ?? null,
   createdAt: item.createdAt || new Date().toISOString(),
   updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+  subtasks: Array.isArray(item.subtasks) ? item.subtasks.map(mapIssue) : undefined,
+  comments: Array.isArray(item.comments) ? item.comments.map((comment: any) => mapComment(comment, item.id)) : [],
 });
 
 const mapComment = (item: any, issueId: ID): IssueComment => ({
   id: item.id,
   issueId,
   author: item.author?.name || item.authorId || "Unknown",
+  authorId: item.author?.id || item.authorId || undefined,
+  authorAvatarUrl: item.author?.avatarUrl ?? undefined,
   body: item.body ?? item.content ?? "",
   createdAt: item.createdAt || new Date().toISOString(),
 });
@@ -128,6 +176,7 @@ export async function createIssue(
     status?: Issue["status"];
     priority?: Issue["priority"];
     assigneeId?: string;
+    groupId?: string;
     startAt?: string;
     endAt?: string;
     progress?: number;
@@ -138,8 +187,9 @@ export async function createIssue(
   const { data } = await api.post<any>(`/projects/${projectId}/issues`, {
     title: payload.title,
     status: payload.status ? toBackendStatus(payload.status) : undefined,
-    priority: payload.priority,
+    priority: payload.priority ? toBackendPriority(payload.priority) : undefined,
     assigneeId: payload.assigneeId,
+    groupId: payload.groupId,
     startAt: payload.startAt,
     endAt: payload.endAt,
     progress: payload.progress,
@@ -156,6 +206,8 @@ export async function updateIssue(
     title?: string;
     status?: Issue["status"];
     assigneeId?: string;
+    priority?: Issue["priority"];
+    groupId?: string;
     startAt?: string;
     endAt?: string;
     progress?: number;
@@ -172,6 +224,8 @@ export async function updateIssue(
     title,
     status: patch.status ? toBackendStatus(patch.status) : undefined,
     assigneeId: patch.assigneeId,
+    priority: patch.priority ? toBackendPriority(patch.priority) : undefined,
+    groupId: patch.groupId,
     startAt: patch.startAt,
     endAt: patch.endAt,
     progress: patch.progress,
@@ -179,6 +233,35 @@ export async function updateIssue(
     dueAt: patch.dueAt ?? undefined,
   });
   return mapIssue(data);
+}
+
+export async function deleteIssue(projectId: string, issueId: ID): Promise<{ ok: boolean }> {
+  const { data } = await api.delete<{ ok: boolean }>(`/projects/${projectId}/issues/${issueId}`);
+  return data;
+}
+
+export async function listIssueGroups(projectId: string): Promise<IssueGroup[]> {
+  const { data } = await api.get<IssueGroup[]>(`/projects/${projectId}/issues/groups`);
+  return data ?? [];
+}
+
+export async function createIssueGroup(projectId: string, payload: { name?: string; color?: string }): Promise<IssueGroup> {
+  const { data } = await api.post<IssueGroup>(`/projects/${projectId}/issues/groups`, payload);
+  return data;
+}
+
+export async function updateIssueGroup(
+  projectId: string,
+  groupId: string,
+  payload: { name?: string; color?: string; sortOrder?: number },
+): Promise<IssueGroup> {
+  const { data } = await api.patch<IssueGroup>(`/projects/${projectId}/issues/groups/${groupId}`, payload);
+  return data;
+}
+
+export async function removeIssueGroup(projectId: string, groupId: string): Promise<{ ok: boolean }> {
+  const { data } = await api.patch<{ ok: boolean }>(`/projects/${projectId}/issues/groups/${groupId}/remove`);
+  return data;
 }
 
 export async function updateIssueStatus(projectId: string, issueId: ID, status: Issue["status"]): Promise<Issue> {
@@ -213,6 +296,24 @@ export async function addComment(issueId: ID, author: string, body: string, proj
   const { data } = await api.post<any>(`/projects/${pid}/issues/${issueId}/comment`, { content: body });
   // 백엔드가 author 정보를 돌려주지 않으면 호출자 이름을 보정
   return mapComment({ ...data, authorId: data.authorId ?? author }, issueId);
+}
+
+export async function deleteComment(projectId: string, commentId: ID): Promise<{ issueId?: ID; commentId?: ID }> {
+  const { data } = await api.delete<{ issueId?: ID; commentId?: ID }>(`/projects/${projectId}/issues/comment/${commentId}`);
+  return data ?? { commentId };
+}
+
+export async function addSubtask(
+  projectId: string,
+  payload: { parentId: ID; title: string; assigneeId?: string; startAt?: string; dueAt?: string },
+): Promise<Issue> {
+  const { data } = await api.post<any>(`/projects/${projectId}/issues/subtask`, payload);
+  return mapIssue(data);
+}
+
+export async function deleteSubtask(projectId: string, subtaskId: ID): Promise<{ parentId?: ID | null }> {
+  const { data } = await api.delete<{ parentId?: ID | null }>(`/projects/${projectId}/issues/subtask/${subtaskId}`);
+  return data ?? { parentId: null };
 }
 
 export async function listActivities(issueId: ID, projectId?: string, type?: ActivityType): Promise<IssueActivity[]> {

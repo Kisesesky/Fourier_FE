@@ -104,6 +104,7 @@ export default function Topbar({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const notificationRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const displayName =
     currentUser?.name ?? profile?.displayName ?? profile?.name ?? profile?.email ?? "User";
@@ -209,7 +210,11 @@ export default function Topbar({
     router.push(tab.href);
   };
 
-  const ThemeIcon = useMemo(() => THEME_ICONS[theme], [theme]);
+  const ThemeIcon = useMemo(() => (mounted ? THEME_ICONS[theme] : Monitor), [theme, mounted]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const loadRecent = () => {
@@ -619,7 +624,9 @@ export default function Topbar({
             onClick={cycleTheme}
           >
             <ThemeIcon size={18} />
-            <span className="capitalize">{theme}</span>
+            <span className="capitalize" suppressHydrationWarning>
+              {mounted ? theme : "system"}
+            </span>
           </button>
           <div className="hidden md:block">
             <ToolbarIcon icon={RotateCcw} label="Refresh" onClick={() => window.location.reload()} />

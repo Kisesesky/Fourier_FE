@@ -1,6 +1,6 @@
 export type ID = string;
 
-export type Priority = "low" | "medium" | "high" | "urgent";
+export type Priority = "very_low" | "low" | "medium" | "high" | "urgent";
 export type IssueStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
 
 export interface Issue {
@@ -13,17 +13,30 @@ export interface Issue {
   assignee?: string;
   assigneeId?: string;
   reporter?: string;
+  group?: IssueGroup;
   startAt?: string;
   endAt?: string;
   progress?: number;
+  parentId?: ID | null;
   createdAt: string;
   updatedAt: string;
+  subtasks?: Issue[];
+}
+
+export interface IssueGroup {
+  id: ID;
+  name: string;
+  color?: string;
+  sortOrder: number;
+  createdAt: string;
 }
 
 export interface IssueComment {
   id: ID;
   issueId: ID;
   author: string;
+  authorId?: ID;
+  authorAvatarUrl?: string | null;
   body: string;
   createdAt: string;
 }

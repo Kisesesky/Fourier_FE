@@ -779,6 +779,7 @@ const quickActions: {
         high: 1,
         medium: 2,
         low: 3,
+        very_low:4,
       };
       const statusLabel: Record<Issue['status'], string> = {
         backlog: '백로그',
@@ -795,6 +796,7 @@ const quickActions: {
         done: 'bg-emerald-100 text-emerald-700',
       };
       const priorityStyle: Record<Issue['priority'], string> = {
+        very_low: 'border border-emerald-200 bg-sky-50 text-sky-700',
         low: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
         medium: 'border border-amber-200 bg-amber-50 text-amber-700',
         high: 'border border-orange-200 bg-orange-50 text-orange-700',

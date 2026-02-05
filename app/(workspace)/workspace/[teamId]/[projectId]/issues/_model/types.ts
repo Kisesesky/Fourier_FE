@@ -21,6 +21,7 @@ export interface Issue {
   createdAt: string;
   updatedAt: string;
   subtasks?: Issue[];
+  comments?: IssueComment[];
 }
 
 export interface IssueGroup {

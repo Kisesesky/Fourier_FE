@@ -303,6 +303,11 @@ export async function deleteComment(projectId: string, commentId: ID): Promise<{
   return data ?? { commentId };
 }
 
+export async function updateComment(projectId: string, commentId: ID, content: string, issueId: ID): Promise<IssueComment> {
+  const { data } = await api.patch<any>(`/projects/${projectId}/issues/comment/${commentId}`, { content });
+  return mapComment(data, issueId);
+}
+
 export async function addSubtask(
   projectId: string,
   payload: { parentId: ID; title: string; assigneeId?: string; startAt?: string; dueAt?: string },

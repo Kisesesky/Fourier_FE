@@ -13,8 +13,10 @@ import {
   Filter,
   KanbanSquare,
   LayoutDashboard,
+  MessageSquareMore,
   MoreHorizontal,
   Pencil,
+  SquarePlus,
   Table2,
   Trash2,
 } from "lucide-react";
@@ -36,6 +38,7 @@ import {
   listComments,
   removeIssueGroup,
   updateIssue,
+  updateComment,
   updateIssueGroup,
   updateIssueProgress,
   updateIssueStatus,
@@ -106,6 +109,9 @@ export default function IssuesBoardView() {
   const [openCommentThreads, setOpenCommentThreads] = useState<Record<string, boolean>>({});
   const [commentThreadDrafts, setCommentThreadDrafts] = useState<Record<string, string>>({});
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({});
+  const [commentEditingId, setCommentEditingId] = useState<string | null>(null);
+  const [commentEditingDraft, setCommentEditingDraft] = useState("");
+  const [commentReactions, setCommentReactions] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
   const [memberMap, setMemberMap] = useState<Record<string, { name: string; avatarUrl?: string | null }>>({});
   const [issueTags, setIssueTags] = useState<Record<string, string[]>>({});
@@ -732,15 +738,17 @@ export default function IssuesBoardView() {
                 });
                 setIssueActionsId(null);
               }}
-              className="rounded-md border border-border px-2 py-1 text-xs text-foreground hover:bg-subtle/60"
+              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-foreground hover:bg-subtle/60"
             >
-              하위 업무 추가
+              <SquarePlus size={14} />
+              이슈 추가
             </button>
             <button
               type="button"
               onClick={() => void handleToggleComments(issue)}
-              className="rounded-md border border-border px-2 py-1 text-xs text-foreground hover:bg-subtle/60"
+              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-foreground hover:bg-subtle/60"
             >
+              <MessageSquareMore size={14} />
               {commentThreads[issue.id]?.length
                 ? `댓글 ${commentThreads[issue.id].length}개`
                 : "댓글"}
@@ -780,29 +788,136 @@ export default function IssuesBoardView() {
           <div className="border-t border-border/60 px-3 py-2">
             {commentThreads[issue.id]?.length ? (
               <div className="space-y-2">
-                {commentThreads[issue.id].map((comment) => (
-                  <div key={comment.id} className="rounded-md bg-background/70 px-2 py-2">
-                    <div className="flex items-start gap-2">
-                      <div className="h-6 w-6 overflow-hidden rounded-full border border-border bg-subtle/60">
-                        {comment.authorAvatarUrl ? (
-                          <img
-                            src={comment.authorAvatarUrl}
-                            alt={comment.author}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-[10px] text-muted">
-                            {comment.author.slice(0, 1)}
+                {commentThreads[issue.id].map((comment) => {
+                  const isMine = comment.authorId && profile?.id && comment.authorId === profile.id;
+                  const reactions = commentReactions[comment.id] ?? {};
+                  const isEditing = commentEditingId === comment.id;
+                  return (
+                    <div key={comment.id} className="group rounded-md bg-background/70 px-2 py-2">
+                      <div className="flex items-start gap-2">
+                        <div className="h-6 w-6 overflow-hidden rounded-full border border-border bg-subtle/60">
+                          {comment.authorAvatarUrl ? (
+                            <img
+                              src={comment.authorAvatarUrl}
+                              alt={comment.author}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] text-muted">
+                              {comment.author.slice(0, 1)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 text-[10px] text-muted">
+                            <span className="font-semibold">{comment.author}</span>
+                            <span>{formatCommentDateTime(comment.createdAt)}</span>
                           </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-semibold text-muted">{comment.author}</div>
-                        <div className="text-foreground">{comment.body}</div>
+                          {isEditing ? (
+                            <div className="mt-1 flex items-center gap-2">
+                              <input
+                                value={commentEditingDraft}
+                                onChange={(e) => setCommentEditingDraft(e.target.value)}
+                                className="h-7 flex-1 rounded-md border border-border bg-background px-2 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!projectId) return;
+                                  const next = commentEditingDraft.trim();
+                                  if (!next) return;
+                                  await updateComment(projectId, comment.id, next, issue.id);
+                                  setCommentThreads((prev) => ({
+                                    ...prev,
+                                    [issue.id]: (prev[issue.id] ?? []).map((c) =>
+                                      c.id === comment.id ? { ...c, body: next } : c,
+                                    ),
+                                  }));
+                                  setCommentEditingId(null);
+                                }}
+                                className="h-7 rounded-md border border-border px-2 text-[10px] text-muted hover:bg-subtle/60"
+                              >
+                                저장
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCommentEditingId(null)}
+                                className="h-7 rounded-md border border-border px-2 text-[10px] text-muted hover:bg-subtle/60"
+                              >
+                                취소
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-foreground">{comment.body}</div>
+                          )}
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted opacity-0 transition group-hover:opacity-100">
+                            {Object.entries(reactions).map(([emoji, count]) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() =>
+                                  setCommentReactions((prev) => ({
+                                    ...prev,
+                                    [comment.id]: { ...(prev[comment.id] ?? {}), [emoji]: count + 1 },
+                                  }))
+                                }
+                                className="rounded-full border border-border bg-background px-2 py-0.5"
+                              >
+                                {emoji} {count}
+                              </button>
+                            ))}
+                            {["👍", "❤️", "😂", "🎉"].map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() =>
+                                  setCommentReactions((prev) => ({
+                                    ...prev,
+                                    [comment.id]: {
+                                      ...(prev[comment.id] ?? {}),
+                                      [emoji]: (prev[comment.id]?.[emoji] ?? 0) + 1,
+                                    },
+                                  }))
+                                }
+                                className="rounded-full border border-border bg-background px-2 py-0.5"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                            {isMine && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCommentEditingId(comment.id);
+                                    setCommentEditingDraft(comment.body);
+                                  }}
+                                  className="rounded-full border border-border bg-background px-2 py-0.5"
+                                >
+                                  수정
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!projectId) return;
+                                    await deleteComment(projectId, comment.id);
+                                    setCommentThreads((prev) => ({
+                                      ...prev,
+                                      [issue.id]: (prev[issue.id] ?? []).filter((c) => c.id !== comment.id),
+                                    }));
+                                  }}
+                                  className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-600"
+                                >
+                                  삭제
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-muted">댓글이 없습니다.</div>
@@ -2021,6 +2136,17 @@ function formatIssueDateTime(value: string) {
   return `${mm}.${dd} ${hh}:${min}`;
 }
 
+function formatCommentDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${yyyy}.${mm}.${dd} ${hh}:${min}`;
+}
+
 function formatIssueDateRange(startAt?: string, endAt?: string) {
   if (!startAt) return "—";
   const start = new Date(startAt);
@@ -2066,6 +2192,41 @@ function TimelineView({
   issues: Issue[];
   memberMap: Record<string, { name: string; avatarUrl?: string | null }>;
 }) {
+  const [hoveredIssue, setHoveredIssue] = useState<{
+    title: string;
+    range: string;
+    assignee: string;
+    avatarUrl?: string | null;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const parseTimelineDate = (value: string, isEnd: boolean) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [y, m, d] = value.split("-").map(Number);
+      return new Date(y, (m ?? 1) - 1, d ?? 1, isEnd ? 23 : 0, isEnd ? 59 : 0, isEnd ? 59 : 0, isEnd ? 999 : 0);
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+      const raw = new Date(value);
+      if (Number.isNaN(raw.getTime())) return null;
+      if (value.endsWith("Z")) {
+        const yyyy = raw.getUTCFullYear();
+        const mm = raw.getUTCMonth();
+        const dd = raw.getUTCDate();
+        return new Date(yyyy, mm, dd, isEnd ? 23 : 0, isEnd ? 59 : 0, isEnd ? 59 : 0, isEnd ? 999 : 0);
+      }
+      const yyyy = raw.getFullYear();
+      const mm = raw.getMonth();
+      const dd = raw.getDate();
+      return new Date(yyyy, mm, dd, isEnd ? 23 : 0, isEnd ? 59 : 0, isEnd ? 59 : 0, isEnd ? 999 : 0);
+    }
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return null;
+    if (isEnd) dt.setHours(23, 59, 59, 999);
+    else dt.setHours(0, 0, 0, 0);
+    return dt;
+  };
+  const groupPalette = ["#f87171", "#60a5fa", "#fbbf24", "#a78bfa", "#34d399"];
   const timelineStart = useMemo(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -2079,79 +2240,307 @@ function TimelineView({
     return Array.from({ length: total }, (_, idx) => idx + 1);
   }, [timelineEnd, timelineStart]);
 
-  const byAssignee = useMemo(() => {
-    const map = new Map<string, Issue[]>();
-    issues.forEach((issue) => {
-      const key = issue.assigneeId || issue.assignee || "unassigned";
-      const list = map.get(key) ?? [];
-      list.push(issue);
-      map.set(key, list);
+  const weeks = useMemo(() => {
+    const totalDays = days.length;
+    return Array.from({ length: Math.ceil(totalDays / 7) }, (_, idx) => idx);
+  }, [days.length]);
+
+  const issuesByGroup = useMemo(() => {
+    const map = new Map<string, { name: string; color: string; items: Issue[] }>();
+    const flat: Issue[] = [];
+    const seen = new Set<string>();
+    const groupById = new Map<string, IssueGroup>();
+    const issueById = new Map<string, Issue>();
+    const walk = (items: Issue[]) => {
+      items.forEach((item) => {
+        if (!seen.has(item.id)) {
+          flat.push(item);
+          seen.add(item.id);
+          issueById.set(item.id, item);
+        }
+        if (item.group) {
+          groupById.set(item.id, item.group);
+        }
+        if (item.subtasks?.length) walk(item.subtasks);
+      });
+    };
+    walk(issues);
+
+    flat.forEach((issue) => {
+      let inheritedGroup: IssueGroup | undefined = issue.group;
+      let cursorId = issue.parentId ?? null;
+      while (!inheritedGroup && cursorId) {
+        const cursor = issueById.get(cursorId);
+        if (!cursor) break;
+        if (cursor.group) {
+          inheritedGroup = cursor.group;
+          break;
+        }
+        cursorId = cursor.parentId ?? null;
+      }
+      if (!issue.group && inheritedGroup) {
+        groupById.set(issue.id, inheritedGroup);
+      }
+      const key = inheritedGroup?.id ?? issue.group?.id ?? "ungrouped";
+      if (!map.has(key)) {
+        const idx = map.size % groupPalette.length;
+        map.set(key, {
+          name: inheritedGroup?.name ?? issue.group?.name ?? "미분류",
+          color: inheritedGroup?.color ?? issue.group?.color ?? groupPalette[idx],
+          items: [],
+        });
+      }
+      map.get(key)!.items.push(issue);
     });
     return Array.from(map.entries());
   }, [issues]);
 
   const rangeMs = timelineEnd.getTime() - timelineStart.getTime();
-  const dayWidth = 36;
+  const dayWidth = 56;
   const gridWidth = days.length * dayWidth;
+  const rowHeight = 36;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const toLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = (date: Date, start: Date) =>
+    Math.floor((toLocalDay(date).getTime() - toLocalDay(start).getTime()) / dayMs);
 
   return (
-    <div className="rounded-xl border border-border bg-panel/60 p-4">
-      <div className="grid grid-cols-[160px_1fr] items-center gap-2 border-b border-border pb-3 text-xs font-semibold text-muted">
-        <div></div>
-        <div className="overflow-x-auto">
-          <div className="flex" style={{ minWidth: gridWidth }}>
-            {days.map((day) => (
-              <span key={day} className="w-9 text-center">
-                {day}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="divide-y divide-border">
-        {byAssignee.map(([assigneeKey, items]) => {
-          const name =
-            memberMap[assigneeKey]?.name ||
-            items[0]?.assignee ||
-            "미지정";
-          const avatar = memberMap[assigneeKey]?.avatarUrl ?? null;
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
+        {issuesByGroup.map(([groupId, group]) => {
+          const assigneeMap = new Map<string, Issue[]>();
+          group.items.forEach((issue) => {
+            const key = issue.assigneeId || issue.assignee || "unassigned";
+            const list = assigneeMap.get(key) ?? [];
+            if (!list.find((item) => item.id === issue.id)) {
+              list.push(issue);
+              assigneeMap.set(key, list);
+            }
+          });
+
           return (
-            <div key={assigneeKey} className="grid grid-cols-[160px_1fr] items-center gap-2 py-4">
-              <div className="flex items-center gap-3">
-                {avatar ? (
-                  <img src={avatar} alt={name} className="h-10 w-10 rounded-full object-cover" />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-muted">
-                    {name.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
-                <span className="text-sm font-medium">{name}</span>
+            <div key={groupId} className="rounded-xl border border-border bg-panel/60">
+              <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
+                <span>{group.name}</span>
               </div>
-              <div className="overflow-x-auto">
-                <div className="relative h-10" style={{ minWidth: gridWidth }}>
-                  {items.map((issue) => {
-                    if (!issue.startAt || !issue.endAt) return null;
-                    const start = Math.max(new Date(issue.startAt).getTime(), timelineStart.getTime());
-                    const end = Math.min(new Date(issue.endAt).getTime(), timelineEnd.getTime());
-                    if (Number.isNaN(start) || Number.isNaN(end) || end < start) return null;
-                    const left = ((start - timelineStart.getTime()) / rangeMs) * 100;
-                    const width = Math.max(((end - start) / rangeMs) * 100, 4);
-                    return (
-                      <div
-                        key={issue.id}
-                        className="absolute top-1/2 -translate-y-1/2 rounded-full bg-rose-300 px-3 py-1 text-xs font-semibold text-white shadow-sm"
-                        style={{ left: `${left}%`, width: `${width}%` }}
-                      >
-                        <span className="truncate">{issue.title}</span>
-                      </div>
-                    );
-                  })}
+              <div className="flex min-w-0">
+                <div className="w-52 shrink-0 border-r border-border">
+                  <div className="sticky top-0 z-10 h-11 border-b border-border bg-panel/90 px-4 text-xs font-semibold text-muted flex items-center">
+                    구분
+                  </div>
+                  <div className="sticky top-11 z-10 h-9 border-b border-border bg-panel/90 px-4 text-xs font-semibold text-muted flex items-center">
+                    담당자
+                  </div>
+                  <div className="divide-y divide-border">
+                    {Array.from(assigneeMap.entries()).map(([assigneeKey, items], rowIdx) => {
+                      const name =
+                        memberMap[assigneeKey]?.name ||
+                        items[0]?.assignee ||
+                        "미지정";
+                      const avatar = memberMap[assigneeKey]?.avatarUrl ?? null;
+                      const totalHeight = Math.max(items.length, 1) * rowHeight;
+                      return (
+                        <div
+                          key={`${groupId}-${assigneeKey}`}
+                          className={[
+                            "flex items-start gap-3 px-4 py-3 border-b border-border/60",
+                            rowIdx % 2 === 1 ? "bg-subtle/20" : "",
+                          ].join(" ")}
+                          style={{ minHeight: totalHeight }}
+                        >
+                          {avatar ? (
+                            <img src={avatar} alt={name} className="h-9 w-9 rounded-full object-cover" />
+                          ) : (
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-muted">
+                              {name.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-sm font-medium">{name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden">
+                  <div style={{ minWidth: gridWidth }}>
+                    <div className="sticky top-0 z-10 flex h-11 items-center border-b border-border bg-panel/90 text-xs font-semibold text-muted">
+                      {weeks.map((week) => (
+                        <span
+                          key={week}
+                          className="flex items-center justify-center border-r border-border/60 last:border-r-0"
+                          style={{ width: dayWidth * 7 }}
+                        >
+                          {week + 1}주차
+                        </span>
+                      ))}
+                    </div>
+                    <div
+                      className="sticky top-11 z-10 flex h-9 items-center border-b border-border bg-panel/90 text-[10px] text-muted"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(to right, rgba(148,163,184,0.2) 1px, transparent 1px), linear-gradient(to right, rgba(148,163,184,0.45) 1px, transparent 1px)",
+                        backgroundSize: `${dayWidth}px 100%, ${dayWidth * 7}px 100%`,
+                      }}
+                    >
+                      {days.map((day) => (
+                        <span key={day} className="text-center" style={{ width: dayWidth }}>
+                          {day}
+                        </span>
+                      ))}
+                    </div>
+                    {Array.from(assigneeMap.entries()).map(([assigneeKey, items], rowIdx) => {
+                      const byId = new Map(items.map((item) => [item.id, item]));
+                      const children = new Map<string, Issue[]>();
+                      items.forEach((item) => {
+                        if (item.parentId && byId.has(item.parentId)) {
+                          const list = children.get(item.parentId) ?? [];
+                          list.push(item);
+                          children.set(item.parentId, list);
+                        }
+                      });
+                      const sortedRoots = items
+                        .filter((item) => !item.parentId || !byId.has(item.parentId))
+                        .sort((a, b) => {
+                          const aStart = parseTimelineDate(a.startAt ?? a.endAt ?? "", false)?.getTime() ?? 0;
+                          const bStart = parseTimelineDate(b.startAt ?? b.endAt ?? "", false)?.getTime() ?? 0;
+                          return aStart - bStart;
+                        });
+                      const ordered: Issue[] = [];
+                      const walkOrdered = (root: Issue) => {
+                        ordered.push(root);
+                        const kids = (children.get(root.id) ?? []).sort((a, b) => {
+                          const aStart = parseTimelineDate(a.startAt ?? a.endAt ?? "", false)?.getTime() ?? 0;
+                          const bStart = parseTimelineDate(b.startAt ?? b.endAt ?? "", false)?.getTime() ?? 0;
+                          return aStart - bStart;
+                        });
+                        kids.forEach(walkOrdered);
+                      };
+                      sortedRoots.forEach(walkOrdered);
+
+                      return (
+                        <div
+                          key={`${groupId}-${assigneeKey}-bar`}
+                          className={[
+                            "relative border-b border-border/60",
+                            rowIdx % 2 === 1 ? "bg-subtle/20" : "",
+                          ].join(" ")}
+                          style={{
+                            height: Math.max(ordered.length, 1) * rowHeight,
+                            backgroundImage:
+                              "linear-gradient(to right, rgba(148,163,184,0.2) 1px, transparent 1px), linear-gradient(to right, rgba(148,163,184,0.45) 1px, transparent 1px)",
+                            backgroundSize: `${dayWidth}px 100%, ${dayWidth * 7}px 100%`,
+                          }}
+                        >
+                          {ordered.map((issue, idx) => {
+                            if (!issue.startAt && !issue.endAt) return null;
+                            const startRaw = issue.startAt ?? issue.endAt;
+                            const endRaw = issue.endAt ?? issue.startAt;
+                            if (!startRaw || !endRaw) return null;
+                            const startDate = parseTimelineDate(startRaw, false);
+                            const endDate = parseTimelineDate(endRaw, true);
+                            if (!startDate || !endDate) return null;
+                            const startIndex = Math.max(0, diffDays(startDate, timelineStart));
+                            const endIndex = Math.min(days.length - 1, diffDays(endDate, timelineStart));
+                            const leftPx = startIndex * dayWidth;
+                            const widthPx = Math.max((endIndex - startIndex + 1) * dayWidth, 4);
+                            const getDepth = (item: Issue) => {
+                              let depth = 0;
+                              let cursor = item.parentId ? byId.get(item.parentId) : undefined;
+                              while (cursor) {
+                                depth += 1;
+                                cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+                              }
+                              return depth;
+                            };
+                            const depth = getDepth(issue);
+                            const isSubtask = depth > 0;
+                            const isDeepSubtask = depth > 1;
+                            const inset = depth ? 6 + Math.min(depth - 1, 2) * 4 : 0;
+                            const barWidth = Math.max(widthPx - inset * 2, 12);
+                            return (
+                              <div
+                                key={issue.id}
+                                className={[
+                                  "group absolute rounded-xl px-3 text-xs text-white shadow-sm",
+                                  isSubtask ? "py-2 opacity-90 text-[10px] font-semibold" : "py-2.5 font-bold",
+                                  isDeepSubtask ? "opacity-50 text-[9px] font-medium" : "",
+                                ].join(" ")}
+                                style={{
+                                  top: idx * rowHeight + rowHeight / 2,
+                                  transform: "translateY(-50%)",
+                                  left: leftPx + inset,
+                                  width: barWidth,
+                                  backgroundColor: group.color,
+                                }}
+                                onMouseEnter={(e) => {
+                                  const assignee = issue.assignee ?? "미지정";
+                                  const avatarUrl =
+                                    (issue.assigneeId && memberMap[issue.assigneeId]?.avatarUrl) ||
+                                    Object.values(memberMap).find((m) => m.name === issue.assignee)?.avatarUrl ||
+                                    null;
+                                  setHoveredIssue({
+                                    title: issue.title,
+                                    range: formatIssueDateRange(issue.startAt, issue.endAt),
+                                    assignee,
+                                    avatarUrl,
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                  });
+                                }}
+                                onMouseMove={(e) => {
+                                  setHoveredIssue((prev) =>
+                                    prev
+                                      ? { ...prev, x: e.clientX, y: e.clientY }
+                                      : null,
+                                  );
+                                }}
+                                onMouseLeave={() => setHoveredIssue(null)}
+                              >
+                                <span className="truncate">{isSubtask ? `↳ ${issue.title}` : issue.title}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+      {hoveredIssue && (
+        <div
+          className="fixed z-[60] w-56 rounded-lg border border-border bg-panel px-3 py-2 text-[11px] text-foreground shadow-lg"
+          style={{ left: hoveredIssue.x + 12, top: hoveredIssue.y + 12 }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-subtle px-2 py-0.5 text-[10px] font-semibold text-muted">타이틀</span>
+            <span className="truncate font-semibold">{hoveredIssue.title}</span>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="rounded-full bg-subtle px-2 py-0.5 text-[10px] font-semibold text-muted">날짜</span>
+            <span className="text-muted">{hoveredIssue.range}</span>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="rounded-full bg-subtle px-2 py-0.5 text-[10px] font-semibold text-muted">담당자</span>
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 overflow-hidden rounded-full border border-border bg-subtle/60">
+                {hoveredIssue.avatarUrl ? (
+                  <img src={hoveredIssue.avatarUrl} alt={hoveredIssue.assignee} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-[10px] text-muted">
+                    {hoveredIssue.assignee.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <span className="text-foreground">{hoveredIssue.assignee}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

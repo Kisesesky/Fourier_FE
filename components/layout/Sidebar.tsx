@@ -2,18 +2,23 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useMemo, useEffect, useRef, useState } from "react";
 
 import {
   BookText,
   CalendarDays,
   CalendarPlus,
+  CalendarRange,
   ChevronDown,
   ChevronRight,
   Folder,
   FolderPlus,
   FolderKanban,
+  KanbanSquare,
+  LayoutDashboard,
+  Table2,
+  BarChart3,
   LifeBuoy,
   MessageSquare,
   Pencil,
@@ -37,7 +42,6 @@ import TreeToolbar from "@/app/(workspace)/workspace/[teamId]/[projectId]/docs/_
 import DeleteConfirmModal from "@/app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree/DeleteConfirmModal";
 
 import { createCalendarFolder, deleteCalendarFolder, deleteProjectCalendar, getCalendarEvents, getCalendarFolders, getProjectCalendars, updateCalendarFolder, updateProjectCalendar } from "@/workspace/calendar/_service/api";
-import { kanbanWorkflowNodes } from "@/workspace/issues/_model/kanbanData";
 import { fetchProjectMembers } from "@/lib/projects";
 import { fetchPresence } from "@/lib/members";
 
@@ -121,27 +125,49 @@ const DocsPanel = () => {
 
 
 /* Issues Panel */
+const ISSUE_TABS = [
+  { key: "table", label: "메인 테이블", icon: Table2 },
+  { key: "timeline", label: "타임라인", icon: CalendarRange },
+  { key: "kanban", label: "칸반", icon: KanbanSquare },
+  { key: "chart", label: "차트", icon: BarChart3 },
+  { key: "dashboard", label: "대시보드", icon: LayoutDashboard },
+] as const;
+
 const IssuesPanel = () => {
-  const parents = kanbanWorkflowNodes.filter(n => !n.parentId).slice(0, 3);
-  const tree = parents.map(parent => ({
-    title: parent.title,
-    children: kanbanWorkflowNodes
-      .filter(n => n.parentId === parent.id)
-      .map(n => n.title)
-      .slice(0, 5),
-  }));
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const active = (searchParams?.get("view") as typeof ISSUE_TABS[number]["key"]) || "table";
+
+  const setView = (view: string) => {
+    if (!pathname) return;
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    params.set("view", view);
+    router.replace(`${pathname}?${params.toString()}`);
+  };
 
   return (
-    <div className="space-y-3">
-      {tree.map(group => (
-        <Section key={group.title} title={group.title}>
-          {group.children.map(c => (
-            <div key={c} className="rounded-lg border border-border/60 px-3 py-2 text-xs">
-              {c}
-            </div>
-          ))}
-        </Section>
-      ))}
+    <div className="flex flex-col gap-2">
+      {ISSUE_TABS.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = active === tab.key;
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setView(tab.key)}
+            className={clsx(
+              "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition",
+              isActive
+                ? "border-brand/50 bg-brand/10 text-brand"
+                : "border-transparent text-muted hover:border-border hover:bg-subtle/60 hover:text-foreground"
+            )}
+          >
+            <Icon size={14} />
+            <span>{tab.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 };

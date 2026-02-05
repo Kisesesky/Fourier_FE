@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { useParams, usePathname, useRouter } from "next/navigation";
-import { BarChart3, CalendarRange, KanbanSquare, LayoutDashboard, MoreHorizontal, Table2 } from "lucide-react";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { BarChart3, CalendarRange, KanbanSquare, LayoutDashboard, Table2 } from "lucide-react";
 
-import NewIssueDialog from "@/workspace/issues/_components/NewIssueDialog";
 import RightPanel from "@/workspace/issues/_components/RightPanel";
 import type { Issue, IssueGroup } from "@/workspace/issues/_model/types";
 import {
@@ -27,18 +26,19 @@ const BASE_COLUMNS: Array<{ key: Issue["status"]; label: string }> = [
   { key: "done", label: "Done" },
 ];
 
-const VIEW_TABS: Array<{ key: ViewMode; label: string; icon: typeof Table2 }> = [
-  { key: "table", label: "메인 테이블", icon: Table2 },
-  { key: "timeline", label: "타임라인", icon: CalendarRange },
-  { key: "kanban", label: "칸반", icon: KanbanSquare },
-  { key: "chart", label: "차트", icon: BarChart3 },
-  { key: "dashboard", label: "대시보드", icon: LayoutDashboard },
-];
+const VIEW_META: Record<ViewMode, { label: string; description: string; icon: typeof Table2 }> = {
+  table: { label: "메인 테이블", description: "업무를 표 형식으로 관리합니다.", icon: Table2 },
+  timeline: { label: "타임라인", description: "기간별 일정 흐름을 확인합니다.", icon: CalendarRange },
+  kanban: { label: "칸반", description: "상태별로 업무를 이동하며 관리합니다.", icon: KanbanSquare },
+  chart: { label: "차트", description: "업무 진행 지표를 시각화합니다.", icon: BarChart3 },
+  dashboard: { label: "대시보드", description: "프로젝트 요약 지표를 확인합니다.", icon: LayoutDashboard },
+};
 
 export default function IssuesBoardView() {
   const params = useParams<{ teamId?: string; projectId?: string; id?: string }>();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const teamId = params?.teamId as string | undefined;
   const projectId = params?.projectId as string | undefined;
   const routeId = params?.id as string | undefined;
@@ -101,7 +101,6 @@ export default function IssuesBoardView() {
     handleToggleComments,
     columns,
     grouped,
-    handleCreate,
     tableGroups,
     handleAddGroup,
     handleRenameGroup,
@@ -112,6 +111,14 @@ export default function IssuesBoardView() {
     handlePriorityChange,
     updateIssueTree,
   } = useIssuesBoardState({ teamId, projectId, baseColumns: BASE_COLUMNS });
+
+  useEffect(() => {
+    const viewParam = searchParams?.get("view") as ViewMode | null;
+    if (!viewParam) return;
+    if (["table", "timeline", "kanban", "chart", "dashboard"].includes(viewParam)) {
+      setView(viewParam);
+    }
+  }, [searchParams, setView]);
 
   const submitIssueCreate = useCallback(async () => {
     if (!projectId || !issueCreateModal?.title.trim()) return;
@@ -255,42 +262,18 @@ export default function IssuesBoardView() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background text-foreground">
-      <header className="border-b border-border bg-panel">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 sm:px-10">
-          <div className="space-y-1">
-            <div className="text-lg font-semibold text-foreground">팀 반복</div>
-            <div className="text-[11px] uppercase tracking-[0.3em] text-muted">Team Board</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <NewIssueDialog onCreate={(title, column, priority, tags, due) => handleCreate(title, column, priority, tags, due)} />
-            <button className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted transition hover:bg-subtle/60 hover:text-foreground">
-              <MoreHorizontal size={18} />
-            </button>
-          </div>
-        </div>
-        <div className="border-t border-border bg-panel/70">
-          <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-2 sm:px-10">
-            <div className="flex flex-1 items-center gap-2 overflow-x-auto">
-              {VIEW_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = view === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setView(tab.key)}
-                    className={[
-                      "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition",
-                      isActive
-                        ? "border-brand/50 bg-brand/10 text-brand"
-                        : "border-transparent text-muted hover:border-border hover:bg-subtle/60 hover:text-foreground",
-                    ].join(" ")}
-                  >
-                    <Icon size={16} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
+      <header className="border-b border-border bg-panel/70">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-10">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+              {(() => {
+                const Icon = VIEW_META[view].icon;
+                return <Icon size={20} />;
+              })()}
+            </span>
+            <div>
+              <div className="text-lg font-semibold text-foreground">{VIEW_META[view].label}</div>
+              <div className="text-sm text-muted">{VIEW_META[view].description}</div>
             </div>
           </div>
         </div>

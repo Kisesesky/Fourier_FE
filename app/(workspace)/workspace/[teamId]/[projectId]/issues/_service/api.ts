@@ -312,7 +312,9 @@ export async function addSubtask(
   projectId: string,
   payload: { parentId: ID; title: string; assigneeId?: string; startAt?: string; dueAt?: string },
 ): Promise<Issue> {
-  const { data } = await api.post<any>(`/projects/${projectId}/issues/subtask`, payload);
+  const { data } = await api.post<any>(`/projects/${projectId}/issues/subtask`, {
+    ...payload,
+  });
   return mapIssue(data);
 }
 

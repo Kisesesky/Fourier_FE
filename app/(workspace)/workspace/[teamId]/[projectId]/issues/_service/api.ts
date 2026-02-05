@@ -211,7 +211,7 @@ export async function updateIssue(
     startAt?: string;
     endAt?: string;
     progress?: number;
-    parentId?: string;
+    parentId?: string | null;
     dueAt?: string | null;
   },
 ): Promise<Issue> {

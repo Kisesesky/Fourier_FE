@@ -13,6 +13,8 @@ type CalendarEventResponse = {
   calendarId?: string;
   category: { id: string; name: string; categoryColor: string };
   createdBy?: { id: string; name: string; avatarUrl?: string | null };
+  sourceType?: "manual" | "issue";
+  linkedIssueId?: string;
 };
 
 type CalendarCategoryResponse = {
@@ -53,6 +55,8 @@ const toEvent = (event: CalendarEventResponse): CalendarEvent => {
     createdBy: event.createdBy
       ? { id: event.createdBy.id, name: event.createdBy.name, avatarUrl: event.createdBy.avatarUrl ?? null }
       : undefined,
+    sourceType: event.sourceType,
+    linkedIssueId: event.linkedIssueId,
     title: event.title,
     start: event.startAt,
     end: event.endAt,

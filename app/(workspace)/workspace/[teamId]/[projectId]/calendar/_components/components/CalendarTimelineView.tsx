@@ -29,6 +29,7 @@ type TimelineTask = {
   calendarName: string;
   allDay: boolean;
   createdBy?: { id: string; name: string; avatarUrl?: string | null };
+  sourceType?: "manual" | "issue";
   location?: string;
   description?: string;
 };
@@ -96,6 +97,7 @@ export function CalendarTimelineView({
           calendarName: calendar?.name ?? "Calendar",
           allDay: event.allDay,
           createdBy: event.createdBy,
+          sourceType: event.sourceType,
           location: event.location,
           description: event.description,
         };
@@ -325,6 +327,7 @@ export function CalendarTimelineView({
                           totalDays={totalDays}
                           hint={`${formatRange(task.start, task.end, task.allDay)} · ${task.calendarName}`}
                           createdBy={task.createdBy}
+                          sourceType={task.sourceType}
                           calendarName={task.calendarName}
                           location={task.location}
                           description={task.description}

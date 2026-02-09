@@ -22,6 +22,7 @@ export default function IssueRow({
   handleStatusChange,
   handleProgressCommit,
   handlePriorityChange,
+  onRowClick,
 }: {
   issue: Issue;
   isSubtask?: boolean;
@@ -34,6 +35,7 @@ export default function IssueRow({
   handleStatusChange: (issue: Issue, next: Issue["status"]) => void | Promise<void>;
   handleProgressCommit: (issue: Issue, next: number) => void | Promise<void>;
   handlePriorityChange: (issue: Issue, next: Issue["priority"]) => void | Promise<void>;
+  onRowClick?: () => void;
 }) {
   const subtask = isSubtask ?? false;
   const colorBase = groupColor ?? "#94a3b8";
@@ -74,6 +76,11 @@ export default function IssueRow({
           "flex flex-col gap-2 rounded-md px-3 py-3 text-foreground md:grid md:grid-cols-[2fr_110px_120px_90px_90px_130px] md:items-center md:gap-2 md:py-2",
           rowText,
         ].join(" ")}
+        onClick={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target && target.closest("select, input, button, a, textarea")) return;
+          onRowClick?.();
+        }}
       >
         <div
           className={[

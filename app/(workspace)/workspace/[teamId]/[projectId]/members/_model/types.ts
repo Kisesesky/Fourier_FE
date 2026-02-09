@@ -14,6 +14,7 @@ export interface Member {
   customRoleName?: string | null;
   title?: string;
   avatarUrl?: string;
+  backgroundImageUrl?: string;
   teamAvatarUrl?: string | null;
   location?: string;
   timezone?: string;

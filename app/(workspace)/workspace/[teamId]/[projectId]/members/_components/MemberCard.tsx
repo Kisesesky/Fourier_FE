@@ -1,135 +1,135 @@
 // components/members/MemberCard.tsx
 
 import clsx from "clsx";
-import { Clock3, Mail, MapPin, Star, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Ban, ChevronDown, MessageCircle, Moon, Trash2 } from "lucide-react";
 import type { Member, MemberPresence, PresenceStatus } from "@/workspace/members/_model/types";
 import MemberAvatar from "./MemberAvatar";
 
 const roleLabel: Record<Member["role"], string> = {
-  owner: "Owner",
-  manager: "Admin",
-  member: "Editor",
-  guest: "Viewer",
+  owner: "소유자",
+  manager: "관리자",
+  member: "멤버",
+  guest: "게스트",
 };
 
 type MemberCardProps = {
   member: Member;
   presence?: MemberPresence;
+  canEditStatus?: boolean;
   selected?: boolean;
   onSelect?: () => void;
-  onToggleFavorite?: () => void;
+  onStatusChange?: (status: PresenceStatus) => void;
+  onSendDm?: () => void;
   onRemove?: () => void;
 };
 
 export default function MemberCard({
   member,
   presence,
+  canEditStatus = false,
   selected = false,
   onSelect,
-  onToggleFavorite,
+  onStatusChange,
+  onSendDm,
   onRemove,
 }: MemberCardProps) {
   const status: PresenceStatus = presence?.status ?? "offline";
+  const [statusOpen, setStatusOpen] = useState(false);
+  const statusRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!statusOpen) return;
+    const onClick = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return;
+      if (statusRef.current && !statusRef.current.contains(event.target)) {
+        setStatusOpen(false);
+      }
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setStatusOpen(false);
+    };
+    window.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onEscape);
+    return () => {
+      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onEscape);
+    };
+  }, [statusOpen]);
 
   return (
     <button
       type="button"
       onClick={onSelect}
       className={clsx(
-        "group relative w-full overflow-hidden rounded-[28px] border px-6 py-6 text-left transition",
+        "w-full border-b border-border/70 px-4 py-3 text-left transition last:border-b-0",
         selected
-          ? "border-brand/60 bg-gradient-to-br from-brand/15 via-panel/90 to-panel shadow-[0_15px_40px_rgba(15,23,42,0.25)]"
-          : "border-border/80 bg-gradient-to-br from-panel/90 via-panel/70 to-background hover:border-brand/30 hover:shadow-[0_12px_30px_rgba(15,23,42,0.18)]",
+          ? "bg-brand/10"
+          : "hover:bg-subtle/50",
       )}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-60">
-        <div className="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_60%)]" />
-      </div>
-
-      <div className="relative flex flex-wrap items-start gap-6">
-        <MemberAvatar member={member} presence={status} size={72} ring />
-
-        <div className="flex-1 min-w-[240px] space-y-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-xl font-semibold tracking-tight text-foreground">{member.name}</span>
-            <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.3em] text-muted">
-              {roleLabel[member.role] ?? "Editor"}
-            </span>
-            {member.title && (
-              <span className="rounded-full border border-border/50 bg-background/70 px-2.5 py-0.5 text-[11px] text-foreground">
-                {member.title}
-              </span>
-            )}
-            {member.isFavorite && (
-              <span className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-100 to-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-600 shadow-inner">
-                <Star size={12} className="text-amber-500" fill="currentColor" />
-              </span>
-            )}
-            <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-0.5 text-[11px] text-muted">
-              {statusLabel(status)}
-            </span>
-            {member.statusMessage && (
-              <span className="rounded-full border border-border/50 bg-background/80 px-2.5 py-0.5 text-[11px] text-foreground">
-                {member.statusMessage}
-              </span>
-            )}
+      <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_120px_120px_minmax(0,1.2fr)_220px] md:items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <MemberAvatar member={member} presence={status} size={40} />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-foreground">{member.name}</div>
+            <div className="truncate text-xs text-muted">{member.email}</div>
           </div>
-
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted">
-            <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2.5 py-0.5">
-              <Mail size={13} />
-              {member.email}
-            </span>
-            {member.location && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2.5 py-0.5">
-                <MapPin size={13} />
-                {member.location}
-              </span>
-            )}
-            {member.timezone && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/70 px-2.5 py-0.5">
-                <Clock3 size={13} />
-                {member.timezone}
-              </span>
-            )}
-          </div>
-
-          {member.description && (
-            <div className="rounded-2xl border border-border/60 bg-background/80 px-4 py-2 text-sm text-muted">
-              {member.description}
-            </div>
-          )}
-
-          {member.tags && member.tags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-              {member.tags.map((tag) => (
-                <span
-                  key={`${member.id}-${tag}`}
-                  className="rounded-full border border-border/70 bg-background/70 px-3 py-0.5 uppercase tracking-wide"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
-
-        <div className="flex items-start gap-2">
+        <div className="relative w-fit" ref={statusRef}>
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onToggleFavorite?.();
+              if (!canEditStatus) return;
+              setStatusOpen((prev) => !prev);
             }}
             className={clsx(
-              "inline-flex h-10 w-10 items-center justify-center rounded-full border text-muted shadow-inner transition",
-              member.isFavorite
-                ? "border-amber-200 bg-amber-50 text-amber-500"
-                : "border-border bg-background/70 hover:border-border/70 hover:text-foreground",
+              "inline-flex w-fit items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted",
+              canEditStatus && "cursor-pointer hover:bg-accent",
             )}
-            aria-label="즐겨찾기 토글"
+            aria-label={canEditStatus ? "상태 변경" : "상태"}
           >
-            <Star size={16} className={clsx(member.isFavorite ? "text-amber-500" : "text-muted")} fill={member.isFavorite ? "currentColor" : "none"} />
+            <StatusIcon status={status} />
+            {statusLabel(status)}
+            {canEditStatus && <ChevronDown size={12} className="text-muted" />}
+          </button>
+          {canEditStatus && statusOpen && (
+            <div className="absolute left-0 top-8 z-20 w-32 rounded-md border border-border bg-panel py-1 shadow-md">
+              {(["online", "offline", "away", "dnd"] as PresenceStatus[]).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onStatusChange?.(option);
+                    setStatusOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-foreground hover:bg-sidebar-accent"
+                >
+                  <StatusIcon status={option} />
+                  {statusLabel(option)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="inline-flex w-fit items-center rounded-md border border-border bg-background/70 px-2 py-1 text-xs font-medium text-foreground">
+          {roleLabel[member.role] ?? "멤버"}
+        </div>
+        <div className="truncate text-sm text-muted">{member.description?.trim() || "-"}</div>
+        <div className="flex items-center justify-end gap-1">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onSendDm?.();
+            }}
+            className="inline-flex h-8 items-center justify-center rounded-md bg-sky-500 px-3 text-xs font-semibold text-white transition hover:bg-sky-600"
+            aria-label="DM 보내기"
+          >
+            <MessageCircle size={16} />
+            <span className="ml-1">DM</span>
           </button>
           <button
             type="button"
@@ -137,10 +137,11 @@ export default function MemberCard({
               event.stopPropagation();
               onRemove?.();
             }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/70 text-muted transition hover:border-rose-200 hover:text-rose-500"
+            className="inline-flex h-8 items-center justify-center rounded-md bg-rose-500 px-3 text-xs font-semibold text-white transition hover:bg-rose-600"
             aria-label="멤버 삭제"
           >
             <Trash2 size={16} />
+            <span className="ml-1">삭제</span>
           </button>
         </div>
       </div>
@@ -159,4 +160,11 @@ function statusLabel(status: PresenceStatus) {
     default:
       return "오프라인";
   }
+}
+
+function StatusIcon({ status }: { status: PresenceStatus }) {
+  if (status === "online") return <span className="h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden />;
+  if (status === "offline") return <span className="h-2.5 w-2.5 rounded-full bg-zinc-400" aria-hidden />;
+  if (status === "away") return <Moon size={12} className="text-amber-400" aria-hidden />;
+  return <Ban size={12} className="text-rose-500" aria-hidden />;
 }

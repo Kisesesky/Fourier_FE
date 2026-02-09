@@ -62,13 +62,15 @@ export function useIssuesBoardState({
 }) {
   const pickText = (value: string | undefined, fallback: string | undefined) =>
     value == null || value === "" ? fallback : value;
+  const pickId = (value: string | undefined, fallback: string | undefined) =>
+    value == null || value === "" ? fallback : value;
   const mergeIssueUpdate = (item: Issue, updated: Issue) => ({
     ...item,
     ...updated,
     title: pickText(updated.title, item.title) ?? "",
     status: updated.status ?? item.status,
     priority: updated.priority ?? item.priority,
-    assigneeId: updated.assigneeId ?? item.assigneeId,
+    assigneeId: pickId(updated.assigneeId, item.assigneeId),
     assignee: pickText(updated.assignee, item.assignee),
     startAt: updated.startAt ?? item.startAt,
     endAt: updated.endAt ?? item.endAt,

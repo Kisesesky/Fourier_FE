@@ -9,9 +9,11 @@ import TimelineTooltip from "@/workspace/issues/_components/views/timeline/Timel
 export default function IssuesTimelineView({
   issues,
   memberMap,
+  groupFilter,
 }: {
   issues: Issue[];
   memberMap: Record<string, { name: string; avatarUrl?: string | null }>;
+  groupFilter?: Record<string, boolean>;
 }) {
   const [hoveredIssue, setHoveredIssue] = useState<{
     title: string;
@@ -117,6 +119,11 @@ export default function IssuesTimelineView({
     return Array.from(map.entries());
   }, [issues]);
 
+  const filteredGroups = useMemo(() => {
+    if (!groupFilter) return issuesByGroup;
+    return issuesByGroup.filter(([groupId]) => groupFilter[groupId] !== false);
+  }, [groupFilter, issuesByGroup]);
+
   const dayWidth = 56;
   const rowHeight = 48;
   const dayMs = 24 * 60 * 60 * 1000;
@@ -126,8 +133,8 @@ export default function IssuesTimelineView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-4">
-        {issuesByGroup.map(([groupId, group]) => (
+      <div className="flex-1 min-h-0 overflow-auto space-y-4 pb-2">
+        {filteredGroups.map(([groupId, group]) => (
           <TimelineGroup
             key={groupId}
             groupId={groupId}

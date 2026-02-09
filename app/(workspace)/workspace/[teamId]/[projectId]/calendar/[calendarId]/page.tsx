@@ -5,5 +5,5 @@ export default function WorkspaceCalendarDetailPage({
 }: {
   params: { calendarId: string };
 }) {
-  return <CalendarView focusCalendarId={params.calendarId} />;
+  return <CalendarView key={`calendar-${params.calendarId}`} focusCalendarId={params.calendarId} />;
 }

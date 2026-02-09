@@ -68,6 +68,21 @@ export async function sendChannelMessage(channelId: string, content: string, opt
   return res.data;
 }
 
+export async function getOrCreateDmRoom(userIds: string[]): Promise<{ id: string }> {
+  const res = await api.post<{ id: string }>("/chat/dm/room", { userIds });
+  return res.data;
+}
+
+export async function sendDmMessage(roomId: string, content: string, opts?: { replyToMessageId?: string | null; fileIds?: string[] }) {
+  const res = await api.post<MessageResponse>("/chat/dm/message", {
+    roomId,
+    content,
+    replyToMessageId: opts?.replyToMessageId ?? undefined,
+    fileIds: opts?.fileIds ?? undefined,
+  });
+  return res.data;
+}
+
 export async function sendThreadMessage(threadParentId: string, content: string, fileIds: string[] = []) {
   const res = await api.post<MessageResponse>("/chat/thread/message", {
     threadParentId,

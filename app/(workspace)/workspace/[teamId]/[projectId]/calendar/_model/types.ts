@@ -32,6 +32,8 @@ export type CalendarEvent = {
   categoryName?: string;
   categoryColor?: string;
   createdBy?: { id: string; name: string; avatarUrl?: string | null };
+  sourceType?: "manual" | "issue";
+  linkedIssueId?: string;
   title: string;
   start: string;
   end?: string;

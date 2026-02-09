@@ -56,16 +56,24 @@ export function UpcomingEventCard({
     return () => window.removeEventListener("mousedown", close);
   }, [menuOpen]);
 
+  const isIssue = event.sourceType === "issue";
   return (
     <div className={`${containerClasses} group relative`}>
       <div className="flex items-start justify-between gap-3">
         <div className="grid min-w-0 flex-1 grid-cols-[auto,1fr] gap-2">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-subtle text-[10px] font-semibold text-foreground/70">
-            {event.createdBy?.avatarUrl ? (
-              <img src={event.createdBy.avatarUrl} alt={event.createdBy?.name ?? "User"} className="h-full w-full object-cover" />
-            ) : (
-              <span>{event.createdBy?.name?.slice(0, 1) ?? "?"}</span>
+          <div className="flex items-center gap-2">
+            {isIssue && (
+              <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                이슈
+              </span>
             )}
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-subtle text-[10px] font-semibold text-foreground/70">
+              {event.createdBy?.avatarUrl ? (
+                <img src={event.createdBy.avatarUrl} alt={event.createdBy?.name ?? "User"} className="h-full w-full object-cover" />
+              ) : (
+                <span>{event.createdBy?.name?.slice(0, 1) ?? "?"}</span>
+              )}
+            </div>
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-sm">

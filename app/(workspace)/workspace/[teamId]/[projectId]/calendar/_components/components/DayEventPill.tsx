@@ -51,6 +51,7 @@ export function DayEventPill({
   const baseColor = color ?? "#2563eb";
   const avatarUrl = event.createdBy?.avatarUrl ?? null;
   const avatarLabel = event.createdBy?.name?.slice(0, 1) ?? "?";
+  const isIssue = event.sourceType === "issue";
   const showMemo = Boolean(event.description);
   const start = parseISO(event.start);
   const end = event.end ? parseISO(event.end) : start;
@@ -111,6 +112,11 @@ export function DayEventPill({
               borderRadius: RADIUS[variant],
             }}
           >
+            {isIssue && (
+              <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                이슈
+              </span>
+            )}
             <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[10px] font-semibold text-slate-700">
               {avatarUrl ? (
                 <img src={avatarUrl} alt={event.createdBy?.name ?? "User"} className="h-full w-full object-cover" />
@@ -147,6 +153,11 @@ export function DayEventPill({
             style={{ top: tooltipStyle.top, left: tooltipStyle.left }}
           >
             <div className="flex items-center gap-2">
+              {isIssue && (
+                <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                  이슈
+                </span>
+              )}
               <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-subtle text-[10px] font-semibold text-foreground/70">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={event.createdBy?.name ?? "User"} className="h-full w-full object-cover" />

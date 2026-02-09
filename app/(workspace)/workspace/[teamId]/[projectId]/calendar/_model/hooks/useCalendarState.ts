@@ -81,6 +81,14 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
   };
 
   useEffect(() => {
+    if (focusCalendarId) {
+      setSelectedCalendarId((prev) => (prev === focusCalendarId ? prev : focusCalendarId));
+      return;
+    }
+    setSelectedCalendarId((prev) => (prev === "" ? prev : ""));
+  }, [focusCalendarId]);
+
+  useEffect(() => {
     if (!projectId) return;
     let mounted = true;
     const load = async () => {
@@ -92,13 +100,13 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
         if (!mounted) return;
         setProjectCalendars(calendarsRes ?? []);
         setCalendarFolders(folderRes ?? []);
-        const fallbackCalendarId = focusCalendarId ?? selectedCalendarId ?? calendarsRes?.[0]?.id ?? "";
+        const fallbackCalendarId = focusCalendarId ?? calendarsRes?.[0]?.id ?? "";
         if (!fallbackCalendarId) {
           setCalendars([]);
           setEvents([]);
           return;
         }
-        if (fallbackCalendarId !== selectedCalendarId) {
+        if (focusCalendarId && fallbackCalendarId !== selectedCalendarId) {
           setSelectedCalendarId(fallbackCalendarId);
         }
         if (!mounted) return;

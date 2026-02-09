@@ -18,6 +18,7 @@ import type { ViewMode } from "@/workspace/chat/_model/types";
 type ChatHeaderProps = {
   isDM: boolean;
   channelName: string;
+  dmAvatarUrl?: string;
   memberNames: string[];
   memberIds: string[];
   users: Record<string, { id: string; name: string; avatarUrl?: string }>;
@@ -44,6 +45,7 @@ const iconButtonClass =
 export function ChatHeader({
   isDM,
   channelName,
+  dmAvatarUrl,
   memberNames,
   memberIds,
   users,
@@ -103,7 +105,17 @@ export function ChatHeader({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex items-center gap-3">
           <button className="inline-flex items-center gap-2 text-[15px] font-semibold leading-none text-foreground">
-            {isDM ? <MessageSquare size={16} className="text-muted" /> : <Hash size={16} className="text-muted" />}
+            {isDM ? (
+              dmAvatarUrl ? (
+                <span className="h-6 w-6 overflow-hidden rounded-full border border-border/60 bg-muted/20">
+                  <img src={dmAvatarUrl} alt={channelName} className="h-full w-full object-cover" />
+                </span>
+              ) : (
+                <MessageSquare size={16} className="text-muted" />
+              )
+            ) : (
+              <Hash size={16} className="text-muted" />
+            )}
             <span className="truncate max-w-[240px] sm:max-w-[320px] md:max-w-[380px]">{channelName}</span>
           </button>
           {!isDM && avatarMembers.length > 0 && (

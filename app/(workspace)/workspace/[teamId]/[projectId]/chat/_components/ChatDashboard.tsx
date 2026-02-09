@@ -17,6 +17,7 @@ import {
   PlusCircle,
   Search,
   Star,
+  MessageSquare,
   Users,
 } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
@@ -70,7 +71,7 @@ const presenceColors: Record<PresenceState, string> = {
 };
 
 const EmptyState = ({ label }: { label: string }) => (
-  <div className="rounded-2xl border border-dashed border-border/80 bg-panel/50 px-6 py-12 text-center">
+  <div className="border border-dashed border-border/80 bg-background px-4 py-8 text-center">
     <p className="text-sm text-muted">{label}</p>
   </div>
 );
@@ -87,6 +88,7 @@ export default function ChatDashboard() {
     setChannel,
     channelId,
     users,
+    me,
     userStatus,
     toggleStar,
     setChannelMuted,
@@ -142,7 +144,9 @@ export default function ChatDashboard() {
         const unread = activity?.unreadCount ?? 0;
         const mentions = activity?.mentionCount ?? 0;
         const displayName = resolveChannelName(channel, users);
-        const targetUserId = isDM ? channel.id.replace(/^dm:/, "") : undefined;
+        const rawDmId = channel.id.replace(/^dm:/, "");
+        const dmIds = rawDmId.split("+").filter(Boolean);
+        const targetUserId = isDM ? (dmIds.find((id) => id !== me.id) ?? dmIds[0]) : undefined;
         const targetUser = targetUserId ? users[targetUserId] : undefined;
         return {
           channel,
@@ -170,7 +174,7 @@ export default function ChatDashboard() {
         return haystack.includes(normalizedQuery);
       })
       .sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0));
-  }, [channels, channelActivity, channelTopics, filter, normalizedQuery, starredSet, userStatus, users]);
+  }, [channels, channelActivity, channelTopics, filter, me.id, normalizedQuery, starredSet, userStatus, users]);
 
   const pinnedSet = useMemo(() => new Set(pinnedChannelIds), [pinnedChannelIds]);
   const archivedSet = useMemo(() => new Set(archivedChannelIds), [archivedChannelIds]);
@@ -305,14 +309,15 @@ export default function ChatDashboard() {
   );
 
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-subtle">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="rounded-2xl border border-border bg-panel/80 p-5 shadow-panel">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex h-full w-full flex-col overflow-y-auto bg-background">
+      <header className="border-b border-border bg-background">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted">Workspace Chat</p>
-              <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">채팅 허브</h1>
-              <p className="text-sm text-muted">슬랙처럼 채널과 DM을 리스트로 관리하고 빠르게 전환하세요.</p>
+              <h1 className="inline-flex items-center gap-2 text-xl font-semibold text-foreground sm:text-2xl">
+                <MessageSquare size={20} className="text-brand" />
+                채팅 허브
+              </h1>
+              <p className="text-xs text-muted">채널과 DM을 빠르게 탐색하고 전환합니다.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <div className="relative">
@@ -321,13 +326,13 @@ export default function ChatDashboard() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="채널 또는 DM 검색"
-                  className="h-9 w-56 rounded-full border border-border bg-transparent pl-9 pr-3 text-sm outline-none focus:border-foreground/60"
+                  className="h-8 w-52 rounded-md border border-border bg-background pl-9 pr-3 text-xs outline-none focus:border-foreground/60"
                 />
               </div>
               <button
                 type="button"
                 onClick={handleCreateChannel}
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background shadow"
+                className="inline-flex items-center gap-2 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background"
               >
                 <PlusCircle size={14} />
                 새 채널
@@ -335,14 +340,14 @@ export default function ChatDashboard() {
               <button
                 type="button"
                 onClick={handleOpenRightPanel}
-                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-foreground/80 hover:bg-panel"
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground/80 hover:bg-zinc-50"
               >
                 <Users size={14} />
                 빠른 DM
               </button>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-4 pb-4 sm:px-6">
             <div className="flex flex-wrap gap-2">
               {FILTERS.map(({ key, label }) => (
                 <button
@@ -350,7 +355,7 @@ export default function ChatDashboard() {
                   type="button"
                   onClick={() => setFilter(key)}
                   className={clsx(
-                    "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold",
+                    "inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold",
                     filter === key
                       ? "border-foreground/80 bg-foreground text-background"
                       : "border-border/70 text-muted hover:border-foreground/30 hover:text-foreground"
@@ -361,7 +366,7 @@ export default function ChatDashboard() {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="rounded-full border border-border bg-panel/60 p-1">
+              <div className="rounded-lg border border-border bg-white p-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -369,7 +374,7 @@ export default function ChatDashboard() {
                     setMentionsOnly(false);
                   }}
                   className={clsx(
-                    "rounded-full px-3 py-1 text-xs font-semibold",
+                    "rounded-md px-2.5 py-1 text-[11px] font-semibold",
                     listMode === "all" ? "bg-foreground text-background" : "text-muted"
                   )}
                 >
@@ -382,7 +387,7 @@ export default function ChatDashboard() {
                     setShowArchived(false);
                   }}
                   className={clsx(
-                    "rounded-full px-3 py-1 text-xs font-semibold",
+                    "rounded-md px-2.5 py-1 text-[11px] font-semibold",
                     listMode === "unreads" ? "bg-foreground text-background" : "text-muted"
                   )}
                 >
@@ -394,7 +399,7 @@ export default function ChatDashboard() {
                   type="button"
                   onClick={handleToggleMenu}
                   className={clsx(
-                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold",
+                    "inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold",
                     menuOpen
                       ? "border-foreground/80 bg-foreground text-background"
                       : "border-border/70 text-muted hover:border-foreground/30 hover:text-foreground"
@@ -406,7 +411,7 @@ export default function ChatDashboard() {
                   보기 옵션
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-10 z-20 w-52 rounded-xl border border-border bg-panel/95 p-2 shadow-panel">
+                  <div className="absolute right-0 top-9 z-20 w-52 rounded-lg border border-border bg-white p-2 shadow-sm">
                     <button
                       type="button"
                       onClick={() => {
@@ -450,16 +455,17 @@ export default function ChatDashboard() {
                 )}
               </div>
             </div>
-          </div>
-        </header>
+        </div>
+      </header>
 
-        <section className="rounded-2xl border border-border bg-panel/70 p-4 shadow-sm">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-4 sm:px-6">
+        <section className="border-t border-border bg-background">
           {entries.length === 0 && (
-            <div className="mb-4">
+            <div className="py-6">
               <EmptyState label="조건에 맞는 채널이 없습니다." />
             </div>
           )}
-          <div className="space-y-6">
+          <div className="space-y-5 py-2">
             {isUnreadsView ? (
               <ChannelSection
                 title="Unreads"
@@ -567,7 +573,7 @@ export default function ChatDashboard() {
             )}
           </div>
         </section>
-      </div>
+      </main>
     </div>
   );
 }
@@ -575,8 +581,9 @@ export default function ChatDashboard() {
 function resolveChannelName(channel: Channel, users: Record<string, ChatUser>) {
   if (channel.isDM || channel.id.startsWith("dm:")) {
     const id = channel.id.replace(/^dm:/, "");
-    const user = users[id];
-    return user ? `@ ${user.name}` : channel.name || "Direct Message";
+    const firstId = id.split("+").filter(Boolean)[0];
+    const user = firstId ? users[firstId] : undefined;
+    return user ? user.name : (channel.name?.replace(/^@\s*/, "") || "Direct Message");
   }
   return channel.name?.replace(/^#\s*/, "#") || `#${channel.id}`;
 }
@@ -626,14 +633,14 @@ function ChannelSection({
   archivedSet: Set<string>;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+    <div className="space-y-1">
+      <div className="flex items-center justify-between border-b border-border/70 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
         <span>{title}</span>
         <span className="text-[10px]">{entries.length}</span>
       </div>
-      <div className="space-y-1">
+      <div>
         {entries.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border/70 bg-panel/50 px-3 py-2 text-xs text-muted">
+          <div className="border border-dashed border-border/70 px-3 py-2 text-xs text-muted">
             {emptyLabel}
           </div>
         ) : (
@@ -694,7 +701,7 @@ function ChannelListRow({
           onOpen();
         }
       }}
-      className="group flex items-start gap-3 rounded-lg px-3 py-2 transition hover:bg-subtle/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+      className="group flex items-start gap-3 border-b border-border/70 px-2 py-2 transition hover:bg-subtle/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
     >
       <div className="relative mt-0.5">
         {entry.unread > 0 && (

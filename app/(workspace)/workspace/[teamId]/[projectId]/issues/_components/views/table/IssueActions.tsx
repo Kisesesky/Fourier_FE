@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquareMore, Pencil, SquarePlus, Trash2 } from "lucide-react";
+import { ExternalLink, MessageSquareMore, Pencil, SquarePlus, Trash2 } from "lucide-react";
 import type React from "react";
 
 import type { Issue, IssueComment } from "@/workspace/issues/_model/types";
@@ -16,6 +16,7 @@ export default function IssueActions({
   issueActionsId,
   setIssueActionsId,
   issueActionsRef,
+  onOpenIssue,
   setIssueCreateModal,
   setIssueEditModal,
   setIssueDeleteModal,
@@ -40,6 +41,7 @@ export default function IssueActions({
   issueActionsId: string | null;
   setIssueActionsId: React.Dispatch<React.SetStateAction<string | null>>;
   issueActionsRef: React.RefObject<HTMLDivElement>;
+  onOpenIssue?: (issueId: string) => void;
   setIssueCreateModal: React.Dispatch<React.SetStateAction<{
     groupKey: string;
     title: string;
@@ -106,7 +108,16 @@ export default function IssueActions({
   return (
     <div ref={issueActionsRef} className="bg-panel/70 text-xs text-muted">
       <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {onOpenIssue && (
+            <button
+              type="button"
+              onClick={() => onOpenIssue(issue.id)}
+              className="rounded-md px-1 py-1 text-xs text-blue-400 hover:bg-subtle/60"
+            >
+              <ExternalLink size={14} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -134,7 +145,6 @@ export default function IssueActions({
             type="button"
             onClick={() => {
               void handleToggleComments(issue);
-              setIssueActionsId(null);
             }}
             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-400 hover:bg-subtle/60"
           >

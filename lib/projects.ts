@@ -72,6 +72,15 @@ export async function addProjectMember(
   return res.data;
 }
 
+export async function updateProjectMemberRole(
+  teamId: string,
+  projectId: string,
+  payload: { userId: string; role: string }
+) {
+  const res = await api.patch(`/team/${teamId}/project/${projectId}/member`, payload);
+  return res.data;
+}
+
 export async function favoriteProject(teamId: string, projectId: string) {
   const res = await api.post(`/team/${teamId}/project/${projectId}/favorite`);
   return res.data;

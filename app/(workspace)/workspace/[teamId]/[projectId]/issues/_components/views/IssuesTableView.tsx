@@ -67,6 +67,7 @@ export default function IssuesTableView({
   setIssueEditModal,
   setIssueDeleteModal,
   setGroupDeleteModal,
+  onOpenIssue,
   onRenameGroup,
   onAddGroup,
   handleStatusChange,
@@ -117,6 +118,7 @@ export default function IssuesTableView({
   setIssueEditModal: Dispatch<SetStateAction<IssueEditModalState>>;
   setIssueDeleteModal: Dispatch<SetStateAction<Issue | null>>;
   setGroupDeleteModal: Dispatch<SetStateAction<IssueGroup | null>>;
+  onOpenIssue: (issueId: string) => void;
   onRenameGroup: (group: IssueGroup) => void;
   onAddGroup: () => void;
   handleStatusChange: (issue: Issue, next: Issue["status"]) => void | Promise<void>;
@@ -141,8 +143,9 @@ export default function IssuesTableView({
   projectId?: string;
 }) {
   return (
-    <div className="space-y-6">
-      {tableGroups.map((group) => {
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pb-4 pr-1">
+        {tableGroups.map((group) => {
         const groupEntity = issueGroups.find((item) => item.id === group.key);
         const tableItems = [...group.items];
         const dateFilter = tableDateFilter[group.key];
@@ -598,6 +601,7 @@ export default function IssuesTableView({
                         handleStatusChange={handleStatusChange}
                         handleProgressCommit={handleProgressCommit}
                         handlePriorityChange={handlePriorityChange}
+                        onRowClick={() => setIssueActionsId((prev) => (prev === issue.id ? null : issue.id))}
                       />
                       {issue.subtasks?.length ? (
                         <SubtaskList
@@ -608,6 +612,7 @@ export default function IssuesTableView({
                           setIssueActionsId={setIssueActionsId}
                           issueActionsId={issueActionsId}
                           issueActionsRef={issueActionsRef}
+                          onOpenIssue={onOpenIssue}
                           setIssueCreateModal={setIssueCreateModal}
                           setIssueEditModal={setIssueEditModal}
                           setIssueDeleteModal={setIssueDeleteModal}
@@ -633,15 +638,16 @@ export default function IssuesTableView({
                           handlePriorityChange={handlePriorityChange}
                         />
                       ) : null}
-                      <IssueActions
-                        issue={issue}
-                        issueActionsId={issueActionsId}
-                        setIssueActionsId={setIssueActionsId}
-                        issueActionsRef={issueActionsRef}
-                        setIssueCreateModal={setIssueCreateModal}
-                        setIssueEditModal={setIssueEditModal}
-                        setIssueDeleteModal={setIssueDeleteModal}
-                        handleToggleComments={handleToggleComments}
+                  <IssueActions
+                    issue={issue}
+                    issueActionsId={issueActionsId}
+                    setIssueActionsId={setIssueActionsId}
+                    issueActionsRef={issueActionsRef}
+                    onOpenIssue={onOpenIssue}
+                    setIssueCreateModal={setIssueCreateModal}
+                    setIssueEditModal={setIssueEditModal}
+                    setIssueDeleteModal={setIssueDeleteModal}
+                    handleToggleComments={handleToggleComments}
                         commentThreads={commentThreads}
                         setCommentThreads={setCommentThreads}
                         openCommentThreads={openCommentThreads}
@@ -671,13 +677,14 @@ export default function IssuesTableView({
           </div>
         );
       })}
-      <button
-        type="button"
-        onClick={onAddGroup}
-        className="flex items-center justify-center rounded-xl border border-dashed border-border/70 bg-panel/60 w-full py-3 text-sm text-muted transition hover:bg-subtle/60"
-      >
-        + 업무 테이블 추가
-      </button>
+        <button
+          type="button"
+          onClick={onAddGroup}
+          className="flex items-center justify-center rounded-xl border border-dashed border-border/70 bg-panel/60 w-full py-3 text-sm text-muted transition hover:bg-subtle/60"
+        >
+          + 업무 테이블 추가
+        </button>
+      </div>
     </div>
   );
 }

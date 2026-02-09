@@ -298,6 +298,7 @@ export function CalendarDetailsPanel({
             ) : (
               events.map((event) => {
                 const source = calendarMap.get(event.categoryId);
+                const isIssue = event.sourceType === "issue";
                 const isEditingEvent = editingEventId === event.id;
 
                 return (
@@ -312,16 +313,23 @@ export function CalendarDetailsPanel({
                     <div className="flex w-full flex-col gap-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="grid flex-1 grid-cols-[auto,1fr] gap-2">
-                          <div className="row-span-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-subtle text-[10px] font-semibold text-foreground/70">
-                            {event.createdBy?.avatarUrl ? (
-                              <img
-                                src={event.createdBy.avatarUrl}
-                                alt={event.createdBy?.name ?? "User"}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <span>{event.createdBy?.name?.slice(0, 1) ?? "?"}</span>
+                          <div className="row-span-3 flex items-center gap-2">
+                            {isIssue && (
+                              <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                                이슈
+                              </span>
                             )}
+                            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-subtle text-[10px] font-semibold text-foreground/70">
+                              {event.createdBy?.avatarUrl ? (
+                                <img
+                                  src={event.createdBy.avatarUrl}
+                                  alt={event.createdBy?.name ?? "User"}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span>{event.createdBy?.name?.slice(0, 1) ?? "?"}</span>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                             <span

@@ -14,7 +14,7 @@ export default function WorkspaceCalendarPage() {
 
   return (
     <Suspense fallback={<div className="p-6 text-sm text-muted">캘린더를 불러오는 중입니다…</div>}>
-      <CalendarView />
+      <CalendarView key="calendar-all" />
     </Suspense>
   );
 }

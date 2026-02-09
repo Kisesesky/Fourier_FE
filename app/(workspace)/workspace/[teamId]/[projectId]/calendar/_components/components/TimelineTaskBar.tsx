@@ -16,6 +16,7 @@ type TimelineTaskBarProps = {
   onSelect: () => void;
   hint: string;
   createdBy?: { id: string; name: string; avatarUrl?: string | null };
+  sourceType?: "manual" | "issue";
   calendarName?: string;
   location?: string;
   description?: string;
@@ -37,6 +38,7 @@ export function TimelineTaskBar({
   onSelect,
   hint,
   createdBy,
+  sourceType,
   calendarName,
   location,
   description,
@@ -81,6 +83,7 @@ export function TimelineTaskBar({
   const topOffset = verticalPadding + offsetIndex * (barHeight + stackSpacing);
   const gridColumn = `${startIndex + 1} / ${endIndex + 1}`;
   const avatarLabel = createdBy?.name?.slice(0, 1) ?? "?";
+  const isIssue = sourceType === "issue";
   const dateLabel = isSameDay(start, end)
     ? format(start, "M월 d일 (EEE)", { locale: ko })
     : `${format(start, "M월 d일", { locale: ko })} ~ ${format(end, "M월 d일", { locale: ko })}`;
@@ -140,6 +143,11 @@ export function TimelineTaskBar({
         aria-label={`${title} ${hint}`}
       >
         <div className="flex items-center gap-2 px-3 text-left">
+          {isIssue && (
+            <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+              이슈
+            </span>
+          )}
           <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[10px] font-semibold text-slate-700">
             {createdBy?.avatarUrl ? (
               <img src={createdBy.avatarUrl} alt={createdBy?.name ?? "User"} className="h-full w-full object-cover" />
@@ -159,6 +167,11 @@ export function TimelineTaskBar({
             style={{ top: tooltipStyle.top, left: tooltipStyle.left }}
           >
             <div className="flex items-center gap-2">
+              {isIssue && (
+                <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                  이슈
+                </span>
+              )}
               <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-subtle text-[10px] font-semibold text-foreground/70">
                 {createdBy?.avatarUrl ? (
                   <img src={createdBy.avatarUrl} alt={createdBy?.name ?? "User"} className="h-full w-full object-cover" />

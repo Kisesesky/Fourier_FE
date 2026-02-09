@@ -3,11 +3,14 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { useToast } from "@/components/ui/Toast";
 import {
+  Ban,
   Bell,
+  ChevronRight,
   Home,
   Info,
   LogOut,
@@ -20,18 +23,22 @@ import {
   Search,
   Settings,
   Sun,
+  UserCircle2,
   X,
 } from "lucide-react";
 import CommandPalette from "@/components/command/CommandPalette";
 import SettingsModal from "@/components/settings/SettingsModal";
+import MemberProfilePanel from "@/workspace/members/_components/MemberProfilePanel";
 import { ThemeMode } from "@/lib/theme";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import { useWorkspaceUser } from "@/hooks/useWorkspaceUser";
 import { useAuthProfile } from "@/hooks/useAuthProfile";
-import { signOut } from "@/lib/auth";
+import { signOut, updateProfile } from "@/lib/auth";
 import { setAuthToken } from "@/lib/api";
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead, type NotificationItem } from "@/lib/notifications";
 import { acceptTeamInvite, rejectTeamInvite } from "@/lib/team";
+import { loadUserPresence, saveUserPresence, USER_PRESENCE_EVENT, type UserPresenceStatus } from "@/lib/presence";
+import { loadProfilePrefs, saveProfilePrefs, USER_PROFILE_PREFS_EVENT } from "@/lib/profile-prefs";
 
 const THEME_ICONS: Record<ThemeMode, typeof Sun> = {
   light: Sun,
@@ -90,6 +97,13 @@ export default function Topbar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { theme, cycleTheme } = useThemeMode();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [userPresence, setUserPresence] = useState<UserPresenceStatus>("online");
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false);
+  const [profilePrefs, setProfilePrefs] = useState<{ displayName: string; avatarUrl: string; backgroundImageUrl: string }>({
+    displayName: "",
+    avatarUrl: "",
+    backgroundImageUrl: "",
+  });
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   const { currentUser, userFallback } = useWorkspaceUser();
@@ -107,8 +121,13 @@ export default function Topbar({
   const [mounted, setMounted] = useState(false);
 
   const displayName =
-    currentUser?.name ?? profile?.displayName ?? profile?.name ?? profile?.email ?? "User";
-  const avatarUrl = currentUser?.avatarUrl ?? profile?.avatarUrl ?? undefined;
+    profilePrefs.displayName ||
+    currentUser?.name ||
+    profile?.displayName ||
+    profile?.name ||
+    profile?.email ||
+    "User";
+  const avatarUrl = profilePrefs.avatarUrl || currentUser?.avatarUrl || profile?.avatarUrl || undefined;
   const userInitials = useMemo(() => {
     const base = displayName?.trim() || "User";
     return base
@@ -131,6 +150,28 @@ export default function Topbar({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [userMenuOpen]);
+
+  useEffect(() => {
+    setUserPresence(loadUserPresence());
+    const onPresence = (event: Event) => {
+      const detail = (event as CustomEvent<{ status?: UserPresenceStatus }>).detail;
+      const next = detail?.status;
+      if (next === "online" || next === "offline" || next === "away" || next === "dnd") {
+        setUserPresence(next);
+      } else {
+        setUserPresence(loadUserPresence());
+      }
+    };
+    window.addEventListener(USER_PRESENCE_EVENT, onPresence as EventListener);
+    return () => window.removeEventListener(USER_PRESENCE_EVENT, onPresence as EventListener);
+  }, []);
+
+  useEffect(() => {
+    setProfilePrefs(loadProfilePrefs());
+    const onProfilePrefs = () => setProfilePrefs(loadProfilePrefs());
+    window.addEventListener(USER_PROFILE_PREFS_EVENT, onProfilePrefs);
+    return () => window.removeEventListener(USER_PROFILE_PREFS_EVENT, onProfilePrefs);
+  }, []);
 
 
   useEffect(() => {
@@ -501,7 +542,62 @@ export default function Topbar({
         )}
       </button>
       {userMenuOpen && (
-        <div className="absolute right-0 top-[calc(100%+8px)] w-36 rounded-md border border-border bg-panel shadow-panel">
+        <div className="absolute right-0 top-[calc(100%+8px)] w-52 rounded-md border border-border bg-panel py-1 shadow-panel">
+          <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted transition hover:bg-accent hover:text-foreground"
+            onClick={() => {
+              setProfilePanelOpen(true);
+              setUserMenuOpen(false);
+            }}
+          >
+            <UserCircle2 size={16} />
+            프로필 편집
+          </button>
+          <div className="group/status relative">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-3 py-2 text-sm text-muted transition hover:bg-accent hover:text-foreground"
+            >
+              <span className="inline-flex items-center gap-2">
+                {userPresence === "online" && <span className="h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden />}
+                {userPresence === "offline" && <span className="h-2.5 w-2.5 rounded-full bg-zinc-400" aria-hidden />}
+                {userPresence === "away" && <Moon size={13} className="text-amber-400" aria-hidden />}
+                {userPresence === "dnd" && <Ban size={13} className="text-rose-500" aria-hidden />}
+                {userPresence === "online" && "온라인"}
+                {userPresence === "offline" && "오프라인"}
+                {userPresence === "away" && "자리비움"}
+                {userPresence === "dnd" && "방해금지"}
+              </span>
+              <ChevronRight size={14} />
+            </button>
+            <div className="invisible absolute right-full top-0 z-50 mr-1 w-36 rounded-md border border-border bg-panel py-1 opacity-0 shadow-panel transition group-hover/status:visible group-hover/status:opacity-100 group-focus-within/status:visible group-focus-within/status:opacity-100">
+              {[
+                { key: "online", label: "온라인" },
+                { key: "offline", label: "오프라인" },
+                { key: "away", label: "자리비움" },
+                { key: "dnd", label: "방해금지" },
+              ].map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted transition hover:bg-accent hover:text-foreground"
+                  onClick={() => {
+                    const next = option.key as UserPresenceStatus;
+                    setUserPresence(next);
+                    saveUserPresence(next);
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  {option.key === "online" && <span className="h-2.5 w-2.5 rounded-full bg-sky-400" aria-hidden />}
+                  {option.key === "offline" && <span className="h-2.5 w-2.5 rounded-full bg-zinc-400" aria-hidden />}
+                  {option.key === "away" && <Moon size={13} className="text-amber-400" aria-hidden />}
+                  {option.key === "dnd" && <Ban size={13} className="text-rose-500" aria-hidden />}
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="my-1 border-t border-border/70" />
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted transition hover:bg-accent hover:text-foreground"
             onClick={handleLogout}
@@ -514,10 +610,78 @@ export default function Topbar({
     </div>
   );
 
+  const renderProfilePanel = () => (
+    <Dialog.Root open={profilePanelOpen} onOpenChange={setProfilePanelOpen}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
+        <Dialog.Content className="fixed left-1/2 top-20 z-50 w-[500px] max-w-[92vw] -translate-x-1/2 rounded-2xl border border-border bg-panel p-5 shadow-panel focus:outline-none">
+          <div className="mb-3 flex items-center justify-between">
+            <Dialog.Title className="text-lg font-semibold text-foreground">프로필 편집</Dialog.Title>
+            <Dialog.Close className="rounded-full border border-border/70 p-1 text-muted transition hover:text-foreground" aria-label="닫기">
+              <X size={16} />
+            </Dialog.Close>
+          </div>
+          <MemberProfilePanel
+            member={{
+              id: profile?.id ?? currentUser?.id ?? "me",
+              name: displayName,
+              displayName: displayName,
+              email: profile?.email ?? "",
+              avatarUrl: avatarUrl,
+              backgroundImageUrl: profilePrefs.backgroundImageUrl || profile?.backgroundImageUrl || undefined,
+              description: profile?.bio ?? undefined,
+              role: "member",
+              joinedAt: Date.now(),
+              lastActiveAt: Date.now(),
+            }}
+            presence={{
+              memberId: profile?.id ?? "me",
+              status: userPresence,
+              lastSeenAt: Date.now(),
+            }}
+            canEditPresence
+            canEditProfile
+            canRemove={false}
+            onPresenceChange={(status) => {
+              setUserPresence(status);
+              saveUserPresence(status);
+            }}
+            onProfileSave={async (patch) => {
+              if (patch.displayName !== undefined || patch.bio !== undefined) {
+                try {
+                  await updateProfile({
+                    displayName: patch.displayName?.trim(),
+                    backgroundImageUrl: patch.backgroundImageUrl?.trim() ?? "",
+                    bio: patch.bio,
+                  });
+                } catch {
+                  // keep local fallback even if server update fails
+                }
+              }
+              saveProfilePrefs({
+                displayName: patch.displayName?.trim() ?? displayName,
+                avatarUrl: patch.avatarUrl ?? "",
+                backgroundImageUrl: patch.backgroundImageUrl ?? profilePrefs.backgroundImageUrl,
+              });
+              show({
+                title: "프로필 저장 완료",
+                description: "프로필 정보가 업데이트되었습니다.",
+                variant: "success",
+              });
+              setProfilePanelOpen(false);
+            }}
+            onCancel={() => setProfilePanelOpen(false)}
+          />
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+
   if (workspaceMode) {
     return (
-      <header className="flex h-[56px] w-full items-center justify-between border-b border-border bg-panel px-4 text-foreground shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-colors md:px-8">
-        <div className="flex min-w-0 flex-1 items-center gap-3 text-sm">
+      <>
+        <header className="flex h-[56px] w-full items-center justify-between border-b border-border bg-panel px-4 text-foreground shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-colors md:px-8">
+          <div className="flex min-w-0 flex-1 items-center gap-3 text-sm">
           <button
             type="button"
             className="rounded-md p-2 text-muted transition-colors hover:bg-accent md:hidden"
@@ -615,9 +779,9 @@ export default function Topbar({
               )}
             </div>
           </div>
-        </div>
+          </div>
 
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
           <button
             className="hidden items-center gap-2 rounded-full border border-border px-3 py-2 text-sm uppercase tracking-[0.3em] text-muted transition hover:text-foreground md:flex"
             aria-label="Toggle theme"
@@ -634,9 +798,11 @@ export default function Topbar({
           <ToolbarIcon icon={MessageSquare} label="DM" onClick={() => window.dispatchEvent(new Event("dm:open"))} />
           {renderNotifications()}
           <ToolbarIcon icon={Settings} label="Settings" onClick={onWorkspaceSettings} />
-          {renderUserSection()}
-        </div>
-      </header>
+            {renderUserSection()}
+          </div>
+        </header>
+        {renderProfilePanel()}
+      </>
     );
   }
 
@@ -726,6 +892,7 @@ export default function Topbar({
           </div>
         </div>
       </header>
+      {renderProfilePanel()}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );

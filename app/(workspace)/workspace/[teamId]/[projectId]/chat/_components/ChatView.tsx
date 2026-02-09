@@ -311,18 +311,29 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
 
   const currentChannel = useMemo(() => channels.find(c => c.id === channelId), [channels, channelId]);
   const isDM = channelId.startsWith("dm:");
-  const dmUser = isDM ? users[channelId.slice(3)] : undefined;
+  const dmParticipantIds = useMemo(() => {
+    if (!isDM) return [] as string[];
+    const fromMembers = (channelMembers[channelId] || []).filter(Boolean);
+    if (fromMembers.length > 0) return fromMembers;
+    const raw = channelId.slice(3);
+    return raw ? raw.split("+").filter(Boolean) : [];
+  }, [channelId, channelMembers, isDM]);
+  const dmOtherId = useMemo(
+    () => dmParticipantIds.find((id) => id !== me.id) ?? dmParticipantIds[0],
+    [dmParticipantIds, me.id],
+  );
+  const dmUser = isDM && dmOtherId ? users[dmOtherId] : undefined;
   const channelLabel = isDM
-    ? `@ ${dmUser?.name ?? (channelId.slice(3) || "Direct Message")}`
+    ? (dmUser?.name ?? currentChannel?.name?.replace(/^@\s*/, "") ?? "Direct Message")
     : (currentChannel?.name ?? channelId ?? "Channel");
   const memberIds = useMemo(() => {
     if (isDM) {
-      return Array.from(new Set([me.id, dmUser?.id].filter(Boolean) as string[]));
+      return Array.from(new Set([me.id, ...dmParticipantIds].filter(Boolean) as string[]));
     }
     const ids = channelMembers[channelId] || [];
     if (ids.length > 0) return ids;
     return Object.keys(users);
-  }, [channelMembers, channelId, dmUser?.id, isDM, me.id, users]);
+  }, [channelMembers, channelId, dmParticipantIds, isDM, me.id, users]);
   const memberNames = useMemo(
     () => memberIds.map((id) => users[id]?.name || id),
     [memberIds, users],
@@ -407,6 +418,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
           <ChatHeader
             isDM={isDM}
             channelName={channelDisplayName}
+            dmAvatarUrl={dmUser?.avatarUrl}
             memberNames={memberNames}
             memberIds={memberIds}
             users={users}

@@ -1,7 +1,7 @@
 // store/chat.ts
 import { create } from "zustand";
 import { lsGet, lsSet } from "@/lib/persist";
-import { listChannels, listMessages, sendChannelMessage, sendThreadMessage, listProjectMembers, getChannelPreferences, saveChannelPreferences, getPinnedMessages, getSavedMessages, createChannel as createChannelApi } from "../_service/api";
+import { listChannels, listMessages, sendChannelMessage, sendDmMessage, getOrCreateDmRoom, sendThreadMessage, listProjectMembers, getChannelPreferences, saveChannelPreferences, getPinnedMessages, getSavedMessages, createChannel as createChannelApi } from "../_service/api";
 import { getChatSocket } from "@/lib/socket";
 
 import type {
@@ -147,6 +147,7 @@ const LAST_READ_KEY = "fd.chat.lastRead";
 const ACTIVITY_KEY = "fd.chat.activity";
 const PINNED_CHANNELS_KEY = "fd.chat.pinnedChannels";
 const ARCHIVED_CHANNELS_KEY = "fd.chat.archivedChannels";
+const DM_ROOM_BY_CHANNEL_KEY = "fd.chat.dmRoomByChannel";
 
 const sortMessages = (list: Msg[]) =>
   [...list].sort((a, b) => {
@@ -170,6 +171,43 @@ let bc: BroadcastChannel | null = null;
 const DEFAULT_ME: ChatUser = { id: "me", name: "Me" };
 const DEFAULT_STATUS_MAP: Record<string, PresenceState> = {};
 const FALLBACK_WORKSPACE_ID = "workspace";
+
+const parseDmParticipantIds = (channelId: string): string[] => {
+  const raw = channelId.startsWith("dm:") ? channelId.slice(3) : channelId;
+  if (!raw) return [];
+  return raw.split("+").map((item) => item.trim()).filter(Boolean);
+};
+
+const resolveDmRoomId = async (
+  channelId: string,
+  channelMembers: Record<string, string[]>,
+  meId: string,
+): Promise<string | null> => {
+  if (!channelId.startsWith("dm:")) return null;
+  const raw = channelId.slice(3).trim();
+  if (!raw) return null;
+
+  const cached = lsGet<Record<string, string>>(DM_ROOM_BY_CHANNEL_KEY, {});
+  const cachedRoomId = cached[channelId];
+  if (cachedRoomId) return cachedRoomId;
+
+  const fromMembers = (channelMembers[channelId] || []).filter((id) => id && id !== meId);
+  const fromChannelId = parseDmParticipantIds(channelId).filter((id) => id !== meId);
+  const participantIds = Array.from(new Set([...(fromMembers.length > 0 ? fromMembers : fromChannelId)]));
+
+  if (participantIds.length > 0) {
+    try {
+      const room = await getOrCreateDmRoom(participantIds);
+      if (!room?.id) return null;
+      lsSet(DM_ROOM_BY_CHANNEL_KEY, { ...cached, [channelId]: room.id });
+      return room.id;
+    } catch {
+      // fallback below
+    }
+  }
+
+  return raw;
+};
 
 const buildWorkspace = (id: string, channels: Channel[]): Workspace => ({
   id,
@@ -319,16 +357,38 @@ export const useChat = create<State>((set, get) => ({
       getChannelPreferences(projectId).catch(() => ({ pinnedChannelIds: [], archivedChannelIds: [] })),
     ]);
     const workspaceId = projectId;
-    const channels = channelList.map((ch) => ({ ...ch, workspaceId }));
-    const workspaces = [buildWorkspace(workspaceId, channels)];
+    const serverChannels = channelList.map((ch) => ({ ...ch, workspaceId }));
+    const persistedChannels = lsGet<Channel[]>(CHANNELS_KEY, []);
+    const persistedDmChannels = persistedChannels
+      .filter((ch) => (ch.isDM || ch.id.startsWith("dm:")) && ch.workspaceId === workspaceId)
+      .map((ch) => ({ ...ch, isDM: true, workspaceId }));
+    const channelsById = new Map<string, Channel>();
+    serverChannels.forEach((channel) => channelsById.set(channel.id, channel));
+    persistedDmChannels.forEach((channel) => {
+      if (!channelsById.has(channel.id)) channelsById.set(channel.id, channel);
+    });
+    const channels = Array.from(channelsById.values());
+    const dmIds = channels.filter((ch) => ch.isDM || ch.id.startsWith("dm:")).map((ch) => ch.id);
+    const workspaces = [buildWorkspace(workspaceId, serverChannels)];
+    workspaces[0].sections = workspaces[0].sections.map((section) =>
+      section.type === "dms" ? { ...section, itemIds: dmIds } : section
+    );
+    const persistedMembers = lsGet<Record<string, string[]>>(MEMBERS_KEY, {});
+    const mergedMembers: Record<string, string[]> = {
+      ...persistedMembers,
+      ...get().channelMembers,
+    };
     set({
       workspaces,
       allChannels: channels,
       workspaceId,
       channels,
+      channelMembers: mergedMembers,
       pinnedChannelIds: preferences.pinnedChannelIds ?? [],
       archivedChannelIds: preferences.archivedChannelIds ?? [],
     });
+    lsSet(CHANNELS_KEY, channels);
+    lsSet(MEMBERS_KEY, mergedMembers);
     if (members.length > 0) {
       const userMap = members.reduce<Record<string, ChatUser>>((acc, member) => {
         acc[member.userId] = {
@@ -514,7 +574,7 @@ export const useChat = create<State>((set, get) => ({
       if (otherIds.length <= 1) {
         const target = otherIds[0] ?? raw;
         const user = users[target];
-        displayName = user ? `@ ${user.name}` : `@ ${target || "Direct Message"}`;
+        displayName = user ? user.name : target || "Direct Message";
       } else {
         const names = otherIds.map(uid => users[uid]?.name || uid);
         displayName = names.join(", ");
@@ -713,10 +773,21 @@ export const useChat = create<State>((set, get) => ({
           opts.parentId,
           text,
         )
-      : await sendChannelMessage(channelId, text, {
-          replyToMessageId: opts?.replyToId ?? undefined,
-          threadParentId: undefined,
-        });
+      : channelId.startsWith("dm:")
+        ? await (async () => {
+            const roomId = await resolveDmRoomId(channelId, get().channelMembers, get().me.id);
+            if (!roomId) {
+              throw new Error("Failed to resolve DM room");
+            }
+            return sendDmMessage(roomId, text, {
+              replyToMessageId: opts?.replyToId ?? undefined,
+              fileIds: [],
+            });
+          })()
+        : await sendChannelMessage(channelId, text, {
+            replyToMessageId: opts?.replyToId ?? undefined,
+            threadParentId: undefined,
+          });
     const msg = mapChannelMessage(response, channelId, get().me.id);
     localEchoIds.add(msg.id);
     setTimeout(() => localEchoIds.delete(msg.id), 3000);

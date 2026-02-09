@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { BarChart3, CalendarRange, KanbanSquare, LayoutDashboard, Table2 } from "lucide-react";
 
-import RightPanel from "@/workspace/issues/_components/RightPanel";
 import type { Issue, IssueGroup } from "@/workspace/issues/_model/types";
 import {
   addSubtask,
@@ -20,10 +19,10 @@ import IssuesDashboardView from "@/workspace/issues/_components/views/IssuesDash
 import { useIssuesBoardState, ViewMode } from "@/workspace/issues/_components/hooks/useIssuesBoardState";
 
 const BASE_COLUMNS: Array<{ key: Issue["status"]; label: string }> = [
-  { key: "todo", label: "To Do" },
-  { key: "in_progress", label: "In Progress" },
-  { key: "review", label: "Review" },
-  { key: "done", label: "Done" },
+  { key: "todo", label: "할 일" },
+  { key: "in_progress", label: "작업 중" },
+  { key: "review", label: "리뷰 대기" },
+  { key: "done", label: "완료" },
 ];
 
 const VIEW_META: Record<ViewMode, { label: string; description: string; icon: typeof Table2 }> = {
@@ -111,6 +110,41 @@ export default function IssuesBoardView() {
     handlePriorityChange,
     updateIssueTree,
   } = useIssuesBoardState({ teamId, projectId, baseColumns: BASE_COLUMNS });
+  const [timelineFilters, setTimelineFilters] = useState<Record<string, boolean>>({});
+
+  const timelineOptions = useMemo(() => {
+    const opts = issueGroups.map((group) => ({ key: group.id, label: group.name }));
+    const hasUngrouped = issues.some((issue) => !issue.group && !issue.parentId);
+    if (hasUngrouped) {
+      opts.push({ key: "ungrouped", label: "미분류" });
+    }
+    return opts;
+  }, [issueGroups, issues]);
+
+  const defaultIssueGroup = useMemo(
+    () => issueGroups.find((group) => group.name === "프로젝트") ?? issueGroups[0],
+    [issueGroups],
+  );
+
+  useEffect(() => {
+    setTimelineFilters((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      timelineOptions.forEach((opt) => {
+        if (next[opt.key] === undefined) {
+          next[opt.key] = true;
+          changed = true;
+        }
+      });
+      Object.keys(next).forEach((key) => {
+        if (!timelineOptions.find((opt) => opt.key === key)) {
+          delete next[key];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [timelineOptions]);
 
   useEffect(() => {
     const viewParam = searchParams?.get("view") as ViewMode | null;
@@ -161,10 +195,18 @@ export default function IssuesBoardView() {
           endAt: endAt || undefined,
           parentId: issueCreateModal.parentId,
         });
+    const fallbackGroup =
+      issueCreateModal.groupKey === "ungrouped"
+        ? defaultIssueGroup
+        : issueGroups.find((group) => group.id === issueCreateModal.groupKey);
+    const createdWithGroup =
+      !issueCreateModal.isSubtask && !created.group && fallbackGroup
+        ? { ...created, group: fallbackGroup }
+        : created;
     const createdSubtask =
       issueCreateModal.isSubtask && issueCreateModal.parentId && !created.parentId
-        ? { ...created, parentId: issueCreateModal.parentId }
-        : created;
+        ? { ...createdWithGroup, parentId: issueCreateModal.parentId }
+        : createdWithGroup;
     setIssues((prev) => {
       const next = [...prev, createdSubtask];
       if (issueCreateModal.isSubtask && issueCreateModal.parentId) {
@@ -197,7 +239,7 @@ export default function IssuesBoardView() {
       }
     }
     setIssueCreateModal(null);
-  }, [issueCreateModal, profile?.id, projectId, setIssueDetail, setIssues, updateIssueTree]);
+  }, [defaultIssueGroup, issueCreateModal, issueGroups, profile?.id, projectId, setIssueDetail, setIssues, updateIssueTree]);
 
   const submitIssueEdit = useCallback(async () => {
     if (!projectId || !issueEditModal) return;
@@ -274,6 +316,23 @@ export default function IssuesBoardView() {
             <div>
               <div className="text-lg font-semibold text-foreground">{VIEW_META[view].label}</div>
               <div className="text-sm text-muted">{VIEW_META[view].description}</div>
+              {view === "timeline" && timelineOptions.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
+                  {timelineOptions.map((opt) => (
+                    <label key={opt.key} className="inline-flex items-center gap-2 rounded-full border border-border bg-panel/60 px-3 py-1">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5"
+                        checked={timelineFilters[opt.key] ?? true}
+                        onChange={(e) =>
+                          setTimelineFilters((prev) => ({ ...prev, [opt.key]: e.target.checked }))
+                        }
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -286,7 +345,45 @@ export default function IssuesBoardView() {
           ) : (
             <>
               {view === "kanban" && (
-                <IssuesKanbanView columns={columns} grouped={grouped} onOpenIssue={openIssue} />
+                <IssuesKanbanView
+                  columns={columns}
+                  grouped={grouped}
+                  memberMap={memberMap}
+                  issueGroups={issueGroups}
+                  onCreateIssue={(status) =>
+                    setIssueCreateModal({
+                      groupKey: defaultIssueGroup?.id ?? "ungrouped",
+                      title: "",
+                      status,
+                      priority: "medium",
+                      startAt: "",
+                      endAt: "",
+                    })
+                  }
+                  issueActionsId={issueActionsId}
+                  setIssueActionsId={setIssueActionsId}
+                  issueActionsRef={issueActionsRef}
+                  onOpenIssue={openIssue}
+                  setIssueCreateModal={setIssueCreateModal}
+                  setIssueEditModal={setIssueEditModal}
+                  setIssueDeleteModal={setIssueDeleteModal}
+                  handleToggleComments={handleToggleComments}
+                  commentThreads={commentThreads}
+                  setCommentThreads={setCommentThreads}
+                  openCommentThreads={openCommentThreads}
+                  commentThreadDrafts={commentThreadDrafts}
+                  setCommentThreadDrafts={setCommentThreadDrafts}
+                  commentSubmitting={commentSubmitting}
+                  setCommentSubmitting={setCommentSubmitting}
+                  commentEditingId={commentEditingId}
+                  setCommentEditingId={setCommentEditingId}
+                  commentEditingDraft={commentEditingDraft}
+                  setCommentEditingDraft={setCommentEditingDraft}
+                  commentReactions={commentReactions}
+                  setCommentReactions={setCommentReactions}
+                  profile={profile}
+                  projectId={projectId}
+                />
               )}
 
               {view === "table" && (
@@ -318,6 +415,7 @@ export default function IssuesBoardView() {
                   setIssueEditModal={setIssueEditModal}
                   setIssueDeleteModal={setIssueDeleteModal}
                   setGroupDeleteModal={setGroupDeleteModal}
+                  onOpenIssue={openIssue}
                   onRenameGroup={handleRenameGroup}
                   onAddGroup={handleAddGroup}
                   handleStatusChange={handleStatusChange}
@@ -343,20 +441,32 @@ export default function IssuesBoardView() {
                 />
               )}
 
-              {view === "timeline" && <IssuesTimelineView issues={issues} memberMap={memberMap} />}
+              {view === "timeline" && (
+                <IssuesTimelineView issues={issues} memberMap={memberMap} groupFilter={timelineFilters} />
+              )}
 
-              {view === "chart" && <IssuesChartView />}
+              {view === "chart" && (
+                <IssuesChartView
+                  issues={issues}
+                  memberMap={memberMap}
+                  issueGroups={issueGroups}
+                  loading={loading}
+                />
+              )}
 
-              {view === "dashboard" && <IssuesDashboardView />}
+              {view === "dashboard" && (
+                <IssuesDashboardView
+                  issues={issues}
+                  memberMap={memberMap}
+                  issueGroups={issueGroups}
+                  loading={loading}
+                />
+              )}
             </>
           )}
         </section>
 
-        {routeId && (
-          <aside className="hidden w-[360px] shrink-1 border-l border-border bg-panel md:flex">
-            <RightPanel onClose={() => router.push(pathname.replace(/\/issues\/.*$/, "/issues"))} />
-          </aside>
-        )}
+        {routeId && null}
       </div>
       {groupModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -520,6 +630,27 @@ export default function IssuesBoardView() {
                   />
                 </div>
               </div>
+              {!issueCreateModal.isSubtask && (
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted">테이블 선택</div>
+                  <select
+                    value={issueCreateModal.groupKey}
+                    onChange={(e) =>
+                      setIssueCreateModal((prev) =>
+                        prev ? { ...prev, groupKey: e.target.value } : prev,
+                      )
+                    }
+                    className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
+                  >
+                    <option value="ungrouped">미분류</option>
+                    {issueGroups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="mt-4 flex items-center justify-end gap-2">
               <button

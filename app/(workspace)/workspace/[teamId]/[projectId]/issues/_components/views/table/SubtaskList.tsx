@@ -17,6 +17,7 @@ export default function SubtaskList({
   setIssueCreateModal,
   setIssueEditModal,
   setIssueDeleteModal,
+  onOpenIssue,
   handleToggleComments,
   commentThreads,
   setCommentThreads,
@@ -68,6 +69,7 @@ export default function SubtaskList({
     endAt: string;
   } | null>>;
   setIssueDeleteModal: React.Dispatch<React.SetStateAction<Issue | null>>;
+  onOpenIssue: (issueId: string) => void;
   handleToggleComments: (issue: Issue) => void | Promise<void>;
   commentThreads: Record<string, IssueComment[]>;
   setCommentThreads: React.Dispatch<React.SetStateAction<Record<string, IssueComment[]>>>;
@@ -119,12 +121,14 @@ export default function SubtaskList({
             handleStatusChange={handleStatusChange}
             handleProgressCommit={handleProgressCommit}
             handlePriorityChange={handlePriorityChange}
+            onRowClick={() => setIssueActionsId((prev) => (prev === sub.id ? null : sub.id))}
           />
           <IssueActions
             issue={sub}
             issueActionsId={issueActionsId}
             setIssueActionsId={setIssueActionsId}
             issueActionsRef={issueActionsRef}
+            onOpenIssue={onOpenIssue}
             setIssueCreateModal={setIssueCreateModal}
             setIssueEditModal={setIssueEditModal}
             setIssueDeleteModal={setIssueDeleteModal}
@@ -156,6 +160,7 @@ export default function SubtaskList({
                 setIssueActionsId={setIssueActionsId}
                 issueActionsId={issueActionsId}
                 issueActionsRef={issueActionsRef}
+                onOpenIssue={onOpenIssue}
                 setIssueCreateModal={setIssueCreateModal}
                 setIssueEditModal={setIssueEditModal}
                 setIssueDeleteModal={setIssueDeleteModal}

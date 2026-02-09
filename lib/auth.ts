@@ -7,6 +7,8 @@ export type AuthProfile = {
   name?: string;
   displayName?: string | null;
   avatarUrl?: string | null;
+  backgroundImageUrl?: string | null;
+  bio?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -32,5 +34,22 @@ export async function signOut(): Promise<void> {
 
 export async function fetchProfile(): Promise<AuthProfile> {
   const res = await api.get("/auth/profile");
+  return res.data;
+}
+
+export async function updateProfile(payload: { displayName?: string; backgroundImageUrl?: string; bio?: string }) {
+  const form = new FormData();
+  if (payload.displayName !== undefined) {
+    form.append("displayName", payload.displayName);
+  }
+  if (payload.backgroundImageUrl !== undefined) {
+    form.append("backgroundImageUrl", payload.backgroundImageUrl);
+  }
+  if (payload.bio !== undefined) {
+    form.append("bio", payload.bio);
+  }
+  const res = await api.patch("/users/update", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data;
 }

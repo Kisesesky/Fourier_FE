@@ -29,24 +29,25 @@ export default function DocEditorCanvas({
       : "text-left";
 
   return (
-    <div className="flex-1 bg-gradient-to-b from-[#f7f9fb] via-white to-[#f2f5fb] px-4 py-6">
-      <div className="mx-auto w-full max-w-4xl rounded-[28px] border border-border/60 bg-white/95 shadow-[0_35px_80px_rgba(15,23,42,0.05)]">
-        <div
-          className="h-full overflow-auto rounded-[28px] px-12 py-10"
-          style={{ backgroundColor: paperTone }}
-        >
-          <EditorContent
-            editor={editor}
-            className={cn(
-              "prose prose-sm min-h-[640px] max-w-none text-slate-800 focus:outline-none",
-              alignmentClass
-            )}
-            style={{
-              fontFamily,
-              fontSize: `${fontSize}px`,
-            }}
-          />
-        </div>
+    <div className="flex-1 overflow-auto bg-white px-10 py-8">
+      <div
+        className="mx-auto h-full w-full max-w-5xl px-2"
+        style={{ backgroundColor: paperTone }}
+      >
+        <EditorContent
+          editor={editor}
+          className={cn(
+            "prose prose-sm min-h-[640px] max-w-none text-slate-800 focus:outline-none",
+            "prose-pre:my-4 prose-pre:rounded-lg prose-pre:bg-slate-900 prose-pre:text-slate-100",
+            "prose-code:rounded prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-slate-800",
+            "prose-code:before:content-none prose-code:after:content-none",
+            alignmentClass
+          )}
+          style={{
+            fontFamily,
+            fontSize: `${fontSize}px`,
+          }}
+        />
       </div>
     </div>
   );

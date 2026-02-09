@@ -6,7 +6,6 @@ import DocNode from "./DocNode";
 import { useDocTree } from "../../../_model/hooks/useDocTree";
 import { TreeNode, TreeContextTarget } from "../../../_model/types";
 import TreeContextMenu from "./TreeContextMenu";
-import TreeToolbar from "./TreeToolbar";
 
 export default function DocsTree() {
   const { tree, refresh } = useDocTree();

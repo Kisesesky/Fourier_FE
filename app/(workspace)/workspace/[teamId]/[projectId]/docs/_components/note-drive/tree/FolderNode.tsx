@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Folder, ChevronDown, ChevronRight } from "lucide-react";
 import DocNode from "./DocNode";
 import type { TreeFolder, TreeContextTarget } from "../../../_model/types";
-import { useTreeDrag } from "../../../_model/hooks/useTreeDrag";
 
 export default function FolderNode({
   node,
@@ -16,15 +15,9 @@ export default function FolderNode({
   onContextMenu: (e: React.MouseEvent, target: TreeContextTarget) => void;
 }) {
   const [open, setOpen] = useState(true);
-  const { onDragStart, onDragOver, onDrop } = useTreeDrag();
 
   return (
-    <div
-      draggable
-      onDragStart={(e) => onDragStart(e, node)}
-      onDragOver={(e) => onDragOver(e)}
-      onDrop={(e) => onDrop(e, node.id)}
-    >
+    <div>
       <div
         className="flex items-center w-full h-7 rounded-md px-2 cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-foreground transition"
         onClick={() => setOpen(!open)}

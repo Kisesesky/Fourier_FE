@@ -12,7 +12,8 @@ import type { JSONContent } from "@tiptap/react";
 
 import type { DocMeta } from "../_model/types";
 import type { OutlineItem } from "../_model/hooks/useDocOutline";
-import { getDocMeta, getDocs, saveDocs } from "../_model/docs";
+import { getDocMeta, getDocs, saveDocs, syncDocsFromServer } from "../_model/docs";
+import { serializeDocContent, updateDocument } from "../_service/api";
 
 type SaveStatus = "idle" | "saving";
 
@@ -51,10 +52,12 @@ export function DocEditorProvider({
   );
 
   useEffect(() => {
-    const nextMeta = getDocMeta(docId);
-    setMeta(nextMeta ?? null);
-    setContent(nextMeta?.content ?? null);
-    setLastSavedAt(nextMeta?.updatedAt ?? null);
+    void syncDocsFromServer().finally(() => {
+      const nextMeta = getDocMeta(docId);
+      setMeta(nextMeta ?? null);
+      setContent(nextMeta?.content ?? null);
+      setLastSavedAt(nextMeta?.updatedAt ?? null);
+    });
   }, [docId]);
 
   useEffect(() => {
@@ -91,6 +94,13 @@ export function DocEditorProvider({
           : doc
       )
     );
+
+    void updateDocument(docId, {
+      title: patch.title,
+      folderId: patch.folderId,
+      content: patch.content ? serializeDocContent(patch.content) : undefined,
+      starred: patch.starred,
+    }).catch(() => {});
   };
 
   const updateContent = (newContent: JSONContent) => {
@@ -102,6 +112,10 @@ export function DocEditorProvider({
           : doc
       )
     );
+
+    void updateDocument(docId, {
+      content: serializeDocContent(newContent),
+    }).catch(() => {});
   };
 
   const value = useMemo(

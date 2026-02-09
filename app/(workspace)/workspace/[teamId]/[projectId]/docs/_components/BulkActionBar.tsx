@@ -15,13 +15,13 @@ export default function BulkActionBar() {
 
   if (!selectedDocs.length) return null;
 
-  const handleDuplicate = () => {
+  const handleDuplicate = async () => {
     const docs = getDocs();
-    selectedDocs.forEach((id) => {
+    for (const id of selectedDocs) {
       const src = getDocMeta(id);
       if (!src) return;
 
-      createDoc(
+      await createDoc(
         `${src.title} - 복제`,
         src.folderId ?? undefined,
         {
@@ -29,7 +29,7 @@ export default function BulkActionBar() {
           icon: src.icon,
         }
       );
-    });
+    }
   };
 
   const handleToggleStar = () => {
@@ -48,8 +48,10 @@ export default function BulkActionBar() {
       {/* 이동 기능: 심플하게 최상위로 이동 */}
       <button
         className="btn"
-        onClick={() => {
-          selectedDocs.forEach((id) => moveDocToFolder(id, null));
+        onClick={async () => {
+          for (const id of selectedDocs) {
+            await moveDocToFolder(id, null);
+          }
           clear();
         }}
       >
@@ -66,8 +68,10 @@ export default function BulkActionBar() {
 
       <button
         className="btn text-red-500"
-        onClick={() => {
-          selectedDocs.forEach((id) => deleteDoc(id));
+        onClick={async () => {
+          for (const id of selectedDocs) {
+            await deleteDoc(id);
+          }
           clear();
         }}
       >

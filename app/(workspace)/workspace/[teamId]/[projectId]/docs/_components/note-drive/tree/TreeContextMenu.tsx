@@ -45,21 +45,28 @@ export default function TreeContextMenu({ x, y, target, onClose }: Props) {
     return () => window.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  const rename = () => {
+  const rename = async () => {
     const value = prompt("새 이름을 입력하세요");
     if (!value) return;
 
-    if (target.type === "folder") renameFolder(target.id, value);
-    else renameDoc(target.id, value);
-
-    onClose();
+    try {
+      if (target.type === "folder") await renameFolder(target.id, value);
+      else await renameDoc(target.id, value);
+      onClose();
+    } catch {
+      alert("이름 변경에 실패했습니다.");
+    }
   };
 
-  const deleteAction = () => {
-    if (target.type === "folder") deleteFolder(target.id, true);
-    else deleteDoc(target.id);
-
-    onClose();
+  const deleteAction = async () => {
+    try {
+      if (target.type === "folder") await deleteFolder(target.id, true);
+      else await deleteDoc(target.id);
+      setOpenDeleteModal(false);
+      onClose();
+    } catch {
+      alert("삭제에 실패했습니다.");
+    }
   };
 
   return (

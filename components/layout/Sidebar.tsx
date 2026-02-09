@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   Table2,
   BarChart3,
+  Archive,
   LifeBuoy,
   MessageSquare,
   Pencil,
@@ -34,6 +35,8 @@ import {
   X,
   Moon,
   Ban,
+  Star,
+  FileText,
 } from "lucide-react";
 
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -54,11 +57,14 @@ import MemberProfilePanel from "@/workspace/members/_components/MemberProfilePan
 import { loadUserPresence, saveUserPresence, USER_PRESENCE_EVENT, type UserPresenceStatus } from "@/lib/presence";
 import { loadProfilePrefs, saveProfilePrefs, USER_PROFILE_PREFS_EVENT } from "@/lib/profile-prefs";
 import { updateProfile } from "@/lib/auth";
+import { getDocs, setDocStarred } from "@/workspace/docs/_model/docs";
+import { FILE_VAULT_EVENT, emitFileVaultChanged } from "@/workspace/file/_model/vault";
+import { createFileFolder, deleteFileFolder, listFileFolders, updateFileFolder, type FileFolderDto } from "@/workspace/file/_service/api";
 
 /* ────────────────────────────────────────────────
    NAV CONFIG
 ────────────────────────────────────────────────── */
-type SurfaceSlug = "chat" | "issues" | "calendar" | "members" | "docs";
+type SurfaceSlug = "chat" | "issues" | "calendar" | "members" | "docs" | "file";
 
 const NAV_LINKS = [
   { slug: "chat", icon: MessageSquare, label: "Chat" },
@@ -66,6 +72,7 @@ const NAV_LINKS = [
   { slug: "calendar", icon: CalendarDays, label: "Calendar" },
   { slug: "members", icon: Users, label: "Members" },
   { slug: "docs", icon: BookText, label: "Docs" },
+  { slug: "file", icon: Archive, label: "File" },
 ] as const;
 
 const SURFACE_LABEL: Record<SurfaceSlug, string> = {
@@ -74,6 +81,7 @@ const SURFACE_LABEL: Record<SurfaceSlug, string> = {
   calendar: "캘린더",
   members: "팀 구성원",
   docs: "문서",
+  file: "파일 보관함",
 };
 
 
@@ -108,6 +116,21 @@ const Section = ({ title, children }: { title: React.ReactNode; children: React.
 
 /* ✨ Compact Sidebar Documents Panel */
 const DocsPanel = () => {
+  const { buildHref } = useWorkspacePath();
+  const router = useRouter();
+  const [starredDocs, setStarredDocs] = useState(() =>
+    getDocs().filter((doc) => doc.starred),
+  );
+
+  useEffect(() => {
+    const sync = () => {
+      setStarredDocs(getDocs().filter((doc) => doc.starred));
+    };
+    sync();
+    window.addEventListener("docs:refresh", sync);
+    return () => window.removeEventListener("docs:refresh", sync);
+  }, []);
+
   return (
     <div className="p-1">
 
@@ -123,12 +146,353 @@ const DocsPanel = () => {
       </div>
 
       {/* 문서 트리 타이틀 */}
-      <div className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted flex items-center">
-        <Folder size={16} className="mr-1 text-yellow-500" />
-        문서 트리
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+          <Folder size={16} className="mr-1 text-yellow-500" />
+          문서 트리
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => router.push(buildHref("docs", "/docs"))}
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted transition hover:bg-subtle/70 hover:text-foreground"
+          >
+            <LayoutDashboard size={12} />
+            대시보드
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`${buildHref("docs", "/docs")}?read=all`)}
+            className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted transition hover:bg-subtle/70 hover:text-foreground"
+          >
+            전체보기
+          </button>
+        </div>
       </div>
 
       <DocsTree />
+
+      <div className="mt-4 border-t border-gray-200 pt-3">
+        <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+          <span className="inline-flex items-center">
+            <Star size={14} className="mr-1 text-amber-500" />
+            즐겨찾기
+          </span>
+          <span>{starredDocs.length}개</span>
+        </div>
+        <div className="space-y-1">
+          {starredDocs.slice(0, 8).map((doc) => (
+            <div
+              key={doc.id}
+              className="flex items-center gap-1 rounded-md px-1 py-0.5 text-xs text-muted transition hover:bg-subtle/70 hover:text-foreground"
+            >
+              <button
+                type="button"
+                onClick={() => router.push(buildHref(["docs", doc.id], `/docs/${doc.id}`))}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left"
+              >
+                <FileText size={12} className="text-muted-foreground" />
+                <span className="truncate">{doc.title}</span>
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await setDocStarred(doc.id, false);
+                  setStarredDocs(getDocs().filter((item) => item.starred));
+                }}
+                className="rounded-md px-1.5 py-1 text-muted-foreground hover:bg-rose-50 hover:text-rose-600"
+                title="즐겨찾기 해제"
+              >
+                -
+              </button>
+            </div>
+          ))}
+          {starredDocs.length === 0 && (
+            <p className="px-2 py-1 text-xs text-muted">즐겨찾기 문서가 없습니다.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FilePanel = () => {
+  const router = useRouter();
+  const { buildHref } = useWorkspacePath();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { projectId } = useParams<{ projectId: string }>();
+  const [folders, setFolders] = useState<FileFolderDto[]>([]);
+  const [menu, setMenu] = useState<{ folderId: string; x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [modalType, setModalType] = useState<"create" | "rename" | "delete" | null>(null);
+  const [modalFolderId, setModalFolderId] = useState<string | null>(null);
+  const [folderNameInput, setFolderNameInput] = useState("");
+
+  const selectedFolderId = searchParams?.get("folder") ?? null;
+
+  useEffect(() => {
+    if (!projectId) return;
+    let mounted = true;
+    const sync = async () => {
+      try {
+        const data = await listFileFolders(projectId);
+        if (!mounted) return;
+        setFolders(data);
+      } catch {
+        if (!mounted) return;
+        setFolders([]);
+      }
+    };
+    void sync();
+    const onChanged = () => void sync();
+    window.addEventListener(FILE_VAULT_EVENT, onChanged);
+    return () => {
+      mounted = false;
+      window.removeEventListener(FILE_VAULT_EVENT, onChanged);
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const onClick = (event: MouseEvent) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) setMenu(null);
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenu(null);
+    };
+    window.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onEscape);
+    return () => {
+      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onEscape);
+    };
+  }, [menu]);
+
+  const moveToAll = () => {
+    router.push(buildHref("file", "/file"));
+  };
+
+  const moveToFolder = (folderId: string) => {
+    const base = buildHref("file", "/file");
+    router.push(`${base}?folder=${folderId}`);
+  };
+
+  const openMenuAt = (folderId: string, x: number, y: number) => {
+    const width = 144;
+    const height = 84;
+    const clampedX = Math.max(8, Math.min(x, window.innerWidth - width - 8));
+    const clampedY = Math.max(8, Math.min(y, window.innerHeight - height - 8));
+    setMenu({ folderId, x: clampedX, y: clampedY });
+  };
+
+  const openCreateModal = () => {
+    setFolderNameInput("");
+    setModalFolderId(null);
+    setModalType("create");
+  };
+
+  const createFolder = async () => {
+    const name = folderNameInput.trim();
+    if (!name || !projectId) return;
+    const created = await createFileFolder(projectId, name);
+    emitFileVaultChanged();
+    setModalType(null);
+    setFolderNameInput("");
+    moveToFolder(created.id);
+  };
+
+  const openRenameModal = (folderId: string) => {
+    const folder = folders.find((item) => item.id === folderId);
+    if (!folder) return;
+    setFolderNameInput(folder.name);
+    setModalFolderId(folderId);
+    setModalType("rename");
+    setMenu(null);
+  };
+
+  const renameFolder = async (folderId: string) => {
+    const folder = folders.find((item) => item.id === folderId);
+    if (!folder) return;
+    const nextName = folderNameInput.trim();
+    if (!nextName || nextName === folder.name) return;
+    await updateFileFolder(folderId, nextName);
+    emitFileVaultChanged();
+    setFolderNameInput("");
+    setModalFolderId(null);
+    setModalType(null);
+    setMenu(null);
+  };
+
+  const openDeleteModal = (folderId: string) => {
+    setModalFolderId(folderId);
+    setModalType("delete");
+    setMenu(null);
+  };
+
+  const deleteFolder = async (folderId: string) => {
+    await deleteFileFolder(folderId);
+    emitFileVaultChanged();
+    if (selectedFolderId === folderId) moveToAll();
+    setModalFolderId(null);
+    setModalType(null);
+    setMenu(null);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between border-b border-border/70 pb-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">파일 트리</p>
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted transition hover:bg-sidebar-accent hover:text-foreground"
+          title="폴더 추가"
+        >
+          <FolderPlus size={14} />
+        </button>
+      </div>
+
+      <button
+        type="button"
+        onClick={moveToAll}
+        className={clsx(
+          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition",
+          !selectedFolderId && pathname?.includes("/file")
+            ? "bg-blue-50 text-blue-700"
+            : "text-foreground hover:bg-subtle/70",
+        )}
+      >
+        <Archive size={14} />
+        <span>전체보기</span>
+      </button>
+
+      <div className="space-y-1">
+        {folders.map((folder) => {
+          const isActive = selectedFolderId === folder.id;
+          return (
+            <div
+              key={folder.id}
+              className={clsx(
+                "group relative flex items-center rounded-md pr-8 transition",
+                isActive ? "bg-blue-50 text-blue-700" : "hover:bg-subtle/70",
+              )}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                openMenuAt(folder.id, event.clientX, event.clientY);
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => moveToFolder(folder.id)}
+                className={clsx(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition",
+                  isActive ? "text-blue-700" : "text-foreground",
+                )}
+              >
+                <Folder size={14} />
+                <span className="truncate">{folder.name}</span>
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const rect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                  openMenuAt(folder.id, rect.right - 136, rect.bottom + 6);
+                }}
+                className="absolute right-1 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted opacity-0 transition hover:bg-sidebar-accent hover:text-foreground group-hover:opacity-100"
+                title="메뉴"
+              >
+                <MoreHorizontal size={14} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      {menu ? (
+        <div
+          ref={menuRef}
+          className="fixed z-[120] w-36 rounded-md border border-border bg-panel py-1 shadow-lg"
+          style={{ left: menu.x, top: menu.y }}
+        >
+          <button
+            type="button"
+            onClick={() => openRenameModal(menu.folderId)}
+            className="flex w-full items-center px-3 py-2 text-left text-xs text-foreground transition hover:bg-sidebar-accent"
+          >
+            이름 변경
+          </button>
+          <button
+            type="button"
+            onClick={() => openDeleteModal(menu.folderId)}
+            disabled={false}
+            className={clsx(
+              "flex w-full items-center px-3 py-2 text-left text-xs transition",
+              "text-rose-600 hover:bg-rose-50/70",
+            )}
+          >
+            삭제
+          </button>
+        </div>
+      ) : null}
+      {modalType ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-sm rounded-xl border border-border bg-panel p-4 shadow-xl">
+            <p className="text-sm font-semibold text-foreground">
+              {modalType === "create" ? "폴더 추가" : modalType === "rename" ? "폴더 이름 변경" : "폴더 삭제"}
+            </p>
+            {modalType === "delete" ? (
+              <p className="mt-2 text-sm text-muted">
+                '{folders.find((item) => item.id === modalFolderId)?.name ?? "폴더"}' 폴더를 삭제하시겠습니까?
+              </p>
+            ) : (
+              <div className="mt-3">
+                <input
+                  autoFocus
+                  value={folderNameInput}
+                  onChange={(event) => setFolderNameInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      if (modalType === "create") createFolder();
+                      if (modalType === "rename" && modalFolderId) renameFolder(modalFolderId);
+                    }
+                  }}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                  placeholder="폴더 이름"
+                />
+              </div>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setModalType(null);
+                  setModalFolderId(null);
+                  setFolderNameInput("");
+                }}
+                className="rounded-md border border-border px-3 py-1.5 text-xs text-muted transition hover:bg-sidebar-accent hover:text-foreground"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (modalType === "create") void createFolder();
+                  if (modalType === "rename" && modalFolderId) void renameFolder(modalFolderId);
+                  if (modalType === "delete" && modalFolderId) void deleteFolder(modalFolderId);
+                }}
+                className={clsx(
+                  "rounded-md px-3 py-1.5 text-xs text-white transition",
+                  modalType === "delete" ? "bg-rose-500 hover:bg-rose-600" : "bg-blue-600 hover:bg-blue-700",
+                )}
+              >
+                {modalType === "delete" ? "삭제" : "저장"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -1447,6 +1811,8 @@ export default function Sidebar() {
         return <MembersPanel />;
       case "docs":
         return <DocsPanel />;
+      case "file":
+        return <FilePanel />;
       default:
         return (
           <div className="space-y-3">

@@ -138,7 +138,7 @@ export default function DocEditorTabs() {
   );
 
   return (
-    <div className="relative border-b border-border bg-[#e9eef8] px-4 pb-0 pt-3">
+    <div className="relative border-b border-border bg-[#e9eef8] px-4 pb-0 pt-3 dark:bg-slate-900">
       <div
         ref={tabsRef}
         className="flex gap-2 overflow-x-auto scrollbar-thin"
@@ -151,13 +151,13 @@ export default function DocEditorTabs() {
               onClick={() => navigateTo(tab.id)}
               className={`group flex items-center rounded-t-xl border border-border border-b-0 px-4 py-2 text-sm font-medium shadow-sm transition ${
                 active
-                  ? "bg-white text-foreground"
-                  : "bg-white/70 text-muted-foreground hover:bg-white hover:text-foreground"
+                  ? "bg-white text-foreground dark:bg-slate-800 dark:text-slate-100"
+                  : "bg-white/70 text-muted-foreground hover:bg-white hover:text-foreground dark:bg-slate-800/70 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
               }`}
             >
               <span
                 className={`mr-2 h-2 w-2 rounded-full ${
-                  active ? "bg-emerald-400" : "bg-slate-400"
+                  active ? "bg-emerald-400" : "bg-slate-500"
                 }`}
               />
               <span className="max-w-[160px] truncate">{tab.title}</span>
@@ -178,7 +178,7 @@ export default function DocEditorTabs() {
       >
         <button
           type="button"
-          className="flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1 text-xs text-muted-foreground transition hover:text-foreground"
+          className="flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1 text-xs text-muted-foreground transition hover:text-foreground dark:bg-slate-800 dark:text-slate-300 dark:hover:text-slate-100"
           onClick={() => setHistoryOpen((prev) => !prev)}
         >
           <Clock4 size={14} />
@@ -186,7 +186,7 @@ export default function DocEditorTabs() {
           <MoreHorizontal size={14} />
         </button>
         {historyOpen && (
-          <div className="absolute right-0 top-9 z-10 w-64 rounded-xl border border-border bg-white p-3 shadow-xl">
+          <div className="absolute right-0 top-9 z-10 w-64 rounded-xl border border-border bg-white p-3 shadow-xl dark:bg-slate-800">
             <div className="mb-2 text-xs font-semibold text-muted-foreground">
               최근 닫은 문서
             </div>
@@ -197,7 +197,7 @@ export default function DocEditorTabs() {
               {history.map((item) => (
                 <button
                   key={item.id}
-                  className="flex w-full flex-col rounded-md px-2 py-2 text-left text-sm hover:bg-subtle"
+                  className="flex w-full flex-col rounded-md px-2 py-2 text-left text-sm hover:bg-subtle dark:hover:bg-slate-700"
                   onClick={() => reopenHistory(item)}
                 >
                   <span className="font-medium text-foreground">

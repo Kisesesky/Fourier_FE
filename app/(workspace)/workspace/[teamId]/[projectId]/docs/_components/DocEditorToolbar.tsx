@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Editor } from "@tiptap/react";
+import { useState, type ReactNode } from "react";
+import * as Popover from "@radix-ui/react-popover";
 import {
   AlignCenter,
   AlignLeft,
@@ -16,8 +16,12 @@ import {
   ListOrdered,
   Palette,
   Quote,
+  ZoomIn,
+  ZoomOut,
   Strikethrough,
   Type,
+  Undo2,
+  Redo2,
   Underline as UnderlineIcon,
 } from "lucide-react";
 
@@ -34,7 +38,7 @@ type DropdownItem = {
 type Option = { label: string; value: string };
 
 export interface DocEditorToolbarProps {
-  editor: Editor;
+  editor: any;
   fontFamily: string;
   setFontFamily: (value: string) => void;
   fontSize: string;
@@ -47,7 +51,10 @@ export interface DocEditorToolbarProps {
   fontSizeOptions: Option[];
   paperTones: Option[];
   onInsertLink?: () => void;
-  onInsertImage?: () => void;
+  onUploadImage?: () => void;
+  canResizeImage?: boolean;
+  onIncreaseImageSize?: () => void;
+  onDecreaseImageSize?: () => void;
 }
 
 export default function DocEditorToolbar({
@@ -64,7 +71,10 @@ export default function DocEditorToolbar({
   fontSizeOptions,
   paperTones,
   onInsertLink,
-  onInsertImage,
+  onUploadImage,
+  canResizeImage,
+  onIncreaseImageSize,
+  onDecreaseImageSize,
 }: DocEditorToolbarProps) {
   return (
     <div className="sticky top-0 z-10 border-b border-border/60 bg-[#fbfbfe]/95 px-5 py-3 backdrop-blur">
@@ -98,29 +108,40 @@ export default function DocEditorToolbar({
             {
               key: "paragraph",
               label: "Body",
-              onSelect: () => editor.chain().focus().setParagraph().run(),
+              onSelect: () => editor.chain().focus().clearNodes().run(),
             },
             {
               key: "h1",
               label: "Heading 1",
               onSelect: () =>
-                editor.chain().focus().toggleHeading({ level: 1 }).run(),
+                editor.chain().focus().setNode("heading", { level: 1 }).run(),
             },
             {
               key: "h2",
               label: "Heading 2",
               onSelect: () =>
-                editor.chain().focus().toggleHeading({ level: 2 }).run(),
+                editor.chain().focus().setNode("heading", { level: 2 }).run(),
             },
             {
               key: "h3",
               label: "Heading 3",
               onSelect: () =>
-                editor.chain().focus().toggleHeading({ level: 3 }).run(),
+                editor.chain().focus().setNode("heading", { level: 3 }).run(),
             },
           ]}
         />
 
+        <ToolbarDivider />
+        <ToolbarButton
+          icon={Undo2}
+          label="Undo"
+          onClick={() => editor.chain().focus().undo().run()}
+        />
+        <ToolbarButton
+          icon={Redo2}
+          label="Redo"
+          onClick={() => editor.chain().focus().redo().run()}
+        />
         <ToolbarDivider />
 
         <ToolbarButton
@@ -227,9 +248,21 @@ export default function DocEditorToolbar({
         />
         <ToolbarButton
           icon={Image}
-          label="이미지"
-          disabled={!onInsertImage}
-          onClick={() => onInsertImage?.()}
+          label="이미지 업로드"
+          disabled={!onUploadImage}
+          onClick={() => onUploadImage?.()}
+        />
+        <ToolbarButton
+          icon={ZoomOut}
+          label="이미지 축소"
+          disabled={!canResizeImage || !onDecreaseImageSize}
+          onClick={() => onDecreaseImageSize?.()}
+        />
+        <ToolbarButton
+          icon={ZoomIn}
+          label="이미지 확대"
+          disabled={!canResizeImage || !onIncreaseImageSize}
+          onClick={() => onIncreaseImageSize?.()}
         />
       </div>
     </div>
@@ -284,70 +317,40 @@ function ToolbarDropdown({
   items: DropdownItem[];
 }) {
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(event: MouseEvent) {
-      if (
-        triggerRef.current &&
-        menuRef.current &&
-        !triggerRef.current.contains(event.target as Node) &&
-        !menuRef.current.contains(event.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-    window.addEventListener("mousedown", handleClick);
-    return () => window.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || typeof window === "undefined") return;
-    const menuEl = menuRef.current;
-    const triggerEl = triggerRef.current;
-    if (!menuEl || !triggerEl) return;
-    const triggerRect = triggerEl.getBoundingClientRect();
-    const menuRect = menuEl.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    let left = triggerRect.left;
-    if (left + menuRect.width > viewportWidth - 16) {
-      left = viewportWidth - menuRect.width - 16;
-    }
-    if (left < 16) left = 16;
-    menuEl.style.left = `${left}px`;
-    menuEl.style.top = `${triggerRect.bottom + 8}px`;
-  }, [open]);
 
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-label={ariaLabel}
-        onClick={() => setOpen((prev) => !prev)}
-        className="flex h-9 items-center gap-1 rounded-full border border-transparent bg-white/70 px-3 text-xs font-medium text-muted-foreground shadow-sm transition hover:border-border hover:text-foreground"
-      >
-        {Icon && <Icon size={16} />}
-        {label && <span>{label}</span>}
-        <svg
-          aria-hidden="true"
-          className="h-3 w-3 text-muted-foreground"
-          viewBox="0 0 12 8"
-          fill="none"
-        >
-          <path
-            d="M10.59.59 6 5.17 1.41.59 0 2l6 6 6-6L10.59.59Z"
-            fill="currentColor"
-          />
-        </svg>
-      </button>
-      {open && (
-        <div
-          ref={menuRef}
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel}
           className={cn(
-            "fixed z-30 min-w-[140px] rounded-lg border border-border bg-white p-1 shadow-xl",
+            "flex h-9 items-center gap-1 rounded-full border bg-white/70 px-3 text-xs font-medium text-muted-foreground shadow-sm transition hover:border-border hover:text-foreground",
+            open ? "border-border text-foreground" : "border-transparent"
+          )}
+        >
+          {Icon && <Icon size={16} />}
+          {label && <span>{label}</span>}
+          <svg
+            aria-hidden="true"
+            className="h-3 w-3 text-muted-foreground"
+            viewBox="0 0 12 8"
+            fill="none"
+          >
+            <path
+              d="M10.59.59 6 5.17 1.41.59 0 2l6 6 6-6L10.59.59Z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          className={cn(
+            "z-40 min-w-[140px] rounded-lg border border-border bg-white p-1 shadow-xl",
             menuClassName
           )}
         >
@@ -364,8 +367,8 @@ function ToolbarDropdown({
               {item.label}
             </button>
           ))}
-        </div>
-      )}
-    </>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

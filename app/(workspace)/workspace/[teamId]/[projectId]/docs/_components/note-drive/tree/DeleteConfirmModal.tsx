@@ -12,7 +12,7 @@ export default function DeleteConfirmModal({
   open: boolean;
   title: string;
   description: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }) {
   // ESC로 닫기

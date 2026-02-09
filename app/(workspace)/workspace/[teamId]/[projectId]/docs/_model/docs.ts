@@ -1,296 +1,358 @@
-// docs.ts (OPTION A — localStorage 기반 완전 통합)
-
+import type { JSONContent } from "@tiptap/react";
 import type { DocExtra, DocFolder, DocMeta, FolderExtra } from "./types";
 export type { DocMeta, DocFolder } from "./types";
-import { MOCK_DATA } from "@/workspace/docs/lib/mocks/mocks";
+import {
+  createDocument as createDocumentApi,
+  createFolder as createFolderApi,
+  deleteDocument as deleteDocumentApi,
+  deleteFolder as deleteFolderApi,
+  deserializeDocContent,
+  listDocuments,
+  listFolders,
+  moveFolder as moveFolderApi,
+  serializeDocContent,
+  updateDocument as updateDocumentApi,
+  updateFolder as updateFolderApi,
+} from "@/workspace/docs/_service/api";
 
-/** STORAGE KEYS */
-const FOLDER_KEY = "fd.folders";
-const DOC_KEY = "fd.docs";
+const LEGACY_FOLDER_KEY = "fd.folders";
+const LEGACY_DOC_KEY = "fd.docs";
 
-/** UTIL */
 const now = () => new Date().toISOString();
 const isBrowser = () => typeof window !== "undefined";
 
-/** read/write */
-function read(key: string, fallback: any) {
+function read<T>(key: string, fallback: T): T {
   if (!isBrowser()) return fallback;
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
+    return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
     return fallback;
   }
 }
 
-function write(key: string, value: any) {
+function write(key: string, value: unknown) {
   if (!isBrowser()) return;
   localStorage.setItem(key, JSON.stringify(value));
 }
 
 function emitRefresh() {
+  if (!isBrowser()) return;
   window.dispatchEvent(new CustomEvent("docs:refresh"));
 }
 
-/* GETTERS */
-export const getFolders = (): DocFolder[] => read(FOLDER_KEY, []);
-export const getDocs = (): DocMeta[] => {
-  const docs = read(DOC_KEY, []) as DocMeta[];
+function getCurrentProjectId(): string {
+  if (!isBrowser()) return "";
+  const pathname = window.location.pathname || "";
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] !== "workspace" || segments.length < 3) return "";
+  return decodeURIComponent(segments[2] ?? "");
+}
 
-  return docs.map((d: DocMeta) => ({
-    ...d,
-    content: d.content || emptyContent(),
+function getFolderKey(projectId: string) {
+  return `fd.folders:${projectId || "global"}`;
+}
+
+function getDocKey(projectId: string) {
+  return `fd.docs:${projectId || "global"}`;
+}
+
+function clearLegacyDocsCache() {
+  if (!isBrowser()) return;
+  localStorage.removeItem(LEGACY_FOLDER_KEY);
+  localStorage.removeItem(LEGACY_DOC_KEY);
+}
+
+function normalizeFolders(items: DocFolder[]): DocFolder[] {
+  return items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    icon: item.icon,
+    color: item.color,
+    parentId: item.parentId ?? null,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
   }));
+}
+
+function normalizeDocs(items: DocMeta[]): DocMeta[] {
+  return items.map((item) => ({
+    ...item,
+    folderId: item.folderId ?? null,
+    locations: item.locations ?? (item.folderId ? [item.folderId] : []),
+    content: item.content || emptyContent(),
+    owner: item.owner || "User",
+    ownerAvatarUrl: item.ownerAvatarUrl ?? null,
+    createdAt: item.createdAt || now(),
+    updatedAt: item.updatedAt || now(),
+  }));
+}
+
+function mapFolderDto(item: { id: string; name: string; parentId?: string | null; createdAt: string; updatedAt: string }): DocFolder {
+  return {
+    id: item.id,
+    name: item.name === "Docs" ? "프로젝트 폴더" : item.name,
+    parentId: item.parentId ?? null,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+}
+
+function mapDocumentDto(item: {
+  id: string;
+  title: string;
+  content?: string | null;
+  starred?: boolean;
+  folderId?: string | null;
+  authorName?: string | null;
+  authorAvatarUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}): DocMeta {
+  const folderId = item.folderId ?? null;
+  return {
+    id: item.id,
+    title: item.title,
+    folderId,
+    locations: folderId ? [folderId] : [],
+    owner: item.authorName || "User",
+    ownerAvatarUrl: item.authorAvatarUrl ?? null,
+    content: deserializeDocContent(item.content),
+    starred: Boolean(item.starred),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+}
+
+export const getFolders = (): DocFolder[] => {
+  const projectId = getCurrentProjectId();
+  return normalizeFolders(read(getFolderKey(projectId), [] as DocFolder[]));
+};
+export const getDocs = (): DocMeta[] => {
+  const projectId = getCurrentProjectId();
+  return normalizeDocs(read(getDocKey(projectId), [] as DocMeta[]));
 };
 
 export const saveFolders = (v: DocFolder[]) => {
-  write(FOLDER_KEY, v);
+  const projectId = getCurrentProjectId();
+  write(getFolderKey(projectId), normalizeFolders(v));
   emitRefresh();
 };
+
 export const saveDocs = (v: DocMeta[]) => {
-  write(DOC_KEY, v);
+  const projectId = getCurrentProjectId();
+  write(getDocKey(projectId), normalizeDocs(v));
   emitRefresh();
 };
 
-/* CREATE FOLDER */
-export function createFolder(
-  name: string,
-  parentId?: string,
-  extra?: FolderExtra
-) {
-  const folders = getFolders();
+export async function syncDocsFromServer() {
+  const projectId = getCurrentProjectId();
+  if (!projectId) {
+    const emptyFolders: DocFolder[] = [];
+    const emptyDocs: DocMeta[] = [];
+    write(getFolderKey(projectId), emptyFolders);
+    write(getDocKey(projectId), emptyDocs);
+    emitRefresh();
+    return { folders: emptyFolders, docs: emptyDocs };
+  }
+  const [folders, docs] = await Promise.all([listFolders(projectId), listDocuments(projectId)]);
+  const nextFolders = folders.map(mapFolderDto);
+  const nextDocs = docs.map(mapDocumentDto);
+  write(getFolderKey(projectId), nextFolders);
+  write(getDocKey(projectId), nextDocs);
+  clearLegacyDocsCache();
+  emitRefresh();
+  return { folders: nextFolders, docs: nextDocs };
+}
 
+export async function createFolder(name: string, parentId?: string, extra?: FolderExtra) {
+  const projectId = getCurrentProjectId();
+  if (!projectId) throw new Error("projectId not found");
+  const created = await createFolderApi({ projectId, name, parentId });
   const folder: DocFolder = {
-    id: crypto.randomUUID(),
-    name,
-    parentId: parentId ?? null,
+    id: created.id,
+    name: created.name,
+    parentId: created.parentId ?? null,
     color: extra?.color ?? "#94a3b8",
     icon: extra?.icon ?? "📁",
-    createdAt: now(),
-    updatedAt: now(),
+    createdAt: created.createdAt,
+    updatedAt: created.updatedAt,
   };
-
-  folders.push(folder);
+  const folders = [...getFolders(), folder];
   saveFolders(folders);
   return folder;
 }
 
-/* CREATE DOC */
-export function createDoc(
-  title: string,
-  parentId?: string,
-  extra?: DocExtra
-) {
-  const docs = getDocs();
+export async function createDoc(title: string, parentId?: string, extra?: DocExtra) {
+  const projectId = getCurrentProjectId();
+  if (!projectId) throw new Error("projectId not found");
+  const created = await createDocumentApi({
+    projectId,
+    title,
+    folderId: parentId,
+    content: serializeDocContent(emptyContent()),
+    starred: false,
+  });
 
   const doc: DocMeta = {
-    id: crypto.randomUUID(),
-    title,
-    folderId: parentId ?? null,
-    locations: parentId ? [parentId] : [],
+    id: created.id,
+    title: created.title,
+    folderId: created.folderId ?? parentId ?? null,
+    locations: created.folderId ? [created.folderId] : parentId ? [parentId] : [],
     color: extra?.color ?? "#e5e7eb",
     icon: extra?.icon ?? "📄",
     starred: false,
-    owner: "User",
-    createdAt: now(),
-    updatedAt: now(),
+    owner: created.authorName || "User",
+    ownerAvatarUrl: null,
+    content: deserializeDocContent(created.content),
+    createdAt: created.createdAt,
+    updatedAt: created.updatedAt,
   };
 
-  docs.push(doc);
+  const docs = [...getDocs(), doc];
   saveDocs(docs);
   return doc;
 }
 
-/* UPDATE NAMES */
-export function renameFolder(id: string, name: string) {
-  saveFolders(
-    getFolders().map(f =>
-      f.id === id ? { ...f, name, updatedAt: now() } : f
-    )
-  );
+export async function renameFolder(id: string, name: string) {
+  await updateFolderApi(id, { name });
+  saveFolders(getFolders().map((f) => (f.id === id ? { ...f, name, updatedAt: now() } : f)));
 }
 
-export function renameDoc(id: string, title: string) {
-  saveDocs(
-    getDocs().map(d =>
-      d.id === id ? { ...d, title, updatedAt: now() } : d
-    )
-  );
+export async function renameDoc(id: string, title: string) {
+  await updateDocumentApi(id, { title });
+  saveDocs(getDocs().map((d) => (d.id === id ? { ...d, title, updatedAt: now() } : d)));
 }
 
-/* MULTI-LOCATION */
+export async function setDocStarred(id: string, starred: boolean) {
+  await updateDocumentApi(id, { starred });
+  saveDocs(getDocs().map((d) => (d.id === id ? { ...d, starred, updatedAt: now() } : d)));
+}
+
 export function addDocLocation(docId: string, folderId: string) {
+  const current = getDocs();
+  const target = current.find((d) => d.id === docId);
+  if (!target) return;
+  void updateDocumentApi(docId, { folderId });
   saveDocs(
-    getDocs().map(d =>
+    current.map((d) =>
       d.id !== docId
         ? d
         : {
             ...d,
-            locations: d.locations.includes(folderId)
-              ? d.locations
-              : [...d.locations, folderId],
+            folderId,
+            locations: d.locations.includes(folderId) ? d.locations : [...d.locations, folderId],
             updatedAt: now(),
-          }
-    )
+          },
+    ),
   );
 }
 
 export function removeDocLocation(docId: string, folderId: string) {
+  const current = getDocs();
+  const target = current.find((d) => d.id === docId);
+  if (!target) return;
+  const nextLocations = target.locations.filter((loc) => loc !== folderId);
+  const nextFolderId = nextLocations[0] ?? null;
+  void updateDocumentApi(docId, { folderId: nextFolderId });
   saveDocs(
-    getDocs().map(d =>
+    current.map((d) =>
       d.id !== docId
         ? d
         : {
             ...d,
-            locations: d.locations.filter(loc => loc !== folderId),
+            folderId: nextFolderId,
+            locations: nextLocations,
             updatedAt: now(),
-          }
-    )
+          },
+    ),
   );
 }
 
-/* MOVE DOC */
-export function moveDocToFolder(docId: string, folderId: string | null) {
+export async function moveDocToFolder(docId: string, folderId: string | null) {
+  await updateDocumentApi(docId, { folderId });
   saveDocs(
-    getDocs().map(d =>
+    getDocs().map((d) =>
       d.id !== docId
         ? d
         : {
             ...d,
+            folderId,
             locations: folderId ? [folderId] : [],
             updatedAt: now(),
-          }
-    )
+          },
+    ),
   );
 }
 
-/* MOVE FOLDER */
-export function moveFolder(folderId: string, newParentId: string | null) {
-  const folders = getFolders();
-
-  function isChild(childId: string, parentId: string): boolean {
-    const target = folders.find(f => f.id === childId);
-    if (!target) return false;
-    if (target.parentId === parentId) return true;
-    if (!target.parentId) return false;
-    return isChild(target.parentId, parentId);
-  }
-
-  if (newParentId && isChild(newParentId, folderId)) {
-    console.warn("순환 이동 방지됨");
-    return;
-  }
-
+export async function moveFolder(folderId: string, newParentId: string | null) {
+  await moveFolderApi(folderId, newParentId);
   saveFolders(
-    folders.map(f =>
+    getFolders().map((f) =>
       f.id !== folderId
         ? f
-        : { ...f, parentId: newParentId, updatedAt: now() }
-    )
+        : { ...f, parentId: newParentId, updatedAt: now() },
+    ),
   );
 }
 
-/* DELETE FOLDER (fullDelete / move children) */
-export function deleteFolder(folderId: string, fullDelete: boolean) {
+export async function deleteFolder(folderId: string, fullDelete: boolean) {
   const folders = getFolders();
-  const docs = getDocs();
-
-  const target = folders.find(f => f.id === folderId);
+  const target = folders.find((f) => f.id === folderId);
   if (!target) return;
 
-  const parentId = target.parentId ?? null;
-
-  if (fullDelete) {
-    saveFolders(folders.filter(f =>
-      f.id !== folderId && f.parentId !== folderId
-    ));
-
-    saveDocs(
-      docs
-        .map(d => ({
-          ...d,
-          locations: d.locations.filter(loc => loc !== folderId),
-        }))
-        .filter(d => d.locations.length > 0)
-    );
-
-    return;
+  if (!fullDelete) {
+    const parentId = target.parentId ?? null;
+    const children = folders.filter((f) => f.parentId === folderId);
+    const docsInFolder = getDocs().filter((d) => d.folderId === folderId);
+    await Promise.all([
+      ...children.map((child) => updateFolderApi(child.id, { parentId })),
+      ...docsInFolder.map((doc) => updateDocumentApi(doc.id, { folderId: parentId })),
+    ]);
   }
 
-  saveFolders(
-    folders
-      .filter(f => f.id !== folderId)
-      .map(f =>
-        f.parentId === folderId
-          ? { ...f, parentId, updatedAt: now() }
-          : f
-      )
-  );
-
-  saveDocs(
-    docs.map(d => {
-      if (!d.locations.includes(folderId)) return d;
-
-      const next = d.locations.filter(loc => loc !== folderId);
-      if (parentId && !next.includes(parentId)) next.push(parentId);
-
-      return { ...d, locations: next, updatedAt: now() };
-    })
-  );
+  await deleteFolderApi(folderId);
+  await syncDocsFromServer();
 }
 
-/* DELETE DOC */
-export function deleteDoc(docId: string) {
-  saveDocs(getDocs().filter(d => d.id !== docId));
+export async function deleteDoc(docId: string) {
+  await deleteDocumentApi(docId);
+  saveDocs(getDocs().filter((d) => d.id !== docId));
 }
 
-/* GETTERS */
-export const getDocMeta = (id: string) =>
-  getDocs().find(d => d.id === id) ?? null;
-
-export const getFolderMeta = (id: string) =>
-  getFolders().find(f => f.id === id) ?? null;
+export const getDocMeta = (id: string) => getDocs().find((d) => d.id === id) ?? null;
+export const getFolderMeta = (id: string) => getFolders().find((f) => f.id === id) ?? null;
 
 export function getDocsInFolder(folderId: string) {
   const docs = getDocs();
   if (folderId === "all") return docs;
-  if (folderId === "unfiled") return docs.filter(d => d.locations.length === 0);
-  return docs.filter(d => d.locations.includes(folderId));
+  if (folderId === "unfiled") return docs.filter((d) => d.locations.length === 0);
+  return docs.filter((d) => d.locations.includes(folderId));
 }
 
-export const getFoldersInFolder = (folderId: string) =>
-  getFolders().filter(f => f.parentId === folderId);
+export const getFoldersInFolder = (folderId: string) => getFolders().filter((f) => f.parentId === folderId);
 
 export function getDocLocations(doc: DocMeta) {
   const folders = getFolders();
   return doc.locations
-    .map(id => folders.find(f => f.id === id))
+    .map((id) => folders.find((f) => f.id === id))
     .filter(Boolean);
 }
 
 export function patchDocMeta(id: string, patch: Partial<DocMeta>) {
-  const docs = getDocs().map(d =>
-    d.id === id ? { ...d, ...patch, updatedAt: now() } : d
-  );
+  const docs = getDocs().map((d) => (d.id === id ? { ...d, ...patch, updatedAt: now() } : d));
   saveDocs(docs);
-}
 
-function ensureInitialData() {
-  if (!isBrowser()) return;
-
-  const hasFolders = localStorage.getItem("fd.folders");
-  const hasDocs = localStorage.getItem("fd.docs");
-
-  if (!hasFolders && !hasDocs) {
-    localStorage.setItem("fd.folders", JSON.stringify(MOCK_DATA.folders));
-    localStorage.setItem("fd.docs", JSON.stringify(MOCK_DATA.docs));
-    console.log("[Docs] 초기 Mock 데이터가 로딩되었습니다.");
+  const payload: { title?: string; folderId?: string | null; content?: string; starred?: boolean } = {};
+  if (patch.title !== undefined) payload.title = patch.title;
+  if (patch.folderId !== undefined) payload.folderId = patch.folderId;
+  if (patch.content !== undefined) payload.content = serializeDocContent(patch.content as JSONContent);
+  if (patch.starred !== undefined) payload.starred = patch.starred;
+  if (Object.keys(payload).length > 0) {
+    void updateDocumentApi(id, payload).catch(() => {});
   }
 }
 
-// 앱 로드 시 자동 실행
-ensureInitialData();
-
-function emptyContent() {
+function emptyContent(): JSONContent {
   return { type: "doc", content: [] };
 }

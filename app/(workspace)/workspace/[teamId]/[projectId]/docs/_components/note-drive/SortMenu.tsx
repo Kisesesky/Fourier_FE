@@ -18,7 +18,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'title', label: '이름' },
   { key: 'owner', label: '소유자' },
   { key: 'updatedAt', label: '수정 날짜' },
-  { key: 'size', label: '파일 크기' },
 ];
 
 export function SortMenu({ sortKey, sortDir, onChange, onToggleDir }: SortMenuProps) {

@@ -45,6 +45,9 @@
       "@/workspace/dashboard/*": [
         "./app/(workspace)/workspace/[teamId]/[projectId]/dashboard/*"
       ],
+      "@/workspace/file/*": [
+        "./app/(workspace)/workspace/[teamId]/[projectId]/file/*"
+      ],
       "@/workspace/root-model/*": [
         "./app/(workspace)/workspace/[teamId]/_model/*"
       ]

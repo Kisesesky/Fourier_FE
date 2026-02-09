@@ -11,6 +11,7 @@ const nextConfig = {
       { protocol: "https", hostname: "img2.daumcdn.net" },
       { protocol: "https", hostname: "img6.yna.co.kr" },
       { protocol: "https", hostname: "talkimg.imbc.com" },
+      { protocol: "https", hostname: "www.interview365.com" },
     ],
   },
 };

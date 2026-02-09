@@ -5,9 +5,9 @@ import { ChevronDown, Check, MoreHorizontal, Star } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { DocFolder, DocMeta } from '@/workspace/docs/_model/docs';
-import { MENU_ATTR, formatFileSize, relativeTime } from './utils';
+import { MENU_ATTR, relativeTime } from './utils';
 
-export type SortKey = 'title' | 'updatedAt' | 'owner' | 'size';
+export type SortKey = 'title' | 'updatedAt' | 'owner';
 
 type DocumentTableProps = {
   docs: DocMeta[];
@@ -73,7 +73,7 @@ export function DocumentTable({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="hidden border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted sm:grid sm:grid-cols-[minmax(200px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(100px,1fr)_120px]">
+      <div className="hidden border-b border-border px-4 py-2 text-xs uppercase tracking-wide text-muted sm:grid sm:grid-cols-[minmax(220px,2fr)_minmax(140px,1fr)_minmax(140px,1fr)_120px]">
         <button className={headerButtonClasses('title')} onClick={() => onSortChange('title')}>
           이름
           <ChevronDown
@@ -104,16 +104,6 @@ export function DocumentTable({
             )}
           />
         </button>
-        <button className={headerButtonClasses('size')} onClick={() => onSortChange('size')}>
-          파일 크기
-          <ChevronDown
-            size={12}
-            className={clsx(
-              'transition',
-              sortKey === 'size' ? (sortDir === 'desc' ? 'rotate-180' : 'rotate-0') : 'opacity-30'
-            )}
-          />
-        </button>
         <span className="text-right">동작</span>
       </div>
       <div className="flex-1 divide-y divide-border/70">
@@ -124,7 +114,7 @@ export function DocumentTable({
           return (
             <div
               key={doc.id}
-              className="group grid grid-cols-1 gap-3 px-4 py-3 text-sm transition hover:bg-subtle/40 sm:grid-cols-[minmax(200px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(100px,1fr)_120px]"
+              className="group grid grid-cols-1 gap-3 px-4 py-3 text-sm transition hover:bg-subtle/40 sm:grid-cols-[minmax(220px,2fr)_minmax(140px,1fr)_minmax(140px,1fr)_120px]"
             >
               <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => onOpen(doc)}>
                 <div
@@ -135,9 +125,21 @@ export function DocumentTable({
                 </div>
                 <span className="truncate font-medium">{doc.title}</span>
               </button>
-              <div className="text-muted">{doc.owner}</div>
+              <div className="flex items-center gap-2 text-muted">
+                {doc.ownerAvatarUrl ? (
+                  <img
+                    src={doc.ownerAvatarUrl}
+                    alt={doc.owner}
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
+                    {doc.owner.slice(0, 1)}
+                  </div>
+                )}
+                <span className="truncate">{doc.owner}</span>
+              </div>
               <div className="text-muted">{relativeTime(doc.updatedAt)}</div>
-              <div className="text-muted">{formatFileSize(doc.fileSize)}</div>
               <div className="flex items-center justify-end gap-2 text-muted" {...MENU_ATTR}>
                 <button
                   className={clsx(

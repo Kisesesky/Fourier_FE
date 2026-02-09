@@ -12,13 +12,13 @@ export default function TreeToolbar({ onRefresh }: { onRefresh: () => void }) {
 
   const folders = getFolders();
 
-  const createItem = () => {
+  const createItem = async () => {
     if (!name.trim()) return;
 
     const parent = parentId || undefined;
 
-    if (mode === "folder") createFolder(name.trim(), parent);
-    else createDoc(name.trim(), parent);
+    if (mode === "folder") await createFolder(name.trim(), parent);
+    else await createDoc(name.trim(), parent);
 
     setName("");
     setParentId("");

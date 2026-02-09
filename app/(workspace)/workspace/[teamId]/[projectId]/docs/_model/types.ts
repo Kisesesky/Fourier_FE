@@ -14,6 +14,7 @@ export interface DocMeta {
   folderId: FolderID | null;
   locations: FolderID[];
   owner: string;
+  ownerAvatarUrl?: string | null;
   fileSize?: number;
   starred?: boolean;
   content?: JSONContent;

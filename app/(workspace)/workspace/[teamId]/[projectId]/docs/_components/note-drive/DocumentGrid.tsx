@@ -55,7 +55,20 @@ export function DocumentGrid({ docs, onOpen, onToggleStar }: DocumentGridProps) 
           <p className="text-xs text-muted">{doc.description || '설명이 없습니다.'}</p>
           <div className="mt-4 flex items-center justify-between text-xs text-muted">
             <span>{relativeTime(doc.updatedAt)}</span>
-            <span>{doc.owner}</span>
+            <span className="inline-flex items-center gap-1.5">
+              {doc.ownerAvatarUrl ? (
+                <img
+                  src={doc.ownerAvatarUrl}
+                  alt={doc.owner}
+                  className="h-4 w-4 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[9px] font-semibold text-foreground">
+                  {doc.owner.slice(0, 1)}
+                </span>
+              )}
+              <span>{doc.owner}</span>
+            </span>
           </div>
         </button>
       ))}

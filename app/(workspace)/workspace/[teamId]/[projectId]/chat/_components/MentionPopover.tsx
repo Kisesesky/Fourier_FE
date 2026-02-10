@@ -1,7 +1,7 @@
-// components/chat/MentionPopover.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/MentionPopover.tsx
 'use client';
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export type SuggestItem = { id: string; name: string };
 

@@ -1,3 +1,4 @@
+// app/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from "react";
@@ -17,8 +18,8 @@ import type { Project, ProjectViewMode } from "@/types/workspace";
 import { LayoutGrid, List } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { useTeams } from "@/app/(workspace)/workspace/[teamId]/_service/useTeams";
-import { useProjects } from "@/app/(workspace)/workspace/[teamId]/[projectId]/_service/userProjects";
+import { useTeams } from "@/app/(workspace)/workspace/[teamId]/_model/hooks/useTeams";
+import { useProjects } from "@/app/(workspace)/workspace/[teamId]/[projectId]/_model/hooks/useProjects";
 import { useAuthProfile } from "@/hooks/useAuthProfile";
 import { createTeam, deleteTeam, updateTeam } from "@/lib/team";
 import { cloneProject, createProject, deleteProject, favoriteProject, unfavoriteProject, updateProject } from "@/lib/projects";

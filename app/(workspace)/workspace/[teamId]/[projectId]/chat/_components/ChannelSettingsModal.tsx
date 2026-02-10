@@ -1,4 +1,4 @@
-// components/chat/ChannelSettingsModal.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChannelSettingsModal.tsx
 'use client';
 
 import React, { useEffect, useState } from "react";

@@ -1,4 +1,4 @@
-// components/chat/ProfilePopover.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ProfilePopover.tsx
 'use client';
 import { useEffect, useState } from 'react';
 import { searchUsers } from '@/workspace/issues/_service/api';

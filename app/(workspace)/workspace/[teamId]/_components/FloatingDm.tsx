@@ -1,45 +1,26 @@
+// app/(workspace)/workspace/[teamId]/_components/FloatingDm.tsx
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronDown, MessageSquare, Search, Send, Smile } from "lucide-react";
+import { ArrowLeft, ChevronDown, Search, Send, Smile } from "lucide-react";
 import Modal from "@/components/common/Modal";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuthProfile } from "@/hooks/useAuthProfile";
 import { fetchFriends, type FriendProfile } from "@/lib/members";
 import { createDmRoom, fetchDmMessages, sendDmMessage, type DmMessage } from "@/lib/chat";
 import { getChatSocket } from "@/lib/socket";
-
-const getInitials = (name?: string | null) => {
-  if (!name) return "?";
-  const trimmed = name.trim();
-  if (!trimmed) return "?";
-  return trimmed
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-};
-
-const getRelativeDateLabel = (date: Date) => {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfTarget = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.floor((startOfToday.getTime() - startOfTarget.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "오늘";
-  if (diffDays === 1) return "어제";
-  if (diffDays < 7) return `${diffDays}일 전`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}주 전`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}달 전`;
-  return "1년 이상";
-};
-
-const getMessageTimeLabel = (date: Date) => {
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  if (diffMinutes < 1) return "방금 전";
-  return date.toLocaleTimeString();
-};
+import DmListView from "./floating-dm/DmListView";
+import FloatingLauncher from "./floating-dm/FloatingLauncher";
+import {
+  FLOATING_DM_EMOJIS,
+  FLOATING_DM_FILE_TYPE_OPTIONS,
+  FLOATING_DM_STORAGE_KEYS,
+} from "./floating-dm/floating-dm.constants";
+import {
+  getFloatingDmInitials,
+  getFloatingDmMessageTimeLabel,
+  getFloatingDmRelativeDateLabel,
+} from "./floating-dm/floating-dm.utils";
 
 export default function FloatingDm() {
   const { workspace } = useWorkspace();
@@ -61,7 +42,7 @@ export default function FloatingDm() {
   const [unreadByFriend, setUnreadByFriend] = useState<Record<string, number>>({});
   const canSend = draft.trim().length > 0 && !!roomId;
   const [view, setView] = useState<"list" | "chat">("list");
-  const [lastReadAt, setLastReadAt] = useState<Record<string, string>>({});
+  const [, setLastReadAt] = useState<Record<string, string>>({});
   const [replyTarget, setReplyTarget] = useState<DmMessage | null>(null);
   const [emojiOpenFor, setEmojiOpenFor] = useState<string | null>(null);
   const [inputEmojiOpen, setInputEmojiOpen] = useState(false);
@@ -82,12 +63,6 @@ export default function FloatingDm() {
   const floatingBtnRef = useRef<HTMLButtonElement | null>(null);
   const contextRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef({ active: false, offsetX: 0, offsetY: 0, moved: false });
-
-  const RECENTS_KEY = "friends:dm:recents";
-  const UNREAD_KEY = "friends:dm:unread";
-  const READ_KEY = "friends:dm:read";
-  const FLOATING_POS_KEY = "friends:dm:floating:pos";
-  const FLOATING_HIDE_KEY = "friends:dm:floating:hidden";
 
   const getDefaultFloatingPos = () => {
     const defaultSize = 48;
@@ -110,11 +85,11 @@ export default function FloatingDm() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedHidden = localStorage.getItem(FLOATING_HIDE_KEY);
+    const storedHidden = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.floatingHidden);
     if (storedHidden === "true") {
       setFloatingHidden(true);
     }
-    const storedPos = localStorage.getItem(FLOATING_POS_KEY);
+    const storedPos = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.floatingPos);
     if (storedPos) {
       try {
         const parsed = JSON.parse(storedPos);
@@ -132,12 +107,12 @@ export default function FloatingDm() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!floatingPos) return;
-    localStorage.setItem(FLOATING_POS_KEY, JSON.stringify(floatingPos));
+    localStorage.setItem(FLOATING_DM_STORAGE_KEYS.floatingPos, JSON.stringify(floatingPos));
   }, [floatingPos]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem(FLOATING_HIDE_KEY, floatingHidden ? "true" : "false");
+    localStorage.setItem(FLOATING_DM_STORAGE_KEYS.floatingHidden, floatingHidden ? "true" : "false");
   }, [floatingHidden]);
 
   useEffect(() => {
@@ -169,14 +144,6 @@ export default function FloatingDm() {
       window.removeEventListener("dm:hide-floating", hide as EventListener);
     };
   }, []);
-  const EMOJIS = ["😀", "😂", "😍", "👍", "🎉", "🔥", "🥳", "😅", "😎", "🙏"];
-  const FILE_TYPE_OPTIONS = [
-    { value: "", label: "전체" },
-    { value: "image", label: "이미지" },
-    { value: "doc", label: "문서" },
-    { value: "video", label: "비디오" },
-    { value: "link", label: "링크" },
-  ];
 
   const loadFriends = useCallback(async () => {
     if (!workspace?.id) return;
@@ -193,7 +160,7 @@ export default function FloatingDm() {
           if (next[friend.userId] === undefined) next[friend.userId] = 0;
         });
         if (typeof window !== "undefined") {
-          localStorage.setItem(UNREAD_KEY, JSON.stringify(next));
+          localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
         }
         return next;
       });
@@ -240,9 +207,9 @@ export default function FloatingDm() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const recents = localStorage.getItem(RECENTS_KEY);
-    const unread = localStorage.getItem(UNREAD_KEY);
-    const read = localStorage.getItem(READ_KEY);
+    const recents = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.recents);
+    const unread = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.unread);
+    const read = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.read);
     if (recents) {
       try {
         const parsed = JSON.parse(recents);
@@ -290,14 +257,14 @@ export default function FloatingDm() {
       setUnreadByFriend((prev) => {
         const next = { ...prev, [selected.userId]: 0 };
         if (typeof window !== "undefined") {
-          localStorage.setItem(UNREAD_KEY, JSON.stringify(next));
+          localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
         }
         return next;
       });
       setLastReadAt((prev) => {
         const next = { ...prev, [selected.userId]: new Date().toISOString() };
         if (typeof window !== "undefined") {
-          localStorage.setItem(READ_KEY, JSON.stringify(next));
+          localStorage.setItem(FLOATING_DM_STORAGE_KEYS.read, JSON.stringify(next));
         }
         return next;
       });
@@ -413,7 +380,7 @@ export default function FloatingDm() {
           setUnreadByFriend((prev) => {
             const next = { ...prev, [message.senderId]: (prev[message.senderId] ?? 0) + 1 };
             if (typeof window !== "undefined") {
-              localStorage.setItem(UNREAD_KEY, JSON.stringify(next));
+              localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
             }
             return next;
           });
@@ -464,7 +431,7 @@ export default function FloatingDm() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem(RECENTS_KEY, JSON.stringify(recentByFriend));
+    localStorage.setItem(FLOATING_DM_STORAGE_KEYS.recents, JSON.stringify(recentByFriend));
   }, [recentByFriend]);
 
   const handleSelectFriend = (friend: FriendProfile) => {
@@ -473,14 +440,14 @@ export default function FloatingDm() {
     setUnreadByFriend((prev) => {
       const next = { ...prev, [friend.userId]: 0 };
       if (typeof window !== "undefined") {
-        localStorage.setItem(UNREAD_KEY, JSON.stringify(next));
+        localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
       }
       return next;
     });
     setLastReadAt((prev) => {
       const next = { ...prev, [friend.userId]: new Date().toISOString() };
       if (typeof window !== "undefined") {
-        localStorage.setItem(READ_KEY, JSON.stringify(next));
+        localStorage.setItem(FLOATING_DM_STORAGE_KEYS.read, JSON.stringify(next));
       }
       return next;
     });
@@ -502,14 +469,14 @@ export default function FloatingDm() {
           setUnreadByFriend((prev) => {
             const next = { ...prev, [selected.userId]: 0 };
             if (typeof window !== "undefined") {
-              localStorage.setItem(UNREAD_KEY, JSON.stringify(next));
+              localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
             }
             return next;
           });
           setLastReadAt((prev) => {
             const next = { ...prev, [selected.userId]: new Date().toISOString() };
             if (typeof window !== "undefined") {
-              localStorage.setItem(READ_KEY, JSON.stringify(next));
+              localStorage.setItem(FLOATING_DM_STORAGE_KEYS.read, JSON.stringify(next));
             }
             return next;
           });
@@ -617,94 +584,26 @@ export default function FloatingDm() {
 
   return (
     <>
-      {!floatingHidden && floatingPos && (
-        <>
-          <button
-            ref={floatingBtnRef}
-            type="button"
-            className="fixed z-40 flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition hover:scale-[1.02] cursor-grab active:cursor-grabbing select-none touch-none"
-            style={{ left: floatingPos.x, top: floatingPos.y }}
-            onClick={(event) => {
-              if (dragState.current.moved) {
-                dragState.current.moved = false;
-                event.preventDefault();
-                return;
-              }
-              setOpen(true);
-            }}
-            onPointerDown={(event) => {
-              if (event.button !== 0) return;
-              dragState.current.active = true;
-              dragState.current.moved = false;
-              const rect = floatingBtnRef.current?.getBoundingClientRect();
-              dragState.current.offsetX = rect ? event.clientX - rect.left : 0;
-              dragState.current.offsetY = rect ? event.clientY - rect.top : 0;
-              floatingBtnRef.current?.setPointerCapture(event.pointerId);
-            }}
-            onPointerMove={(event) => {
-              if (!dragState.current.active) return;
-              const size = 48;
-              const margin = 12;
-              const nextX = Math.min(
-                Math.max(margin, event.clientX - dragState.current.offsetX),
-                window.innerWidth - size - margin,
-              );
-              const nextY = Math.min(
-                Math.max(margin, event.clientY - dragState.current.offsetY),
-                window.innerHeight - size - margin,
-              );
-              dragState.current.moved = true;
-              setFloatingPos({ x: nextX, y: nextY });
-            }}
-            onPointerUp={(event) => {
-              if (!dragState.current.active) return;
-              dragState.current.active = false;
-              floatingBtnRef.current?.releasePointerCapture(event.pointerId);
-            }}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              setContextPos({ x: event.clientX, y: event.clientY });
-              setContextOpen(true);
-            }}
-            aria-label="Open DM"
-          >
-            <MessageSquare size={18} />
-          </button>
-          {contextOpen && (
-            <div
-              ref={contextRef}
-              className="fixed z-50 w-36 rounded-lg border border-border bg-panel shadow-panel"
-              style={{ left: contextPos.x, top: contextPos.y }}
-            >
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-muted transition hover:bg-accent hover:text-foreground"
-                onClick={() => {
-                  setContextOpen(false);
-                  setOpen(true);
-                }}
-              >
-                열기
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-rose-500 transition hover:bg-accent"
-                onClick={() => {
-                  setContextOpen(false);
-                  setOpen(false);
-                  setFloatingHidden(true);
-                  setFloatingPos(null);
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem(FLOATING_POS_KEY);
-                  }
-                }}
-              >
-                삭제하기
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      <FloatingLauncher
+        hidden={floatingHidden}
+        pos={floatingPos}
+        contextOpen={contextOpen}
+        contextPos={contextPos}
+        floatingBtnRef={floatingBtnRef}
+        contextRef={contextRef}
+        dragState={dragState}
+        onOpen={() => setOpen(true)}
+        onSetContextOpen={setContextOpen}
+        onSetContextPos={setContextPos}
+        onSetPos={setFloatingPos}
+        onHide={() => {
+          setOpen(false);
+          setFloatingHidden(true);
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(FLOATING_DM_STORAGE_KEYS.floatingPos);
+          }
+        }}
+      />
 
       <Modal
         open={open}
@@ -720,120 +619,18 @@ export default function FloatingDm() {
       >
         <div className="h-[72vh] p-6">
           {view === "list" ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-muted">Direct Messages</p>
-                <h3 className="mt-1 text-lg font-semibold text-foreground">대화</h3>
-              </div>
-              <div className="flex items-center rounded-full border border-border bg-panel px-4">
-                <input
-                  className="h-10 w-full bg-transparent text-xs text-foreground placeholder:text-muted focus:outline-none"
-                  placeholder="이름 검색"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
-              {loadingFriends ? (
-                <div className="rounded-xl border border-border bg-panel/80 p-3 text-xs text-muted">불러오는 중...</div>
-              ) : filteredFriends.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border bg-panel/80 p-3 text-xs text-muted">
-                  친구가 없습니다.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {recentFriends.length > 0 && (
-                    <div>
-                      <p className="mb-2 text-[11px] uppercase tracking-[0.3em] text-muted">최근 대화</p>
-                      <div className="space-y-2">
-                        {recentFriends.map(({ friend, meta }) => (
-                          <button
-                            key={`recent-${friend.memberId}`}
-                            type="button"
-                            className="flex w-full items-center gap-3 rounded-xl border border-border bg-panel/80 px-3 py-2 text-left text-sm transition hover:bg-accent"
-                            onClick={() => handleSelectFriend(friend)}
-                          >
-                            <div className="h-10 w-10 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
-                              {friend.avatarUrl ? (
-                                <img src={friend.avatarUrl} alt={friend.displayName} className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                  {getInitials(friend.displayName)}
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="truncate font-medium text-foreground">
-                                  {friend.displayName}
-                                  {friend.userId === profile?.id ? " (나)" : ""}
-                                </span>
-                                <span className="text-[10px] text-muted">
-                                  {new Date(meta.at).toLocaleDateString()}
-                                </span>
-                              </div>
-                              <p className="truncate text-xs text-muted">{meta.preview}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="mb-2 text-[11px] uppercase tracking-[0.3em] text-muted">친구 목록</p>
-                    <div className="space-y-2">
-                      {filteredFriends.map((friend) => (
-                        <button
-                          key={friend.memberId}
-                          type="button"
-                          className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm transition ${
-                            selected?.memberId === friend.memberId
-                              ? "border-primary/60 bg-accent text-foreground"
-                              : "border-border bg-panel/80 text-muted hover:bg-accent"
-                          }`}
-                          onClick={() => handleSelectFriend(friend)}
-                        >
-                          <div className="h-12 w-12 overflow-hidden rounded-full bg-muted/20 text-xs font-semibold text-foreground">
-                            {friend.avatarUrl ? (
-                              <img src={friend.avatarUrl} alt={friend.displayName} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                {getInitials(friend.displayName)}
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="truncate">
-                                {friend.displayName}
-                                {friend.userId === profile?.id ? " (나)" : ""}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {unreadByFriend[friend.userId] ? (
-                                  <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-semibold text-white">
-                                    {unreadByFriend[friend.userId]}
-                                  </span>
-                                ) : null}
-                                {recentByFriend[friend.userId] && (
-                                  <span className="text-[10px] text-muted">
-                                    {new Date(recentByFriend[friend.userId].at).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            {recentByFriend[friend.userId] && (
-                              <p className="truncate text-[11px] text-muted">
-                                {recentByFriend[friend.userId].preview}
-                              </p>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <DmListView
+              loading={loadingFriends}
+              query={query}
+              onChangeQuery={setQuery}
+              filteredFriends={filteredFriends}
+              recentFriends={recentFriends}
+              selectedMemberId={selected?.memberId}
+              myUserId={profile?.id}
+              unreadByFriend={unreadByFriend}
+              recentByFriend={recentByFriend}
+              onSelectFriend={handleSelectFriend}
+            />
           ) : (
             <div className={`grid h-full gap-4 ${detailSearchOpen ? "md:grid-cols-[1fr_280px]" : ""}`}>
               <div className="flex min-h-0 h-full flex-col rounded-2xl border border-border bg-panel/80">
@@ -926,7 +723,7 @@ export default function FloatingDm() {
                         <div className="h-0 flex-1 border-t border-border/80" />
                         <div className="flex items-center gap-2">
                           <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-blue-200">
-                            {getRelativeDateLabel(new Date(group.items[0].createdAt))}
+                            {getFloatingDmRelativeDateLabel(new Date(group.items[0].createdAt))}
                           </span>
                           <span className="text-[9px] uppercase tracking-[0.2em] text-muted/70">
                             {new Date(group.items[0].createdAt).toLocaleDateString()}
@@ -959,14 +756,14 @@ export default function FloatingDm() {
                                     />
                                   ) : (
                                     <div className="flex h-full w-full items-center justify-center">
-                                      {getInitials(profile?.displayName ?? profile?.name ?? "Me")}
+                                      {getFloatingDmInitials(profile?.displayName ?? profile?.name ?? "Me")}
                                     </div>
                                   )
                                 ) : selected?.avatarUrl ? (
                                   <img src={selected.avatarUrl} alt={selected.displayName} className="h-full w-full object-cover" />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center">
-                                    {getInitials(selected?.displayName)}
+                                    {getFloatingDmInitials(selected?.displayName)}
                                   </div>
                                 )}
                               </div>
@@ -981,7 +778,7 @@ export default function FloatingDm() {
                                     )}
                                   </div>
                                   <div className="text-[10px] text-muted">
-                                    {getMessageTimeLabel(new Date(msg.createdAt))}
+                                    {getFloatingDmMessageTimeLabel(new Date(msg.createdAt))}
                                   </div>
                                 </div>
                                 {msg.reply && (
@@ -999,7 +796,7 @@ export default function FloatingDm() {
                                         />
                                       ) : (
                                         <span className="flex h-full w-full items-center justify-center">
-                                          {getInitials(msg.reply.sender?.name ?? "User")}
+                                          {getFloatingDmInitials(msg.reply.sender?.name ?? "User")}
                                         </span>
                                       )}
                                     </span>
@@ -1056,7 +853,7 @@ export default function FloatingDm() {
                                 </div>
                                 {emojiOpenFor === msg.id && (
                                   <div className="mt-2 inline-flex flex-wrap gap-2 rounded-xl border border-border bg-panel/80 px-3 py-2">
-                                    {EMOJIS.map((emoji) => (
+                                    {FLOATING_DM_EMOJIS.map((emoji) => (
                                       <button
                                         key={`${msg.id}-${emoji}`}
                                         type="button"
@@ -1093,7 +890,7 @@ export default function FloatingDm() {
                           />
                         ) : (
                           <span className="flex h-full w-full items-center justify-center">
-                            {getInitials(replyTarget.sender?.name ?? "User")}
+                            {getFloatingDmInitials(replyTarget.sender?.name ?? "User")}
                           </span>
                         )}
                       </span>
@@ -1152,7 +949,7 @@ export default function FloatingDm() {
                   </div>
                   {inputEmojiOpen && (
                     <div className="mt-2 inline-flex flex-wrap gap-2 rounded-xl border border-border bg-panel/80 px-3 py-2">
-                      {EMOJIS.map((emoji) => (
+                      {FLOATING_DM_EMOJIS.map((emoji) => (
                         <button
                           key={`input-${emoji}`}
                           type="button"
@@ -1201,13 +998,13 @@ export default function FloatingDm() {
                           onClick={() => setDetailFileOpen((prev) => !prev)}
                         >
                           <span>
-                            {FILE_TYPE_OPTIONS.find((option) => option.value === detailFileType)?.label ?? "전체"}
+                            {FLOATING_DM_FILE_TYPE_OPTIONS.find((option) => option.value === detailFileType)?.label ?? "전체"}
                           </span>
                           <ChevronDown size={12} className={`transition ${detailFileOpen ? "rotate-180" : ""}`} />
                         </button>
                         {detailFileOpen && (
                           <div className="absolute z-20 mt-2 w-full rounded-2xl border border-border bg-panel p-1 shadow-lg">
-                            {FILE_TYPE_OPTIONS.map((option) => (
+                            {FLOATING_DM_FILE_TYPE_OPTIONS.map((option) => (
                               <button
                                 key={option.value || "all"}
                                 type="button"
@@ -1256,7 +1053,7 @@ export default function FloatingDm() {
                                   <img src={msg.sender.avatar} alt={msg.sender.name ?? "User"} className="h-full w-full object-cover" />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center">
-                                    {getInitials(msg.sender?.name ?? "User")}
+                                    {getFloatingDmInitials(msg.sender?.name ?? "User")}
                                   </div>
                                 )}
                               </div>

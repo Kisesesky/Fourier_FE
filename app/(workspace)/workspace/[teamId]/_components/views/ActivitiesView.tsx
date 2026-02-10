@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/_components/views/ActivitiesView.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from "react";

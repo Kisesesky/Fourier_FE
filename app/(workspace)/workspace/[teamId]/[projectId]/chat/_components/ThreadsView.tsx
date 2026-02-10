@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ThreadsView.tsx
+'use client';
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, Filter, Search } from "lucide-react";
@@ -10,7 +11,7 @@ import EmojiPicker from "./EmojiPicker";
 import { useToast } from "@/components/ui/Toast";
 import type { Msg } from "@/workspace/chat/_model/types";
 
-function ThreadHeader({ channelName, lastTs }: { channelName: string; lastTs?: number }) {
+function ThreadHeader({ channelName }: { channelName: string }) {
   return (
     <div className="flex items-center justify-between gap-2 text-[11px] text-muted">
       <span className="font-semibold text-foreground">#{channelName}</span>
@@ -229,23 +230,11 @@ export default function ThreadsView() {
     if (!direct) return [];
     return [direct];
   }, [selectedId, sortedItems]);
-  const selectedItem = useMemo(
-    () => visibleItems.find((item) => item.rootId === selectedId),
-    [selectedId, visibleItems],
-  );
-
   const selectThread = (rootId: string) => {
     if (typeof window !== "undefined") {
       window.location.hash = `thread-${rootId}`;
     }
     setSelectedId(rootId);
-  };
-
-  const clearSelection = () => {
-    if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-    setSelectedId(null);
   };
 
   const ensureChannel = async (channelId: string) => {
@@ -254,7 +243,6 @@ export default function ThreadsView() {
   };
 
   const renderThreadCard = (item: typeof visibleItems[number]) => {
-    const unreadLabel = item.unread > 99 ? "99+" : item.unread > 0 ? String(item.unread) : "";
     const root = item.root;
     const rootAuthor = users[root.authorId]?.name || root.author || "알 수 없음";
     const rootAvatar = users[root.authorId]?.avatarUrl;
@@ -282,7 +270,7 @@ export default function ThreadsView() {
           }
         }}
       >
-        <ThreadHeader channelName={item.channelName} lastTs={item.lastTs} />
+        <ThreadHeader channelName={item.channelName} />
         <div className="mt-3 rounded-xl border border-border/70 bg-panel/70 p-3">
           <div className="mt-2">
             <ThreadRow

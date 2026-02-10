@@ -1,3 +1,4 @@
+// lib/theme.ts
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export const THEME_STORAGE_KEY = 'fd.theme';

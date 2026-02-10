@@ -1,3 +1,4 @@
+// types/workspace.ts
 import type { LucideIcon } from "lucide-react";
 
 export type Team = {

@@ -90,7 +90,10 @@ export default function CommandPalette() {
   }, [open]);
 
   // 검색/리스트 변할 때 선택 인덱스 리셋
-  useEffect(() => { setSelIdx(0); }, [q, JSON.stringify(filters)]);
+  const filtersKey = `${filters.chat}-${filters.issue}-${filters.doc}`;
+  useEffect(() => {
+    setSelIdx(0);
+  }, [q, filtersKey]);
 
   const onRun = (cmd: Command) => {
     setOpen(false); setQ("");
@@ -168,7 +171,7 @@ export default function CommandPalette() {
                     className={`w-full text-left px-3 py-2 rounded-md hover:bg-subtle/60 ${i===selIdx?'bg-subtle/60':''}`}
                     onMouseEnter={()=> setSelIdx(i)}
                     onClick={()=> onRun(cmd)}
-                    aria-selected={i===selIdx}
+                    data-selected={i===selIdx}
                   >
                     <div className="font-medium"><Highlight text={cmd.label} query={q} /></div>
                     {cmd.hint && <div className="text-xs text-muted"><Highlight text={cmd.hint} query={q} /></div>}
@@ -187,7 +190,7 @@ export default function CommandPalette() {
                           className={`w-full text-left px-3 py-2 rounded-md hover:bg-subtle/60 ${i===selIdx?'bg-subtle/60':''}`}
                           onMouseEnter={()=> setSelIdx(i)}
                           onClick={()=> goToSearchItem(r)}
-                          aria-selected={i===selIdx}
+                          data-selected={i===selIdx}
                         >
                           {r.type === "chat"  && (<div><span className="font-medium">[Chat]</span> <Highlight text={r.text.slice(0, 80)} query={q} /> <span className="text-muted">#{r.channelId}</span></div>)}
                           {r.type === "issue" && (<div><span className="font-medium">[Issue]</span> <Highlight text={r.title} query={q} /> <span className="text-muted">({r.status})</span></div>)}
@@ -206,7 +209,7 @@ export default function CommandPalette() {
                         className={`w-full text-left px-3 py-2 rounded-md hover:bg-subtle/60 ${i===selIdx?'bg-subtle/60':''}`}
                         onMouseEnter={()=> setSelIdx(i)}
                         onClick={()=> onRun(cmd)}
-                        aria-selected={i===selIdx}
+                        data-selected={i===selIdx}
                       >
                         <div className="font-medium"><Highlight text={cmd.label} query={q} /></div>
                         {cmd.hint && <div className="text-xs text-muted"><Highlight text={cmd.hint} query={q} /></div>}

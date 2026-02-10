@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/calendar/[calendarId]/page.tsx
 import CalendarView from "@/workspace/calendar/_components/CalendarView";
 
 export default function WorkspaceCalendarDetailPage({

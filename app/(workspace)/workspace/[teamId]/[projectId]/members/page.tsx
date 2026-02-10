@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/members/page.tsx
+'use client';
 
 import { Suspense } from "react";
 import MembersView from "@/workspace/members/_components/MembersView";

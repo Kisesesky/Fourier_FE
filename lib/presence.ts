@@ -1,3 +1,4 @@
+// lib/presence.ts
 export type UserPresenceStatus = "online" | "offline" | "away" | "dnd";
 
 const PRESENCE_KEY = "fd.user.presence";

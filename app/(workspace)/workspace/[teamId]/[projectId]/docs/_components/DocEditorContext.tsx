@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocEditorContext.tsx
+'use client';
 
 import {
   createContext,

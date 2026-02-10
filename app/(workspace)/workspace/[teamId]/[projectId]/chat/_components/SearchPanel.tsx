@@ -1,4 +1,4 @@
-// components/chat/SearchPanel.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/SearchPanel.tsx
 'use client';
 
 import React, { useMemo, useState } from "react";

@@ -1,9 +1,15 @@
+// app/(workspace)/workspace/[teamId]/_components/views/TeamMembersView.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
-import { CheckCircle, ChevronDown, Pencil, Search, UserPlus, X } from "lucide-react";
+import { CheckCircle, Search } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import {
+  MAX_TEAM_NICKNAME_LENGTH,
+  TEAM_PERMISSION_OPTIONS,
+} from "../../_model/view.constants";
+import { mapTeamRole } from "../../_model/view.utils";
 import {
   createCustomTeamRole,
   deleteCustomTeamRole,
@@ -22,182 +28,12 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuthProfile } from "@/hooks/useAuthProfile";
 import type { Member, MemberRole, PresenceStatus } from "@/workspace/members/_model/types";
 import Modal from "@/components/common/Modal";
-
-const roleLabels: Record<MemberRole, string> = {
-  owner: "생성자",
-  manager: "관리자",
-  member: "편집자",
-  guest: "뷰어",
-};
-
-const displayRoles: MemberRole[] = ["owner", "manager", "member", "guest"];
-const inviteRoles: MemberRole[] = ["manager", "member", "guest"];
-const permissionOptions = [
-  { id: "TEAM_INVITE_MEMBER", label: "팀 멤버 초대/삭제" },
-  { id: "TEAM_UPDATE_ROLE", label: "팀 멤버 역할 변경" },
-  { id: "TEAM_SETTINGS_UPDATE", label: "팀 설정 변경" },
-  { id: "PROJECT_CREATE_DELETE", label: "프로젝트 생성/삭제" },
-  { id: "PROJECT_INVITE_MEMBER", label: "프로젝트 멤버 초대/삭제" },
-  { id: "PROJECT_UPDATE_ROLE", label: "프로젝트 멤버 역할 변경" },
-];
-
-const defaultRoleDescriptions: Record<MemberRole, string> = {
-  owner: "워크스페이스/팀 전반을 모두 관리합니다.",
-  manager: "팀 운영 및 프로젝트 관리를 담당합니다.",
-  member: "프로젝트 작업을 생성/수정합니다.",
-  guest: "읽기와 댓글 중심으로 참여합니다.",
-};
-
-const defaultRolePermissions: Record<MemberRole, string[]> = {
-  owner: permissionOptions.map((item) => item.label),
-  manager: permissionOptions.map((item) => item.label),
-  member: [
-    "프로젝트 생성/삭제",
-    "프로젝트 멤버 초대/삭제",
-  ],
-  guest: ["읽기/댓글"],
-};
-
-const MAX_TEAM_NICKNAME_LENGTH = 32;
-
-const statusColor: Record<PresenceStatus, string> = {
-  online: "bg-emerald-400/10 text-emerald-300",
-  away: "bg-amber-400/10 text-amber-200",
-  offline: "bg-slate-500/15 text-muted",
-  dnd: "bg-rose-500/15 text-rose-300",
-};
-
-const mapTeamRole = (role: string): MemberRole => {
-  switch (role) {
-    case "OWNER":
-      return "owner";
-    case "ADMIN":
-    case "MANAGER":
-      return "manager";
-    case "MEMBER":
-      return "member";
-    case "GUEST":
-      return "guest";
-    default:
-      return "member";
-  }
-};
-
-const getInitials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-interface InviteMemberModalProps {
-  open: boolean;
-  email: string;
-  role: MemberRole;
-  message: string;
-  onEmailChange: (value: string) => void;
-  onRoleChange: (value: MemberRole) => void;
-  onMessageChange: (value: string) => void;
-  onClose: () => void;
-  onSubmit: () => void;
-  disabled?: boolean;
-}
-
-const InviteMemberModal = ({
-  open,
-  email,
-  role,
-  message,
-  onEmailChange,
-  onRoleChange,
-  onMessageChange,
-  onClose,
-  onSubmit,
-  disabled,
-}: InviteMemberModalProps) => {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8">
-      <div className="w-full max-w-lg rounded-[28px] border border-border bg-panel p-6 text-foreground shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ffd89c] to-[#f7ae57] text-[#1d1300]">
-              <UserPlus size={20} />
-            </span>
-            <div>
-              <p className="text-lg font-semibold">팀 멤버 초대</p>
-              <p className="text-xs uppercase tracking-[0.4em] text-muted">Team management</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="rounded-full border border-border p-2 text-muted transition hover:bg-accent hover:text-foreground"
-            onClick={onClose}
-            aria-label="Close invite modal"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="mt-6 space-y-5">
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.4em] text-muted">이메일</label>
-            <div className="rounded-2xl border border-border bg-panel px-4 py-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => onEmailChange(e.target.value)}
-                placeholder="team@fourier.app"
-                className="w-full bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.4em] text-muted">역할</label>
-            <div className="flex flex-wrap gap-1 rounded-full border border-border bg-panel/80 p-1">
-              {inviteRoles.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={clsx(
-                    "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] transition",
-                    option === role ? "bg-accent text-foreground" : "text-muted hover:text-foreground"
-                  )}
-                  onClick={() => onRoleChange(option)}
-                >
-                  {roleLabels[option]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.4em] text-muted">메시지</label>
-            <div className="rounded-2xl border border-border bg-panel px-4 py-3">
-              <input
-                value={message}
-                onChange={(e) => onMessageChange(e.target.value)}
-                placeholder="초대 메시지를 입력하세요"
-                className="w-full bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <button
-            type="button"
-            disabled={!email.trim() || disabled}
-            className="w-full rounded-full bg-[#f7ce9c] px-4 py-2 text-sm font-semibold text-[#1a1203] transition disabled:opacity-40"
-            onClick={onSubmit}
-          >
-            초대 보내기
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+import InviteMemberModal from "./team-members/InviteMemberModal";
+import { TEAM_MEMBER_TABS } from "./team-members/team-members.constants";
+import MembersTab from "./team-members/MembersTab";
+import PendingInvitesTab from "./team-members/PendingInvitesTab";
+import RolesTab from "./team-members/RolesTab";
+import type { TeamCustomRole, TeamMembersTab, TeamPendingInvite } from "./team-members/team-members.types";
 
 type TeamMembersViewProps = {
   teamId?: string;
@@ -207,7 +43,7 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
   const { workspace } = useWorkspace();
   const { show } = useToast();
   const { profile } = useAuthProfile();
-  const [activeMemberTab, setActiveMemberTab] = useState<"Members" | "Pending Invites" | "Roles">("Members");
+  const [activeMemberTab, setActiveMemberTab] = useState<TeamMembersTab>("Members");
   const [search, setSearch] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("member");
@@ -218,27 +54,17 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
   const [nicknameDraft, setNicknameDraft] = useState("");
   const [avatarDraft, setAvatarDraft] = useState("");
   const [nicknameSaving, setNicknameSaving] = useState(false);
-  const [customRoles, setCustomRoles] = useState<Array<{ id: string; name: string; description?: string | null; permissions: string[] }>>([]);
+  const [customRoles, setCustomRoles] = useState<TeamCustomRole[]>([]);
   const [customRoleModalOpen, setCustomRoleModalOpen] = useState(false);
   const [customRoleEditingId, setCustomRoleEditingId] = useState<string | null>(null);
   const [customRoleName, setCustomRoleName] = useState("");
   const [customRoleDescription, setCustomRoleDescription] = useState("");
   const [customRolePermissions, setCustomRolePermissions] = useState<string[]>([]);
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
-  const [pendingInvites, setPendingInvites] = useState<Array<{
-    id: string;
-    email: string;
-    role: MemberRole;
-    invitedByName: string;
-    invitedAt: number;
-    status: string;
-    name?: string;
-    message?: string;
-  }>>([]);
+  const [pendingInvites, setPendingInvites] = useState<TeamPendingInvite[]>([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
   const editingMember = members.find((member) => member.id === editingMemberId) ?? null;
   const currentMember = members.find((member) => member.id === profile?.id);
-  const isOwner = currentMember?.role === "owner";
   const isAdmin = currentMember?.role === "owner" || currentMember?.role === "manager";
 
   useEffect(() => {
@@ -521,268 +347,69 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
     );
   }, [normalizedSearch, members]);
 
-  const renderMembers = () => (
-    <div className="divide-y divide-border">
-      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] px-3 pb-3 text-[11px] uppercase tracking-[0.4em] text-muted">
-        <span>Member</span>
-        <span>Role</span>
-        <span>Status</span>
-      </div>
-      {filteredMembers.length === 0 ? (
-        <div className="px-3 py-10 text-center text-sm text-muted">일치하는 멤버가 없습니다.</div>
-      ) : (
-        filteredMembers.map((member) => {
-          const presence = presenceMap[member.id];
-          const presenceStatus = presence?.status ?? "offline";
-          const displayName = member.nickname ?? member.displayName ?? member.name;
-          const username = member.username ?? member.name;
-          const showUsername = username && username !== displayName;
-          const canEditNickname = member.id === profile?.id || isAdmin;
-          const effectiveAvatar = member.teamAvatarUrl ?? member.avatarUrl;
-          return (
-            <div
-              key={member.id}
-              className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] items-center gap-2 px-3 py-4"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#3a3550] to-[#141826] text-sm font-semibold">
-                  {effectiveAvatar ? (
-                    <img src={effectiveAvatar} alt={member.name} className="h-full w-full object-cover" />
-                  ) : (
-                    getInitials(member.name)
-                  )}
-                </span>
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <p className="truncate font-semibold text-foreground">{displayName}</p>
-                    {showUsername && (
-                      <span className="truncate text-[11px] text-muted">({username})</span>
-                    )}
-                    {canEditNickname && (
-                      <button
-                        type="button"
-                        className="rounded-full border border-transparent p-1 text-muted hover:border-border hover:text-foreground"
-                        onClick={() => startNicknameEdit(member)}
-                        aria-label="Edit nickname"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                    )}
-                  </div>
-                  <p className="truncate text-xs text-muted">{member.email}</p>
-                  {(member.location || member.timezone) && (
-                    <p className="truncate text-[11px] text-muted/80">{member.location ?? member.timezone}</p>
-                  )}
-                </div>
-              </div>
-              {isAdmin && member.id !== profile?.id && member.role !== "owner" ? (
-                <div className="relative w-24">
-                  <select
-                    value={member.customRoleId ? `custom:${member.customRoleId}` : member.role}
-                    onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                    className="w-full appearance-none rounded-full border border-border bg-panel px-3 py-1 pr-7 text-center text-[11px] text-foreground"
-                  >
-                    {(currentMember?.role === "manager"
-                      ? inviteRoles.filter((role) => role !== "manager")
-                      : inviteRoles
-                    ).map((role) => (
-                      <option key={role} value={role}>
-                        {roleLabels[role]}
-                      </option>
-                    ))}
-                    {customRoles.map((role) => (
-                      <option key={role.id} value={`custom:${role.id}`}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={12}
-                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted"
-                  />
-                </div>
-              ) : (
-                <span className="inline-flex w-24 items-center justify-center rounded-full border border-border px-3 py-1 text-[11px] text-muted">
-                  {member.customRoleName ?? roleLabels[member.role]}
-                </span>
-              )}
-              <div className="flex min-w-0 items-center gap-2 text-sm text-muted">
-                <span className={clsx("rounded-full px-3 py-1 text-xs font-semibold uppercase", statusColor[presenceStatus])}>
-                  {presenceStatus}
-                </span>
-                {isAdmin && member.id !== profile?.id && member.role !== "owner" && (
-                  <button
-                    type="button"
-                    className="whitespace-nowrap rounded-full border border-rose-300/40 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.25em] text-rose-300 transition hover:bg-rose-500/10"
-                    onClick={() => handleRemoveMember(member.id, displayName)}
-                    aria-label="Remove member"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
+  const handleEditCustomRole = (role: TeamCustomRole) => {
+    setCustomRoleEditingId(role.id);
+    setCustomRoleName(role.name);
+    setCustomRoleDescription(role.description ?? "");
+    setCustomRolePermissions(role.permissions ?? []);
+    setCustomRoleModalOpen(true);
+  };
 
-  const renderPending = () => (
-    <div className="divide-y divide-border">
-      <div className="grid grid-cols-[1.5fr,1fr,1.2fr,1fr,1fr] px-3 pb-3 text-[11px] uppercase tracking-[0.4em] text-muted">
-        <span>Email</span>
-        <span>Role</span>
-        <span>Invited By</span>
-        <span>Invited At</span>
-        <span>Status</span>
-      </div>
-      {loadingInvites ? (
-        <div className="px-3 py-10 text-center text-sm text-muted">초대 목록을 불러오는 중...</div>
-      ) : pendingInvites.length === 0 ? (
-        <div className="px-3 py-10 text-center text-sm text-muted">대기 중 초대가 없습니다.</div>
-      ) : (
-        pendingInvites.map((invite) => (
-        <div key={invite.id} className="grid grid-cols-[1.5fr,1fr,1.2fr,1fr,1fr] items-center gap-4 px-3 py-4">
-          <div>
-            <p className="font-semibold">{invite.email}</p>
-            <p className="text-xs text-muted">{invite.name ?? "Awaiting details"}</p>
-          </div>
-          <span className="rounded-full border border-border px-3 py-1 text-xs text-muted">{roleLabels[invite.role]}</span>
-          <p className="text-sm text-muted">{invite.invitedByName}</p>
-          <p className="text-sm text-muted">{new Date(invite.invitedAt).toLocaleDateString()}</p>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold uppercase text-amber-200">
-              {invite.status}
-            </span>
-              <button
-                type="button"
-                className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:bg-accent hover:text-foreground"
-              >
-              Resend
-            </button>
-          </div>
-        </div>
-      )))
-      }
-    </div>
-  );
+  const handleDeleteCustomRole = async (roleId: string) => {
+    try {
+      await deleteCustomTeamRole(workspace?.id ?? "", teamId ?? "", roleId);
+      setCustomRoles((prev) => prev.filter((item) => item.id !== roleId));
+    } catch (err) {
+      console.error("Failed to delete custom role", err);
+      show({
+        title: "삭제 실패",
+        description: "역할 삭제에 실패했습니다.",
+        variant: "error",
+      });
+    }
+  };
 
-  const renderRoles = () => (
-    <div className="space-y-4">
-      {displayRoles.map((role) => (
-        <div key={role} className="rounded-2xl border border-border bg-panel p-5">
-          <p className="text-lg font-semibold text-foreground">{roleLabels[role]}</p>
-          <p className="mt-2 text-sm text-muted">{defaultRoleDescriptions[role]}</p>
-          <ul className="mt-4 space-y-2 text-sm text-muted">
-            {defaultRolePermissions[role].map((perm) => (
-              <li key={`${role}-${perm}`} className="flex items-center gap-2">
-                <CheckCircle size={14} className="text-emerald-400" />
-                {perm}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+  const handleOpenCreateCustomRole = () => {
+    if (!isAdmin) return;
+    if (customRoles.length >= 5) {
+      show({
+        title: "역할 제한",
+        description: "커스텀 역할은 팀당 최대 5개까지 생성할 수 있습니다.",
+        variant: "warning",
+      });
+      return;
+    }
+    setCustomRoleEditingId(null);
+    setCustomRoleName("");
+    setCustomRoleDescription("");
+    setCustomRolePermissions([]);
+    setCustomRoleModalOpen(true);
+  };
 
-      <div className="text-xs uppercase tracking-[0.3em] text-muted">Custom roles</div>
-      {customRoles.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted">
-          커스텀 역할이 없습니다. 필요하면 새 역할을 추가하세요.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {customRoles.map((role) => (
-            <div key={role.id} className="group rounded-2xl border border-border bg-panel p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-lg font-semibold text-foreground">{role.name}</p>
-                {isAdmin && (
-                  <div className="flex items-center gap-2 opacity-0 transition group-hover:opacity-100">
-                    <button
-                      type="button"
-                      className="rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-foreground bg-green-500 hover:text-muted"
-                      onClick={() => {
-                        setCustomRoleEditingId(role.id);
-                        setCustomRoleName(role.name);
-                        setCustomRoleDescription(role.description ?? "");
-                        setCustomRolePermissions(role.permissions ?? []);
-                        setCustomRoleModalOpen(true);
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-foreground bg-red-500 hover:text-muted"
-                      onClick={async () => {
-                        try {
-                          await deleteCustomTeamRole(workspace?.id ?? "", teamId ?? "", role.id);
-                          setCustomRoles((prev) => prev.filter((item) => item.id !== role.id));
-                        } catch (err) {
-                          console.error("Failed to delete custom role", err);
-                          show({
-                            title: "삭제 실패",
-                            description: "역할 삭제에 실패했습니다.",
-                            variant: "error",
-                          });
-                        }
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                {role.description?.trim() || "커스텀 권한으로 팀/프로젝트 관리 범위를 조정합니다."}
-              </p>
-              <ul className="mt-4 space-y-2 text-sm text-muted">
-                {role.permissions.map((perm) => (
-                  <li key={`${role.id}-${perm}`} className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-emerald-400" />
-                    {permissionOptions.find((item) => item.id === perm)?.label ?? perm}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          className={clsx(
-            "w-full rounded-full border border-border py-4 text-sm text-muted font-semibold uppercase tracking-[0.3em] transition hover:bg-accent hover:text-foreground",
-            !isAdmin && "cursor-not-allowed opacity-50"
-          )}
-          onClick={() => {
-            if (!isAdmin) return;
-            if (customRoles.length >= 5) {
-              show({
-                title: "역할 제한",
-                description: "커스텀 역할은 팀당 최대 5개까지 생성할 수 있습니다.",
-                variant: "warning",
-              });
-              return;
-            }
-            setCustomRoleEditingId(null);
-            setCustomRoleName("");
-            setCustomRoleDescription("");
-            setCustomRolePermissions([]);
-            setCustomRoleModalOpen(true);
-          }}
-        >
-          + Create Custom Role
-        </button>
-      </div>
-    </div>
-  );
-
-  const tabContent: Record<typeof activeMemberTab, JSX.Element> = {
-    Members: renderMembers(),
-    "Pending Invites": renderPending(),
-    Roles: renderRoles(),
+  const tabContent: Record<TeamMembersTab, JSX.Element> = {
+    Members: (
+      <MembersTab
+        filteredMembers={filteredMembers}
+        presenceMap={presenceMap}
+        profileId={profile?.id}
+        isAdmin={isAdmin}
+        currentMemberRole={currentMember?.role}
+        customRoles={customRoles}
+        onStartNicknameEdit={startNicknameEdit}
+        onRoleChange={handleRoleChange}
+        onRemoveMember={handleRemoveMember}
+      />
+    ),
+    "Pending Invites": <PendingInvitesTab loading={loadingInvites} invites={pendingInvites} />,
+    Roles: (
+      <RolesTab
+        customRoles={customRoles}
+        isAdmin={isAdmin}
+        onEditCustomRole={handleEditCustomRole}
+        onDeleteCustomRole={handleDeleteCustomRole}
+        onCreateCustomRole={handleOpenCreateCustomRole}
+      />
+    ),
   };
 
   return (
@@ -803,7 +430,7 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
       <div className="rounded-[32px] border border-border bg-panel p-6 text-foreground shadow-[0_4px_14px_rgba(0,0,0,0.06)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex flex-wrap gap-2">
-            {["Members", "Pending Invites", "Roles"].map((tab) => (
+            {TEAM_MEMBER_TABS.map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -813,7 +440,7 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
                     ? "bg-foreground text-background"
                     : "border border-border text-muted hover:text-foreground"
                 )}
-                onClick={() => setActiveMemberTab(tab as typeof activeMemberTab)}
+                onClick={() => setActiveMemberTab(tab)}
               >
                 {tab}
               </button>
@@ -908,7 +535,7 @@ const TeamMembersView = ({ teamId }: TeamMembersViewProps) => {
           <div className="space-y-2">
             <label className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">권한</label>
             <div className="space-y-2">
-              {permissionOptions.map((perm) => {
+              {TEAM_PERMISSION_OPTIONS.map((perm) => {
                 const checked = customRolePermissions.includes(perm.id);
                 return (
                   <label

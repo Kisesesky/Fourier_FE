@@ -1,33 +1,15 @@
-// components/chat/CommandPalette.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/CommandPalette.tsx
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Hash, AtSign, Link as LinkIcon, File, MessageSquare, Command, CornerDownLeft,
-  Search, ArrowUp, ArrowDown, Send, GitBranch, Users
+  Search, ArrowUp, ArrowDown, GitBranch
 } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
 import { extractUrls } from "./LinkPreview";
-
-type Kind = 'channel' | 'user' | 'message' | 'link' | 'file' | 'slash';
-
-type Row = {
-  id: string;
-  kind: Kind;
-  label: string;
-  desc?: string;
-  aux?: string;
-  payload?: any;
-};
-
-const SLASHES = [
-  { id: 'todo',      label: '/todo',  desc: '체크리스트 토글', insert: '- [ ] ' },
-  { id: 'h1',        label: '/h1',    desc: '제목 1', insert: '# ' },
-  { id: 'h2',        label: '/h2',    desc: '제목 2', insert: '## ' },
-  { id: 'code',      label: '/code',  desc: '코드 블록', insert: '```\n\n```' },
-  { id: 'quote',     label: '/quote', desc: '인용', insert: '> ' },
-  { id: 'image',     label: '/image', desc: '이미지 업로드', insert: '' },
-];
+import { CHAT_SLASH_COMMANDS } from "@/workspace/chat/_model/view.constants";
+import type { CommandPaletteKind, CommandPaletteRow } from "@/workspace/chat/_model/view.types";
 
 function score(query: string, text: string) {
   // 아주 얕은 패턴: 포함 점수 + 접두 가산
@@ -54,8 +36,8 @@ export default function CommandPalette({
   const [idx, setIdx] = useState(0);
 
   // 데이터 소스 → 행 변환
-  const rows = useMemo<Row[]>(() => {
-    const out: Row[] = [];
+  const rows = useMemo<CommandPaletteRow[]>(() => {
+    const out: CommandPaletteRow[] = [];
 
     // 채널
     for (const c of channels) {
@@ -122,7 +104,7 @@ export default function CommandPalette({
     }
 
     // 슬래시 명령
-    for (const s of SLASHES) {
+    for (const s of CHAT_SLASH_COMMANDS) {
       out.push({
         id: `s:${s.id}`,
         kind: 'slash',
@@ -136,7 +118,7 @@ export default function CommandPalette({
   }, [channels, users, me.id, messages]);
 
   // 필터
-  const filtered = useMemo<Row[]>(() => {
+  const filtered = useMemo<CommandPaletteRow[]>(() => {
     const query = q.trim();
     if (!query) return rows.slice(0, 80);
 
@@ -206,7 +188,7 @@ export default function CommandPalette({
   };
 
   // 실행
-  const run = async (r: Row) => {
+  const run = async (r: CommandPaletteRow) => {
     switch (r.kind) {
       case 'channel':
         setChannel(r.payload.id);
@@ -305,7 +287,7 @@ export default function CommandPalette({
   );
 }
 
-function iconFor(k: Kind) {
+function iconFor(k: CommandPaletteKind) {
   switch (k) {
     case 'channel': return <Hash size={14}/>;
     case 'user':    return <AtSign size={14}/>;

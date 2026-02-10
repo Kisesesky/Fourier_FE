@@ -1,4 +1,4 @@
-// components/chat/SavedModal.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/SavedModal.tsx
 'use client';
 
 import { useMemo } from "react";

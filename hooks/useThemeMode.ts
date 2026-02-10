@@ -1,4 +1,4 @@
-// src/hooks/useThemeMode.ts
+// hooks/useThemeMode.ts
 import { useCallback, useEffect, useState } from "react";
 import {
   ThemeMode,

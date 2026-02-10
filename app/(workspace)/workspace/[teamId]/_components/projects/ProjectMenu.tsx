@@ -1,19 +1,10 @@
+// app/(workspace)/workspace/[teamId]/_components/projects/ProjectMenu.tsx
 import clsx from "clsx";
-import { Copy, Pencil, Trash2 } from "lucide-react";
-
-interface ProjectMenuProps {
-  onClose: () => void;
-  onEdit: () => void;
-  onClone: () => void;
-  onDelete: () => void;
-}
+import { buildProjectMenuItems } from "@/app/(workspace)/workspace/[teamId]/_model/project.constants";
+import type { ProjectMenuProps } from "@/app/(workspace)/workspace/[teamId]/_model/project.types";
 
 const ProjectMenu = ({ onClose, onEdit, onClone, onDelete }: ProjectMenuProps) => {
-  const items = [
-    { label: "Edit", icon: Pencil, action: onEdit },
-    { label: "Clone Project", icon: Copy, action: onClone },
-    { label: "Delete Project", icon: Trash2, className: "text-red-300", action: onDelete },
-  ];
+  const items = buildProjectMenuItems(onEdit, onClone, onDelete);
 
   return (
     <div

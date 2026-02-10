@@ -1,20 +1,10 @@
-import { X } from "lucide-react";
+// app/(workspace)/workspace/[teamId]/_components/InviteBanner.tsx
+'use client';
 
-const InviteBanner = () => (
-  <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-panel px-5 py-4 text-sm text-muted">
-    <div>
-      <p className="font-medium text-foreground">Invite a new user and earn a $10 credit.</p>
-      <p className="text-xs text-muted">Learn more</p>
+export default function InviteBanner() {
+  return (
+    <div className="rounded-2xl border border-border bg-panel px-4 py-3 text-sm text-muted">
+      팀원 초대와 협업 설정은 프로젝트 메뉴에서 관리할 수 있습니다.
     </div>
-    <button
-      type="button"
-      className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-accent"
-      aria-label="Close"
-    >
-      <X size={16} />
-    </button>
-  </section>
-);
-
-export default InviteBanner;
-
+  );
+}

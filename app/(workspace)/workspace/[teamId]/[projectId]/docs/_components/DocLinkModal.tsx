@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocLinkModal.tsx
+'use client';
 
 import { useEffect, useState } from "react";
 

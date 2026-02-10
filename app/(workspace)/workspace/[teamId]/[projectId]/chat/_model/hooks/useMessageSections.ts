@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_model/hooks/useMessageSections.ts
 'use client';
 
 import { useMemo } from 'react';

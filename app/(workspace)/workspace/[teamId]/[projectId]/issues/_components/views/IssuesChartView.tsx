@@ -1,42 +1,16 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/IssuesChartView.tsx
+'use client';
 
 import { useMemo, useState } from "react";
 import { BarChart3, Layers, Users } from "lucide-react";
 
-import type { Issue, IssueGroup } from "@/workspace/issues/_model/types";
-
-type IssuesChartViewProps = {
-  issues: Issue[];
-  memberMap: Record<string, { name: string; avatarUrl?: string | null }>;
-  issueGroups: IssueGroup[];
-  loading?: boolean;
-};
-
-const STATUS_META: Array<{
-  key: Issue["status"];
-  label: string;
-  bar: string;
-}> = [
-  { key: "backlog", label: "백로그", bar: "bg-slate-400" },
-  { key: "todo", label: "할 일", bar: "bg-cyan-400" },
-  { key: "in_progress", label: "진행 중", bar: "bg-amber-400" },
-  { key: "review", label: "리뷰", bar: "bg-fuchsia-400" },
-  { key: "done", label: "완료", bar: "bg-emerald-400" },
-];
-
-const PRIORITY_META: Array<{
-  key: Issue["priority"];
-  label: string;
-  bar: string
-}> = [
-  { key: "urgent", label: "매우높음", bar: "bg-rose-500" },
-  { key: "high", label: "높음", bar: "bg-orange-400" },
-  { key: "medium", label: "보통", bar: "bg-sky-400" },
-  { key: "low", label: "낮음", bar: "bg-emerald-400" },
-  { key: "very_low", label: "매우낮음", bar: "bg-slate-400" },
-];
-
-const GROUP_PALETTE = ["#38bdf8", "#f472b6", "#a78bfa", "#facc15", "#4ade80", "#f97316"];
+import type { Issue } from "@/workspace/issues/_model/types";
+import {
+  ISSUE_GROUP_PALETTE,
+  ISSUE_PRIORITY_META_CHART,
+  ISSUE_STATUS_META_CHART,
+} from "@/workspace/issues/_model/analytics.constants";
+import type { IssuesAnalyticsViewProps } from "@/workspace/issues/_model/view.types";
 
 const buildSeries = (
   dates: number[],
@@ -210,7 +184,7 @@ const renderHorizontalBars = (
   );
 };
 
-export default function IssuesChartView({ issues, memberMap, issueGroups, loading }: IssuesChartViewProps) {
+export default function IssuesChartView({ issues, memberMap, issueGroups, loading }: IssuesAnalyticsViewProps) {
   const today = useMemo(() => new Date(), []);
   const todayStr = today.toISOString().slice(0, 10);
   const monthStr = today.toISOString().slice(0, 7);
@@ -250,7 +224,7 @@ export default function IssuesChartView({ issues, memberMap, issueGroups, loadin
 
   const statusCounts = useMemo(
     () =>
-      STATUS_META.map((status) => ({
+      ISSUE_STATUS_META_CHART.map((status) => ({
         ...status,
         value: flatIssues.filter((issue) => issue.status === status.key).length,
       })),
@@ -259,7 +233,7 @@ export default function IssuesChartView({ issues, memberMap, issueGroups, loadin
 
   const priorityCounts = useMemo(
     () =>
-      PRIORITY_META.map((priority) => ({
+      ISSUE_PRIORITY_META_CHART.map((priority) => ({
         ...priority,
         value: flatIssues.filter((issue) => issue.priority === priority.key).length,
       })),
@@ -284,7 +258,7 @@ export default function IssuesChartView({ issues, memberMap, issueGroups, loadin
       const group = resolveGroup(issue);
       const key = group?.id ?? "ungrouped";
       const label = group?.name ?? "미분류";
-      const color = group?.color ?? GROUP_PALETTE[map.size % GROUP_PALETTE.length];
+      const color = group?.color ?? ISSUE_GROUP_PALETTE[map.size % ISSUE_GROUP_PALETTE.length];
       const entry = map.get(key) ?? { key, label, value: 0, color };
       entry.value += 1;
       map.set(key, entry);

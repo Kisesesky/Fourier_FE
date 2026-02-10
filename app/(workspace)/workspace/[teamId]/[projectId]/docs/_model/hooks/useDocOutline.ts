@@ -1,7 +1,6 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_model/hooks/useDocOutline.ts
+'use client';
 
-import { useEffect, useState } from "react";
-import { Editor } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/react";
 
 export interface OutlineItem {

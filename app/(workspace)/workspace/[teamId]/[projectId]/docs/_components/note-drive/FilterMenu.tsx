@@ -1,10 +1,11 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/FilterMenu.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { Filter, Check } from 'lucide-react';
 import clsx from 'clsx';
 
-import { MENU_ATTR } from './utils';
+import { MENU_ATTR } from "@/workspace/docs/_model/utils/noteDriveViewUtils";
 
 type FilterMenuProps = {
   selections: Record<string, string>;

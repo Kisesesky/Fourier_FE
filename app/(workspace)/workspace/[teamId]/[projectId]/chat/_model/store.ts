@@ -1,4 +1,4 @@
-// store/chat.ts
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_model/store.ts
 import { create } from "zustand";
 import { lsGet, lsSet } from "@/lib/persist";
 import { listChannels, listMessages, sendChannelMessage, sendDmMessage, getOrCreateDmRoom, sendThreadMessage, listProjectMembers, getChannelPreferences, saveChannelPreferences, getPinnedMessages, getSavedMessages, createChannel as createChannelApi } from "../_service/api";
@@ -7,7 +7,6 @@ import { getChatSocket } from "@/lib/socket";
 import type {
   Msg,
   Channel,
-  WorkspaceSectionType,
   WorkspaceSection,
   Workspace,
   FileItem,
@@ -158,18 +157,9 @@ const sortMessages = (list: Msg[]) =>
 let socketBound = false;
 const localEchoIds = new Set<string>();
 
-function cloneMembers(map: Record<string, string[]>): Record<string, string[]> {
-  return Object.fromEntries(Object.entries(map).map(([key, value]) => [key, [...value]]));
-}
-
-function cloneTopics(map: Record<string, { topic: string; muted?: boolean }>): Record<string, { topic: string; muted?: boolean }> {
-  return Object.fromEntries(Object.entries(map).map(([key, value]) => [key, { ...value }]));
-}
-
 let bc: BroadcastChannel | null = null;
 
 const DEFAULT_ME: ChatUser = { id: "me", name: "Me" };
-const DEFAULT_STATUS_MAP: Record<string, PresenceState> = {};
 const FALLBACK_WORKSPACE_ID = "workspace";
 
 const parseDmParticipantIds = (channelId: string): string[] => {
@@ -768,6 +758,7 @@ export const useChat = create<State>((set, get) => ({
   send: async (text, files = [], opts) => {
     const { channelId } = get();
     if (!channelId) return;
+    void files;
     const response = opts?.parentId
       ? await sendThreadMessage(
           opts.parentId,
@@ -1197,7 +1188,8 @@ export const useChat = create<State>((set, get) => ({
     lsSet(MEMBERS_KEY, obj);
     bc?.postMessage({ type: "channel:invite", channelId, members: obj[channelId] });
   },
-  startGroupDM: (memberIds, _opts) => {
+  startGroupDM: (memberIds, opts) => {
+    void opts;
     const { me } = get();
     const unique = Array.from(new Set(memberIds || [])).filter(Boolean);
     const others = unique.filter(id => id !== me.id);

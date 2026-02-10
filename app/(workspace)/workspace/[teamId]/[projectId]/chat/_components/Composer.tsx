@@ -1,8 +1,8 @@
-// components/chat/Composer.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/Composer.tsx
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Paperclip, Send, Bold, Code, Quote, SmilePlus, AtSign, Upload, X } from "lucide-react";
+import { Paperclip, Send, Bold, Code, Quote, AtSign, X } from "lucide-react";
 import type { FileItem } from "@/workspace/chat/_model/types";
 import MentionPopover, { SuggestItem } from "./MentionPopover";
 import EmojiPicker from "./EmojiPicker";
@@ -182,10 +182,12 @@ export default function Composer({
     if (!allReady) return;
 
     const mentions = Array.from(text.matchAll(/@([A-Za-z0-9_-][A-Za-z0-9 _-]*)/g)).map(m => `name:${m[1].trim()}`);
-    const files: FileItem[] = uploads.map(({ progress, ready, ...rest }) => rest);
+    const files: FileItem[] = uploads.map(({ ...rest }) => rest);
     onSend(text, files, { mentions });
 
-    ref.current && (ref.current.innerHTML = '');
+    if (ref.current) {
+      ref.current.innerHTML = '';
+    }
     setUploads([]);
     setMentionOpen(false);
   };

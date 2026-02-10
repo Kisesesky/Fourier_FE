@@ -1,3 +1,4 @@
+// lib/api.ts
 import axios, { AxiosHeaders } from "axios";
 
 const api = axios.create({

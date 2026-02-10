@@ -1,3 +1,4 @@
+// lib/dashboardBackground.ts
 export type DashboardBackgroundSetting = {
   type: "color" | "image" | "iframe";
   value: string;

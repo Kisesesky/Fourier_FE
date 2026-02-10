@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/CreateFolderModal.tsx
 'use client';
 
 import { useState, useEffect } from 'react';

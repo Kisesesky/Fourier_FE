@@ -1,4 +1,4 @@
-// src/hooks/useWorkspacePath.ts
+// hooks/useWorkspacePath.ts
 'use client';
 
 import { useCallback, useMemo } from "react";

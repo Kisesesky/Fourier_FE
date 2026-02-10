@@ -1,59 +1,12 @@
+// app/(workspace)/workspace/[teamId]/_components/views/RecentVisitedView.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  CalendarDays,
-  FolderSearch,
-  LayoutGrid,
-  List,
-  MessageCircleMore,
-  Network,
-  Server,
-  Star,
-  Users,
-  ListTodo,
-} from "lucide-react";
-
-type StoredRecentItem = {
-  id: string;
-  title: string;
-  description: string;
-  tag: string;
-  visitedAt: number;
-  iconKey: string;
-  path: string;
-  iconValue?: string;
-};
-
-const STORAGE_KEY = "recently-visited";
-
-const iconMap: Record<string, typeof Users> = {
-  project: Server,
-  docs: FolderSearch,
-  chat: MessageCircleMore,
-  calendar: CalendarDays,
-  issues: Network,
-  worksheet: List,
-  members: Users,
-};
-
-const formatVisited = (ts: number) => {
-  const diffMs = Date.now() - ts;
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  if (diffMinutes < 1) return "방금 전 방문입니다";
-  if (diffMinutes < 60) return `${diffMinutes}분 전 방문입니다`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}시간 전 방문입니다`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}일 전 방문입니다`;
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 5) return `${diffWeeks}주 전 방문입니다`;
-  const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12) return `${diffMonths}달 전 방문입니다`;
-  const diffYears = Math.floor(diffDays / 365);
-  return `${diffYears}년 전 방문입니다`;
-};
+import { LayoutGrid, List, Star } from "lucide-react";
+import { RECENT_ICON_MAP, RECENT_VISITED_STORAGE_KEY } from "../../_model/view.constants";
+import type { StoredRecentItem } from "../../_model/view.types";
+import { formatVisitedLabel } from "../../_model/view.utils";
 
 const RecentVisitedView = () => {
   const [layout, setLayout] = useState<"grid" | "list">("grid");
@@ -64,7 +17,7 @@ const RecentVisitedView = () => {
     const load = () => {
       if (typeof window === "undefined") return;
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(RECENT_VISITED_STORAGE_KEY);
         const parsed = raw ? (JSON.parse(raw) as StoredRecentItem[]) : [];
         setItems(Array.isArray(parsed) ? parsed : []);
       } catch (err) {
@@ -86,8 +39,8 @@ const RecentVisitedView = () => {
     () =>
       items.map((item) => ({
         ...item,
-        icon: iconMap[item.iconKey] ?? Star,
-        visited: formatVisited(item.visitedAt),
+        icon: RECENT_ICON_MAP[item.iconKey] ?? Star,
+        visited: formatVisitedLabel(item.visitedAt),
       })),
     [items]
   );
@@ -96,7 +49,7 @@ const RecentVisitedView = () => {
     const next = items.filter((item) => item.id !== id);
     setItems(next);
     if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(RECENT_VISITED_STORAGE_KEY, JSON.stringify(next));
       window.dispatchEvent(new CustomEvent("recently-visited:update"));
     }
   };
@@ -104,7 +57,7 @@ const RecentVisitedView = () => {
   const handleClearAll = () => {
     setItems([]);
     if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(RECENT_VISITED_STORAGE_KEY);
       window.dispatchEvent(new CustomEvent("recently-visited:update"));
     }
   };

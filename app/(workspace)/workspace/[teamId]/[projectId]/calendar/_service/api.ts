@@ -1,5 +1,13 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/calendar/_service/api.ts
 import api from "@/lib/api";
-import type { CalendarEvent, CalendarSource, ProjectCalendar, CalendarFolder } from "@/workspace/calendar/_model/types";
+import type {
+  CalendarEvent,
+  CalendarFolder,
+  CalendarMemberRecord,
+  CalendarSource,
+  CalendarType,
+  ProjectCalendar,
+} from "@/workspace/calendar/_model/types";
 
 const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID;
 
@@ -29,7 +37,7 @@ type CalendarCategoryResponse = {
 type CalendarResponse = {
   id: string;
   name: string;
-  type: "TEAM" | "PERSONAL" | "PRIVATE";
+  type: CalendarType;
   color: string;
   ownerId?: string | null;
   folderId?: string | null;
@@ -194,7 +202,7 @@ export async function deleteCalendarFolder(projectId: string, folderId: string) 
 
 export async function createProjectCalendar(
   projectId: string,
-  payload: { name: string; type: "TEAM" | "PERSONAL" | "PRIVATE"; color?: string; folderId?: string; memberIds?: string[] }
+  payload: { name: string; type: CalendarType; color?: string; folderId?: string; memberIds?: string[] }
 ) {
   const res = await api.post<CalendarResponse>(`/projects/${projectId}/calendar/calendars`, payload);
   return toProjectCalendar(res.data);
@@ -203,7 +211,7 @@ export async function createProjectCalendar(
 export async function updateProjectCalendar(
   projectId: string,
   calendarId: string,
-  payload: { name?: string; type?: "TEAM" | "PERSONAL" | "PRIVATE"; color?: string; folderId?: string | null; memberIds?: string[] }
+  payload: { name?: string; type?: CalendarType; color?: string; folderId?: string | null; memberIds?: string[] }
 ) {
   const res = await api.patch<CalendarResponse>(`/projects/${projectId}/calendar/calendars/${calendarId}`, payload);
   return toProjectCalendar(res.data);
@@ -214,7 +222,7 @@ export async function deleteProjectCalendar(projectId: string, calendarId: strin
 }
 
 export async function getCalendarMembers(projectId: string, calendarId: string) {
-  const res = await api.get<Array<{ userId: string; name: string; avatarUrl?: string | null; role?: string }>>(
+  const res = await api.get<CalendarMemberRecord[]>(
     `/projects/${projectId}/calendar/calendars/${calendarId}/members`
   );
   return res.data ?? [];

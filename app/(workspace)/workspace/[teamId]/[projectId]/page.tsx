@@ -1,5 +1,5 @@
-// app/(workspace)/workspcae/[teamId]/[projectId]/page.tsx
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/page.tsx
+'use client';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -162,24 +162,6 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
     if (!y) return [];
     return dates.filter((ts) => new Date(ts).getFullYear() === y);
   };
-
-  const issueSeries = useMemo(() => {
-    const dates = issues
-      .map((issue) => new Date(issue.updatedAt || issue.createdAt).getTime())
-      .filter((ts) => !Number.isNaN(ts));
-    return buildSeriesFromDates(dates);
-  }, [issues]);
-
-  const messageSeries = useMemo(() => buildSeriesFromDates(messageDates), [messageDates]);
-  const memberSeries = useMemo(() => {
-    const dates = members.map((member) => member.joinedAt).filter((ts): ts is number => Boolean(ts));
-    return buildSeriesFromDates(dates);
-  }, [members]);
-  const docSeries = useMemo(() => buildSeriesFromDates(docSnapshots), [docSnapshots]);
-  const calendarSeries = useMemo(() => {
-    const dates = calendarEvents.map((event) => new Date(event.start).getTime()).filter((ts) => !Number.isNaN(ts));
-    return buildSeriesFromDates(dates);
-  }, [calendarEvents]);
 
   const renderBars = (values: number[], height = 80) => {
     const max = Math.max(...values, 1);

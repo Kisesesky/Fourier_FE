@@ -1,3 +1,4 @@
+// lib/members.ts
 import api from "./api";
 
 export type FriendProfile = {

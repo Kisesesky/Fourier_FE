@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/file/page.tsx
+'use client';
 
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { usePathname, useRouter, useSearchParams, useParams } from "next/navigation";
@@ -14,10 +15,10 @@ import {
   X,
 } from "lucide-react";
 
-import { emitFileVaultChanged, FILE_VAULT_EVENT } from "@/workspace/file/_model/vault";
+import { emitFileVaultChanged } from "@/workspace/file/_model/vault";
+import { useProjectFileFolders } from "@/workspace/file/_model/hooks/useProjectFileFolders";
 import {
   deleteProjectFile,
-  listFileFolders,
   listProjectFiles,
   type ProjectFileDto,
   uploadProjectFile,
@@ -108,21 +109,15 @@ export default function WorkspaceFilePage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { projectId } = useParams<{ projectId: string }>();
+  const { folders } = useProjectFileFolders(projectId);
 
   const selectedFolderId = searchParams?.get("folder") ?? null;
 
-  const [folders, setFolders] = useState<Array<{ id: string; name: string }>>([]);
   const [files, setFiles] = useState<ViewFile[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [previewFile, setPreviewFile] = useState<ViewFile | null>(null);
   const [previewText, setPreviewText] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
-
-  const loadFolders = async () => {
-    if (!projectId) return;
-    const data = await listFileFolders(projectId);
-    setFolders(data.map((item) => ({ id: item.id, name: item.name })));
-  };
 
   const loadFiles = async () => {
     if (!projectId) return;
@@ -132,22 +127,12 @@ export default function WorkspaceFilePage() {
 
   useEffect(() => {
     if (!projectId) return;
-    void loadFolders();
-  }, [projectId]);
-
-  useEffect(() => {
-    if (!projectId) return;
     void loadFiles();
   }, [projectId, selectedFolderId]);
 
   useEffect(() => {
-    const onChanged = () => {
-      void loadFolders();
-      void loadFiles();
-    };
-    window.addEventListener(FILE_VAULT_EVENT, onChanged);
-    return () => window.removeEventListener(FILE_VAULT_EVENT, onChanged);
-  }, [projectId, selectedFolderId]);
+    void loadFiles();
+  }, [folders, projectId, selectedFolderId]);
 
   useEffect(() => {
     if (!selectedFolderId) return;

@@ -1,4 +1,4 @@
-// components/chat/ChatRightPanel.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChatRightPanel.tsx
 'use client';
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
@@ -6,8 +6,7 @@ import { useChat } from "@/workspace/chat/_model/store";
 import Composer from "./Composer";
 import EmojiPicker from "./EmojiPicker";
 import MarkdownText from "./MarkdownText";
-import { CornerUpLeft, Pin, Bookmark, X, Search, Info } from "lucide-react";
-import clsx from "clsx";
+import { Pin, Bookmark, X, Search, Info } from "lucide-react";
 import ReadBy from "./ReadBy";
 import LinkPreview, { extractUrls } from "./LinkPreview";
 import { useToast } from "@/components/ui/Toast";

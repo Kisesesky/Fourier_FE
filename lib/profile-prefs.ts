@@ -1,3 +1,4 @@
+// lib/profile-prefs.ts
 export const USER_PROFILE_PREFS_EVENT = "user:profile:prefs:changed";
 
 const NAME_KEY = "fd.user.displayName";

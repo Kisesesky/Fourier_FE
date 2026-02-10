@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChatDashboard.tsx
 'use client';
 
 import { useMemo, useState, useCallback, useEffect, useRef, type MouseEvent } from "react";

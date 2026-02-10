@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/[docId]/page.tsx
+'use client';
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -7,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { DocEditorProvider } from "@/workspace/docs/_components/DocEditorContext";
 import DocEditorTabs from "@/workspace/docs/_components/DocEditorTabs";
 import DocView from "@/workspace/docs/_components/DocView";
-import DocsRightPanel from "@/workspace/docs/_components/DocsRightPanel";
+import DocCommentsPanel from "@/workspace/docs/_components/DocCommentsPanel";
 import DocReadView from "@/workspace/docs/_components/DocReadView";
 import { deleteDoc } from "@/workspace/docs/_model/docs";
 import { listDocumentComments } from "@/workspace/docs/_service/api";
@@ -92,7 +93,7 @@ export default function DocDetailPage() {
           </div>
           {commentsOpen && (
             <section className="h-80 border-t border-border bg-white dark:bg-slate-900">
-              <DocsRightPanel layout="bottom" showOutline={false} />
+              <DocCommentsPanel layout="bottom" showOutline={false} />
             </section>
           )}
         </div>

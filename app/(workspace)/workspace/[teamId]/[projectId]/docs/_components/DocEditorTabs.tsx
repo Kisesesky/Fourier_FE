@@ -1,22 +1,18 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocEditorTabs.tsx
+'use client';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock4, MoreHorizontal, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 import { getDocMeta } from "../_model/docs";
+import {
+  DOC_HISTORY_STORAGE_KEY,
+  DOC_MAX_HISTORY,
+  DOC_TAB_STORAGE_KEY,
+} from "../_model/view.constants";
+import type { DocTab, HistoryItem } from "../_model/view.types";
 import { useDocEditor } from "./DocEditorContext";
-
-type DocTab = {
-  id: string;
-  title: string;
-};
-
-type HistoryItem = DocTab & { closedAt: string };
-
-const TAB_KEY = "fd.docs.openTabs";
-const HISTORY_KEY = "fd.docs.closedTabs";
-const MAX_HISTORY = 6;
 
 export default function DocEditorTabs() {
   const router = useRouter();
@@ -36,10 +32,10 @@ export default function DocEditorTabs() {
     if (typeof window === "undefined") return;
     try {
       const savedTabs = JSON.parse(
-        localStorage.getItem(TAB_KEY) ?? "[]"
+        localStorage.getItem(DOC_TAB_STORAGE_KEY) ?? "[]"
       ) as DocTab[];
       const savedHistory = JSON.parse(
-        localStorage.getItem(HISTORY_KEY) ?? "[]"
+        localStorage.getItem(DOC_HISTORY_STORAGE_KEY) ?? "[]"
       ) as HistoryItem[];
       setTabs(savedTabs);
       setHistory(savedHistory);
@@ -104,7 +100,7 @@ export default function DocEditorTabs() {
           const nextHistory = [
             { ...closing, closedAt: new Date().toISOString() },
             ...prevHistory,
-          ].slice(0, MAX_HISTORY);
+          ].slice(0, DOC_MAX_HISTORY);
           persistHistory(nextHistory);
           return nextHistory;
         });
@@ -218,10 +214,10 @@ export default function DocEditorTabs() {
 
 function persistTabs(tabs: DocTab[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(TAB_KEY, JSON.stringify(tabs));
+  localStorage.setItem(DOC_TAB_STORAGE_KEY, JSON.stringify(tabs));
 }
 
 function persistHistory(items: HistoryItem[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+  localStorage.setItem(DOC_HISTORY_STORAGE_KEY, JSON.stringify(items));
 }

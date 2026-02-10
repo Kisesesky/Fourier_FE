@@ -1,4 +1,4 @@
-// types/chat.ts
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_model/types.ts
 
 export type Attachment = {
   id: string;

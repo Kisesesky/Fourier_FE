@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/IssuesDashboardView.tsx
+'use client';
 
 import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -11,44 +12,13 @@ import {
   Users,
 } from "lucide-react";
 
-import type { Issue, IssueGroup } from "@/workspace/issues/_model/types";
-
-type IssuesDashboardViewProps = {
-  issues: Issue[];
-  memberMap: Record<string, { name: string; avatarUrl?: string | null }>;
-  issueGroups: IssueGroup[];
-  loading?: boolean;
-};
-
-const STATUS_META: Array<{
-  key: Issue["status"];
-  label: string;
-  bar: string;
-  chip: string;
-  result: string;
-}> = [
-  { key: "backlog", label: "백로그", bar: "bg-slate-400", chip: "bg-slate-400 text-slate-100", result: "text-slate-400" },
-  { key: "todo", label: "할 일", bar: "bg-cyan-400", chip: "bg-cyan-400 text-cyan-100", result: "text-cyan-400" },
-  { key: "in_progress", label: "진행 중", bar: "bg-amber-400", chip: "bg-amber-400 text-amber-100", result: "text-amber-400" },
-  { key: "review", label: "리뷰", bar: "bg-fuchsia-400", chip: "bg-fuchsia-400 text-fuchsia-100", result: "text-fuchsia-400" },
-  { key: "done", label: "완료", bar: "bg-emerald-400", chip: "bg-emerald-400 text-emerald-100", result: "text-emerald-400" },
-];
-
-const PRIORITY_META: Array<{
-  key: Issue["priority"];
-  label: string;
-  bar: string;
-  chip: string;
-  result: string;
-}> = [
-  { key: "urgent", label: "매우높음", bar: "bg-rose-500", chip: "bg-rose-400 text-rose-100", result: "text-rose-400" },
-  { key: "high", label: "높음", bar: "bg-orange-400", chip: "bg-orange-400 text-orange-100", result: "text-orange-400" },
-  { key: "medium", label: "보통", bar: "bg-sky-400", chip: "bg-sky-400 text-sky-100", result: "text-sky-400" },
-  { key: "low", label: "낮음", bar: "bg-emerald-400", chip: "bg-emerald-400 text-emerald-100", result: "text-emerald-400" },
-  { key: "very_low", label: "매우낮음", bar: "bg-slate-400", chip: "bg-slate-400 text-slate-100", result: "text-slate-400" },
-];
-
-const GROUP_PALETTE = ["#38bdf8", "#f472b6", "#a78bfa", "#facc15", "#4ade80", "#f97316"];
+import type { Issue } from "@/workspace/issues/_model/types";
+import {
+  ISSUE_GROUP_PALETTE,
+  ISSUE_PRIORITY_META_DASHBOARD,
+  ISSUE_STATUS_META_DASHBOARD,
+} from "@/workspace/issues/_model/analytics.constants";
+import type { IssuesAnalyticsViewProps } from "@/workspace/issues/_model/view.types";
 
 const parseDateValue = (value?: string) => {
   if (!value) return null;
@@ -63,7 +33,7 @@ const parseDateValue = (value?: string) => {
 
 const formatCount = (value: number) => new Intl.NumberFormat("ko-KR").format(value);
 
-export default function IssuesDashboardView({ issues, memberMap, issueGroups, loading }: IssuesDashboardViewProps) {
+export default function IssuesDashboardView({ issues, memberMap, issueGroups, loading }: IssuesAnalyticsViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [recentSort, setRecentSort] = useState<"updated" | "created">("updated");
@@ -115,7 +85,7 @@ export default function IssuesDashboardView({ issues, memberMap, issueGroups, lo
 
   const statusCounts = useMemo(
     () =>
-      STATUS_META.map((status) => ({
+      ISSUE_STATUS_META_DASHBOARD.map((status) => ({
         ...status,
         value: flatIssues.filter((issue) => issue.status === status.key).length,
       })),
@@ -124,7 +94,7 @@ export default function IssuesDashboardView({ issues, memberMap, issueGroups, lo
 
   const priorityCounts = useMemo(
     () =>
-      PRIORITY_META.map((priority) => ({
+      ISSUE_PRIORITY_META_DASHBOARD.map((priority) => ({
         ...priority,
         value: flatIssues.filter((issue) => issue.priority === priority.key).length,
       })),
@@ -152,7 +122,7 @@ export default function IssuesDashboardView({ issues, memberMap, issueGroups, lo
       const group = resolveGroup(issue);
       const key = group?.id ?? "ungrouped";
       const label = group?.name ?? "미분류";
-      const color = group?.color ?? GROUP_PALETTE[map.size % GROUP_PALETTE.length];
+      const color = group?.color ?? ISSUE_GROUP_PALETTE[map.size % ISSUE_GROUP_PALETTE.length];
       const entry = map.get(key) ?? { label, value: 0, color };
       entry.value += 1;
       map.set(key, entry);
@@ -399,9 +369,8 @@ export default function IssuesDashboardView({ issues, memberMap, issueGroups, lo
         </div>
         <div className="mt-4 flex flex-col gap-3">
           {recentIssues.map((issue) => {
-            const statusMeta = STATUS_META.find((item) => item.key === issue.status);
-            const priorityMeta = PRIORITY_META.find((item) => item.key === issue.priority);
-            const assigneeId = issue.assigneeId ?? issue.assignee ?? "";
+            const statusMeta = ISSUE_STATUS_META_DASHBOARD.find((item) => item.key === issue.status);
+            const priorityMeta = ISSUE_PRIORITY_META_DASHBOARD.find((item) => item.key === issue.priority);
             const assigneeName = issue.assigneeId
               ? memberMap[issue.assigneeId]?.name ?? issue.assigneeId
               : issue.assignee ?? "미지정";

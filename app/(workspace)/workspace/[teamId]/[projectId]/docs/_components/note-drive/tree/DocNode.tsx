@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree/DocNode.tsx
+'use client';
 
 import { FileText } from "lucide-react";
 import { useRouter } from "next/navigation";

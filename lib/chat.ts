@@ -1,3 +1,4 @@
+// lib/chat.ts
 import api from "./api";
 
 export type DmMessage = {

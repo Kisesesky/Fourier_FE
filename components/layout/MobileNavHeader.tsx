@@ -1,7 +1,7 @@
+// components/layout/MobileNavHeader.tsx
 'use client';
 
 import Image from 'next/image';
-import clsx from 'clsx';
 import { useMemo } from 'react';
 
 import { useChat } from '@/workspace/chat/_model/store';

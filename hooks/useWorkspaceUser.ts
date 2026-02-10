@@ -1,4 +1,4 @@
-// src/hooks/useWorkspaceUser.ts
+// hooks/useWorkspaceUser.ts
 'use client';
 
 import { useMemo } from "react";

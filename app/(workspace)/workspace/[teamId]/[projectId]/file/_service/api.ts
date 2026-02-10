@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/file/_service/api.ts
 import api from "@/lib/api";
 
 export type FileFolderDto = {

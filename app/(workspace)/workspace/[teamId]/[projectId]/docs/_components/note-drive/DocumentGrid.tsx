@@ -1,10 +1,11 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/DocumentGrid.tsx
 'use client';
 
 import { Star } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { DocMeta } from '@/workspace/docs/_model/docs';
-import { relativeTime } from './utils';
+import { relativeTime } from "@/workspace/docs/_model/utils/noteDriveViewUtils";
 
 type DocumentGridProps = {
   docs: DocMeta[];

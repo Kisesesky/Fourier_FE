@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/calendar/page.tsx
+'use client';
 
 import { Suspense } from "react";
 import CalendarView from "@/workspace/calendar/_components/CalendarView";

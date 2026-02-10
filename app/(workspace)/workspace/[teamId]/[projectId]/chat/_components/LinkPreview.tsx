@@ -1,8 +1,8 @@
-// components/chat/LinkPreview.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/LinkPreview.tsx
 'use client';
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Link as LinkIcon, Globe, Image as ImageIcon } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Globe, Image as ImageIcon } from "lucide-react";
 
 /** 간단 OG 캐시 */
 const OG_KEY = "fd.chat.ogcache";
@@ -17,7 +17,7 @@ function saveCache(obj: Record<string, Og>) {
 function domainOf(u: string) {
   try { return new URL(u).hostname.replace(/^www\./,''); } catch { return u; }
 }
-function mockOg(url: string): Og {
+function buildFallbackOg(url: string): Og {
   const u = new URL(url);
   const site = domainOf(url);
   const title = (u.pathname && u.pathname !== "/") ? decodeURIComponent(u.pathname.replace(/\//g, " ").trim()) : site;
@@ -31,7 +31,7 @@ export default function LinkPreview({ url }: { url: string }) {
   useEffect(() => {
     const cache = loadCache();
     if (cache[url]) { setOg(cache[url]); return; }
-    const data = mockOg(url);
+    const data = buildFallbackOg(url);
     cache[url] = data; saveCache(cache);
     setOg(data);
   }, [url]);
@@ -56,7 +56,6 @@ export default function LinkPreview({ url }: { url: string }) {
         <div className="w-28 bg-subtle/30 border-l border-border flex items-center justify-center">
           {/* 이미지가 있으면 썸네일, 없으면 아이콘 */}
           {og.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={og.image} alt={og.title} className="w-full h-full object-cover" />
           ) : (
             <ImageIcon className="opacity-60" />

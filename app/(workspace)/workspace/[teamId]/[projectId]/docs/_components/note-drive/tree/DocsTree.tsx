@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree/DocsTree.tsx
+'use client';
 
 import { useState } from "react";
 import FolderNode from "./FolderNode";
@@ -8,7 +9,7 @@ import { TreeNode, TreeContextTarget } from "../../../_model/types";
 import TreeContextMenu from "./TreeContextMenu";
 
 export default function DocsTree() {
-  const { tree, refresh } = useDocTree();
+  const { tree } = useDocTree();
   const [context, setContext] = useState<{
     x: number;
     y: number;

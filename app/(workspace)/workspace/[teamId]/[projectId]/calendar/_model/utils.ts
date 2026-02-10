@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/calendar/_model/utils.ts
 import { format, parseISO } from "date-fns";
 
 export const toDateKey = (date: Date) => format(date, "yyyy-MM-dd");
@@ -40,7 +41,7 @@ export const persistStorage = (key: string, value: unknown) => {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // ignore storage quota failures in mock 환경
+    // ignore storage quota failures in local development
   }
 };
 

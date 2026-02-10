@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/SelectionBar.tsx
 'use client';
 
 import { CheckSquare, Pin, Bookmark, Trash2, Laugh } from 'lucide-react';

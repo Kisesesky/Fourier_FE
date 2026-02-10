@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChatHeader.tsx
 'use client';
 
 import {
@@ -7,13 +8,13 @@ import {
   Pin,
   Users,
   Info,
-  ChevronDown,
   Search,
   MoreHorizontal,
 } from 'lucide-react';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ViewMode } from "@/workspace/chat/_model/types";
+import { CHAT_HEADER_ICON_BUTTON_CLASS } from "@/workspace/chat/_model/view.constants";
 
 type ChatHeaderProps = {
   isDM: boolean;
@@ -35,12 +36,6 @@ type ChatHeaderProps = {
   pinCount?: number;
   savedCount?: number;
 };
-
-const ghostActionClass =
-  'inline-flex items-center gap-1 text-[12px] font-medium text-muted transition-colors duration-150 ease-out hover:text-foreground';
-
-const iconButtonClass =
-  'inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition hover:bg-subtle/60 hover:text-foreground';
 
 export function ChatHeader({
   isDM,
@@ -153,7 +148,7 @@ export function ChatHeader({
         </div>
         <div className="flex items-center gap-1">
           <div className="relative inline-flex items-center" ref={membersRef}>
-            <button className={iconButtonClass} title="Members" onClick={() => setMembersOpen((v) => !v)}>
+            <button className={CHAT_HEADER_ICON_BUTTON_CLASS} title="Members" onClick={() => setMembersOpen((v) => !v)}>
               <Users size={16} />
             </button>
             {membersOpen && (
@@ -173,19 +168,19 @@ export function ChatHeader({
               </div>
             )}
           </div>
-          <button className={iconButtonClass} onClick={onOpenPins} title="Pins">
+          <button className={CHAT_HEADER_ICON_BUTTON_CLASS} onClick={onOpenPins} title="Pins">
             <Pin size={16} />
             {pinCount > 0 && <span className="ml-1 text-[10px] text-muted">{pinCount}</span>}
           </button>
-          <button className={iconButtonClass} onClick={onOpenSaved} title="Saved">
+          <button className={CHAT_HEADER_ICON_BUTTON_CLASS} onClick={onOpenSaved} title="Saved">
             <Bookmark size={16} />
             {savedCount > 0 && <span className="ml-1 text-[10px] text-muted">{savedCount}</span>}
           </button>
-          <button className={iconButtonClass} onClick={onOpenCmd} title="Search messages">
+          <button className={CHAT_HEADER_ICON_BUTTON_CLASS} onClick={onOpenCmd} title="Search messages">
             <Search size={16} />
           </button>
           <div className="relative" ref={menuRef}>
-            <button className={iconButtonClass} title="More" onClick={() => setMenuOpen((v) => !v)}>
+            <button className={CHAT_HEADER_ICON_BUTTON_CLASS} title="More" onClick={() => setMenuOpen((v) => !v)}>
               <MoreHorizontal size={16} />
             </button>
             {menuOpen && (

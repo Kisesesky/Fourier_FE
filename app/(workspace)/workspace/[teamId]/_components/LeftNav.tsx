@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Team } from "@/types/workspace";
-import { shortcuts } from "@/workspace/root-model/workspaceData";
+import { shortcuts } from "@/workspace/root-model/workspace.constants";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 type LeftNavView = "projects" | "recent" | "favorites" | "friends";

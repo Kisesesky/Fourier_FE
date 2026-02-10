@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/table/IssueActions.tsx
+'use client';
 
 import { ExternalLink, MessageSquareMore, Pencil, SquarePlus, Trash2 } from "lucide-react";
 import type React from "react";
@@ -9,7 +10,7 @@ import {
   deleteComment,
   updateComment,
 } from "@/workspace/issues/_service/api";
-import { formatCommentDateTime } from "@/workspace/issues/_components/utils/issueViewUtils";
+import { formatCommentDateTime } from "@/workspace/issues/_model/utils/issueViewUtils";
 
 export default function IssueActions({
   issue,

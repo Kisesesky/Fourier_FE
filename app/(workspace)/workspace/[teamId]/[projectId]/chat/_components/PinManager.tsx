@@ -1,4 +1,4 @@
-// components/chat/PinManager.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/PinManager.tsx
 'use client';
 
 import { useMemo } from "react";

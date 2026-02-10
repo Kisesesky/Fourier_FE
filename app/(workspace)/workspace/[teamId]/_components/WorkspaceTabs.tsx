@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/_components/WorkspaceTabs.tsx
 import clsx from "clsx";
 
 const tabs = ["Projects", "Activities", "Members", "Settings"] as const;

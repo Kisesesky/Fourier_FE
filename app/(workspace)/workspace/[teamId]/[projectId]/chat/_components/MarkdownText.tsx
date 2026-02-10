@@ -1,4 +1,4 @@
-// components/chat/MarkdownText.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/MarkdownText.tsx
 'use client';
 
 import React from 'react';

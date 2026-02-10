@@ -1,4 +1,4 @@
-// components/chat/CodeFencePreview.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/CodeFencePreview.tsx
 'use client';
 
 import React from "react";

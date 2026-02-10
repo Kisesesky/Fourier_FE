@@ -1,4 +1,4 @@
-// components/chat/Lightbox.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/Lightbox.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -124,7 +124,7 @@ export default function LightboxHost() {
                 title={it.name || it.src}
               >
                 {it.kind === 'image' ? (
-                  <img src={it.src} className="h-12 w-12 object-cover rounded" />
+                  <img src={it.src} alt={it.name || "thumbnail"} className="h-12 w-12 object-cover rounded" />
                 ) : (
                   <div className="h-12 w-12 rounded bg-white/10 grid place-items-center text-white/80 text-[10px]">
                     video

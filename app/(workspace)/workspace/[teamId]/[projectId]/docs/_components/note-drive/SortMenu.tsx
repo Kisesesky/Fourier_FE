@@ -1,24 +1,20 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/SortMenu.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { ArrowUpDown, Check } from 'lucide-react';
 import clsx from 'clsx';
 
-import { MENU_ATTR } from './utils';
-import type { SortKey } from './DocumentTable';
+import { DOCS_SORT_OPTIONS } from "@/workspace/docs/_model/view.constants";
+import { MENU_ATTR } from "@/workspace/docs/_model/utils/noteDriveViewUtils";
+import type { DocsSortKey } from "@/workspace/docs/_model/view.types";
 
 type SortMenuProps = {
-  sortKey: SortKey;
+  sortKey: DocsSortKey;
   sortDir: 'asc' | 'desc';
-  onChange: (key: SortKey) => void;
+  onChange: (key: DocsSortKey) => void;
   onToggleDir: () => void;
 };
-
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'title', label: '이름' },
-  { key: 'owner', label: '소유자' },
-  { key: 'updatedAt', label: '수정 날짜' },
-];
 
 export function SortMenu({ sortKey, sortDir, onChange, onToggleDir }: SortMenuProps) {
   const [open, setOpen] = useState(false);
@@ -44,7 +40,7 @@ export function SortMenu({ sortKey, sortDir, onChange, onToggleDir }: SortMenuPr
         onClick={() => setOpen((prev) => !prev)}
       >
         <ArrowUpDown size={14} />
-        정렬: {SORT_OPTIONS.find((opt) => opt.key === sortKey)?.label}
+        정렬: {DOCS_SORT_OPTIONS.find((opt) => opt.key === sortKey)?.label}
       </button>
       <button
         className="rounded-full border border-border p-2 text-muted transition hover:text-foreground"
@@ -55,7 +51,7 @@ export function SortMenu({ sortKey, sortDir, onChange, onToggleDir }: SortMenuPr
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-border bg-panel text-sm shadow-xl">
-          {SORT_OPTIONS.map((option) => (
+          {DOCS_SORT_OPTIONS.map((option) => (
             <button
               key={option.key}
               className={clsx(

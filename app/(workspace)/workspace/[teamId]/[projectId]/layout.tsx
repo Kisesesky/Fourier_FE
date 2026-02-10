@@ -1,5 +1,5 @@
-// app/(workspace)/workspcae/[teamId]/[projectId]/layout.tsx
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/layout.tsx
+'use client';
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -7,7 +7,6 @@ import AppShell from "@/components/layout/AppShell";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import WorkspaceSettingsModal from "@/workspace/root/WorkspaceSettingsModal";
-import MobileNavHeader from "@/components/layout/MobileNavHeader";
 import { ToastProvider } from "@/components/ui/Toast";
 import Drawer from "@/components/ui/Drawer";
 import FloatingDm from "../_components/FloatingDm";
@@ -36,7 +35,6 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
       chat: { tag: "Chat", iconKey: "chat", description: "대화" },
       calendar: { tag: "Calendar", iconKey: "calendar", description: "일정" },
       issues: { tag: "Issues", iconKey: "issues", description: "이슈" },
-      worksheet: { tag: "Worksheet", iconKey: "worksheet", description: "워크시트" },
       members: { tag: "Members", iconKey: "members", description: "멤버" },
     };
 

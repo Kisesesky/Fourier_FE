@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_model/markdown.ts
 import hljs from "highlight.js";
 import type { JSONContent } from "@tiptap/react";
 

@@ -1,9 +1,8 @@
-// components/chat/EmojiPicker.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/EmojiPicker.tsx
 'use client';
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-
-const DEFAULTS = ["👍","❤️","😂","🎉","😮","😢","🔥","🙏","👏","✅","❗","❓","😎","🤔","🥳","👀","💯","🌟","🧡","💡"];
+import { CHAT_DEFAULT_EMOJIS } from "@/workspace/chat/_model/view.constants";
 
 export default function EmojiPicker({
   onPick,
@@ -17,8 +16,8 @@ export default function EmojiPicker({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const list = useMemo(() => {
-    if (!q.trim()) return DEFAULTS;
-    return DEFAULTS.filter(e => e.includes(q.trim()));
+    if (!q.trim()) return CHAT_DEFAULT_EMOJIS;
+    return CHAT_DEFAULT_EMOJIS.filter(e => e.includes(q.trim()));
   }, [q]);
 
   return (

@@ -1,3 +1,4 @@
+// utils/json.ts
 import type { JSONContent } from "@tiptap/react";
 
 export function textToJSON(text: string): JSONContent {

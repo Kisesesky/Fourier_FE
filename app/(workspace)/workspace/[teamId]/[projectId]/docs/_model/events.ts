@@ -1,4 +1,4 @@
-// events.ts
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_model/events.ts
 
 export function subscribeDocsEvent(callback: () => void) {
   const handler = () => callback();

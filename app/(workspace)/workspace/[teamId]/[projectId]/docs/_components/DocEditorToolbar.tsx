@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocEditorToolbar.tsx
+'use client';
 
 import { useState, type ReactNode } from "react";
 import * as Popover from "@radix-ui/react-popover";
@@ -26,8 +27,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-
-export type AlignKey = "left" | "center" | "right";
+import type { AlignKey } from "@/workspace/docs/_model/view.types";
 
 type DropdownItem = {
   key: string;
@@ -59,11 +59,9 @@ export interface DocEditorToolbarProps {
 
 export default function DocEditorToolbar({
   editor,
-  fontFamily,
   setFontFamily,
   fontSize,
   setFontSize,
-  paperTone,
   setPaperTone,
   textAlign,
   setTextAlign,

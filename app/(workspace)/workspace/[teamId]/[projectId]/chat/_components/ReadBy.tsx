@@ -1,4 +1,4 @@
-// components/chat/ReadBy.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ReadBy.tsx
 'use client';
 
 import React from "react";

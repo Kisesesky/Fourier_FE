@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_model/hooks/useThreadItems.ts
+'use client';
 
 import { useMemo } from "react";
 import type { Channel, Msg } from "@/workspace/chat/_model/types";

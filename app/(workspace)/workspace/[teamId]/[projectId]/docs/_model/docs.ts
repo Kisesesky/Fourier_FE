@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_model/docs.ts
 import type { JSONContent } from "@tiptap/react";
 import type { DocExtra, DocFolder, DocMeta, FolderExtra } from "./types";
 export type { DocMeta, DocFolder } from "./types";

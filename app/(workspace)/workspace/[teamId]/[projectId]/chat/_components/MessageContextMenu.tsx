@@ -1,4 +1,4 @@
-// components/chat/MessageContextMenu.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/MessageContextMenu.tsx
 'use client';
 
 import React from 'react';

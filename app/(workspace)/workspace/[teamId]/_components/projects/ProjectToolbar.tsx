@@ -1,23 +1,13 @@
+// app/(workspace)/workspace/[teamId]/_components/projects/ProjectToolbar.tsx
 import clsx from "clsx";
-import { LayoutGrid, List, Plus, Upload } from "lucide-react";
-import type { ProjectViewMode } from "@/types/workspace";
-
-const viewModes = [
-  { id: "grid", icon: LayoutGrid, label: "Grid" },
-  { id: "list", icon: List, label: "List" },
-] as const;
-
-interface ProjectToolbarProps {
-  viewMode: ProjectViewMode;
-  onChangeView: (mode: ProjectViewMode) => void;
-  onCreateProject?: () => void;
-  onImportProject?: () => void;
-}
+import { Plus, Upload } from "lucide-react";
+import { PROJECT_VIEW_MODES } from "@/app/(workspace)/workspace/[teamId]/_model/project.constants";
+import type { ProjectToolbarProps } from "@/app/(workspace)/workspace/[teamId]/_model/project.types";
 
 const ProjectToolbar = ({ viewMode, onChangeView, onCreateProject, onImportProject }: ProjectToolbarProps) => (
   <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
     <div className="flex items-center gap-2">
-      {viewModes.map((mode) => {
+      {PROJECT_VIEW_MODES.map((mode) => {
         const Icon = mode.icon;
         return (
           <button
@@ -57,4 +47,3 @@ const ProjectToolbar = ({ viewMode, onChangeView, onCreateProject, onImportProje
 );
 
 export default ProjectToolbar;
-

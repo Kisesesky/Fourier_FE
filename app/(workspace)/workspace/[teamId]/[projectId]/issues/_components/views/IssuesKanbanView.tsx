@@ -1,6 +1,7 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/IssuesKanbanView.tsx
+'use client';
 
-import { CornerDownRight, Dot, Sparkles, BadgeCheck, Flame, Eye, CircleDot } from "lucide-react";
+import { CornerDownRight, Sparkles, BadgeCheck, Flame, Eye, CircleDot } from "lucide-react";
 import type React from "react";
 import type { Issue, IssueComment } from "@/workspace/issues/_model/types";
 import IssueActions from "@/workspace/issues/_components/views/table/IssueActions";
@@ -9,7 +10,6 @@ export default function IssuesKanbanView({
   columns,
   grouped,
   memberMap,
-  issueGroups,
   onCreateIssue,
   issueActionsId,
   setIssueActionsId,
@@ -38,7 +38,6 @@ export default function IssuesKanbanView({
   columns: Array<{ key: Issue["status"]; label: string }>;
   grouped: Map<Issue["status"], Issue[]>;
   memberMap: Record<string, { name: string; avatarUrl?: string | null }>;
-  issueGroups: Array<{ id: string; name: string }>;
   onCreateIssue: (status: Issue["status"]) => void;
   issueActionsId: string | null;
   setIssueActionsId: React.Dispatch<React.SetStateAction<string | null>>;

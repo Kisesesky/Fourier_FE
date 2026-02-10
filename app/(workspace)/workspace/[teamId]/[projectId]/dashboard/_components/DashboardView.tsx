@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/dashboard/_components/DashboardView.tsx
 'use client';
 
 import { useEffect, useMemo, useState, useCallback, JSX } from 'react';

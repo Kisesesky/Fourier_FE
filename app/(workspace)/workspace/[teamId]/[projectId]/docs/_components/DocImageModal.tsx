@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocImageModal.tsx
+'use client';
 
 import { useEffect, useState } from "react";
 
@@ -14,13 +15,11 @@ export default function DocImageModal({
   onSubmit,
 }: DocImageModalProps) {
   const [preview, setPreview] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("");
 
   useEffect(() => {
     if (!open) {
       setPreview(null);
-      setFile(null);
       setAlt("");
     }
   }, [open]);
@@ -31,14 +30,12 @@ export default function DocImageModal({
     const selected = event.target.files?.[0];
     if (!selected) {
       setPreview(null);
-      setFile(null);
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result?.toString() ?? null;
       setPreview(result);
-      setFile(selected);
     };
     reader.readAsDataURL(selected);
   };

@@ -1,6 +1,7 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_model/hooks/useDocTree.ts
+'use client';
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getFolders, getDocs } from "../docs";
 import { TreeNode, TreeFolder, TreeDoc } from "../types";
 import { subscribeDocsEvent } from "../events";
@@ -29,10 +30,15 @@ export function useDocTree() {
     const roots: TreeNode[] = [];
 
     folders.forEach((f) => {
-      if (!f.parentId) roots.push(folderMap[f.id]);
-      else {
+      if (!f.parentId) {
+        roots.push(folderMap[f.id]);
+      } else {
         const parent = folderMap[f.parentId];
-        parent ? parent.children.push(folderMap[f.id]) : roots.push(folderMap[f.id]);
+        if (parent) {
+          parent.children.push(folderMap[f.id]);
+        } else {
+          roots.push(folderMap[f.id]);
+        }
       }
     });
 
@@ -48,23 +54,28 @@ export function useDocTree() {
 
       const folderId = d.folderId;
 
-      if (!folderId) roots.push(node);
-      else {
+      if (!folderId) {
+        roots.push(node);
+      } else {
         const parent = folderMap[folderId];
-        parent ? parent.children.push(node) : roots.push(node);
+        if (parent) {
+          parent.children.push(node);
+        } else {
+          roots.push(node);
+        }
       }
     });
 
     return roots;
   };
 
-  const refresh = () => setTree(buildTree());
+  const refresh = useCallback(() => setTree(buildTree()), []);
 
   useEffect(() => {
     refresh();
     const unsub = subscribeDocsEvent(refresh);
     return () => unsub();
-  }, []);
+  }, [refresh]);
 
   return { tree, refresh };
 }

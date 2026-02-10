@@ -1,13 +1,18 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/IssuesTableView.tsx
+'use client';
 
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { Filter, Pencil, Trash2 } from "lucide-react";
 
 import type { Issue, IssueComment, IssueGroup } from "@/workspace/issues/_model/types";
+import type {
+  IssueCreateModalState,
+  IssueEditModalState,
+} from "@/workspace/issues/_model/board.types";
 import IssueRow from "@/workspace/issues/_components/views/table/IssueRow";
 import IssueActions from "@/workspace/issues/_components/views/table/IssueActions";
 import SubtaskList from "@/workspace/issues/_components/views/table/SubtaskList";
-import { formatIssueDateRange } from "@/workspace/issues/_components/utils/issueViewUtils";
+import { formatIssueDateRange } from "@/workspace/issues/_model/utils/issueViewUtils";
 
 export type IssueGroupSection = {
   key: string;
@@ -15,29 +20,6 @@ export type IssueGroupSection = {
   color?: string | null;
   items: Issue[];
 };
-
-type IssueCreateModalState = {
-  groupKey: string;
-  title: string;
-  status: Issue["status"];
-  priority: Issue["priority"];
-  startAt: string;
-  endAt: string;
-  parentId?: string;
-  parentTitle?: string;
-  parentStartAt?: string;
-  parentEndAt?: string;
-  isSubtask?: boolean;
-} | null;
-
-type IssueEditModalState = {
-  issue: Issue;
-  title: string;
-  status: Issue["status"];
-  priority: Issue["priority"];
-  startAt: string;
-  endAt: string;
-} | null;
 
 export default function IssuesTableView({
   tableGroups,
@@ -114,8 +96,8 @@ export default function IssuesTableView({
   issueActionsId: string | null;
   setIssueActionsId: Dispatch<SetStateAction<string | null>>;
   issueActionsRef: RefObject<HTMLDivElement>;
-  setIssueCreateModal: Dispatch<SetStateAction<IssueCreateModalState>>;
-  setIssueEditModal: Dispatch<SetStateAction<IssueEditModalState>>;
+  setIssueCreateModal: Dispatch<SetStateAction<IssueCreateModalState | null>>;
+  setIssueEditModal: Dispatch<SetStateAction<IssueEditModalState | null>>;
   setIssueDeleteModal: Dispatch<SetStateAction<Issue | null>>;
   setGroupDeleteModal: Dispatch<SetStateAction<IssueGroup | null>>;
   onOpenIssue: (issueId: string) => void;

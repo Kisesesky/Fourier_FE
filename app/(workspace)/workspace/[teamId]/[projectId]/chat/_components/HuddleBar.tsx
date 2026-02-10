@@ -1,4 +1,4 @@
-// components/chat/HuddleBar.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/HuddleBar.tsx
 'use client';
 
 import { Mic, MicOff, PhoneOff } from "lucide-react";

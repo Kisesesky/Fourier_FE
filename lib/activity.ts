@@ -1,3 +1,4 @@
+// lib/activity.ts
 import api from "./api";
 
 export type TeamActivityItem = {

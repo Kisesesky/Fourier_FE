@@ -1,8 +1,9 @@
+// app/(workspace)/workspace/[teamId]/_components/views/SettingsView.tsx
 'use client';
 
 import { useState } from "react";
 import clsx from "clsx";
-import { notificationPresets, integrationApps } from "@/workspace/root-model/workspaceData";
+import { notificationPresets, integrationApps } from "@/workspace/root-model/workspace.constants";
 
 const SettingsView = () => {
   const [prefs, setPrefs] = useState<Record<string, boolean>>(() =>
@@ -99,5 +100,4 @@ const SettingsView = () => {
 };
 
 export default SettingsView;
-
 

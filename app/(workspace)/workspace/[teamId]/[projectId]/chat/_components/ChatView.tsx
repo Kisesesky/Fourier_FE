@@ -1,4 +1,4 @@
-// components/chat/view/ChatView.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChatView.tsx
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -59,7 +59,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     send, setChannel, loadChannels, initRealtime, refreshChannel, updateMessage, deleteMessage, restoreMessage,
     toggleReaction, openThread, markChannelRead, setTyping,
     markUnreadAt, markSeenUpTo, togglePin, startHuddle, toggleSave,
-    channelTopics, threadFor, closeThread
+    channelTopics
   } = useChat();
   const { show } = useToast();
   const listRef = useRef<HTMLDivElement>(null);
@@ -80,19 +80,9 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     return stored === "compact" ? "compact" : "cozy";
   };
   const [view, setView] = useState<ViewMode>("cozy");
-  const toggleView = () => {
-    setView(prev => {
-      const next: ViewMode = prev === "cozy" ? "compact" : "cozy";
-      if (typeof window !== "undefined") {
-        localStorage.setItem(VIEWMODE_KEY, next);
-      }
-      return next;
-    });
-  };
   useEffect(() => {
     if (typeof window === "undefined") return;
     setView(getStoredView());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [rightOpen, setRightOpen] = useState(false);
@@ -166,22 +156,6 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   };
   const clearSelection = () => { setSelectMode(false); setSelectedIds(new Set()); };
 
-  /** 키보드 내비게이션 */
-  const [cursorId, setCursorId] = useState<string | null>(null);
-  const moveCursor = (dir: 1|-1) => {
-    if (rootIds.length === 0) return;
-    if (!cursorId) {
-      const anchor = dir === 1 ? rootIds[0] : rootIds[rootIds.length-1];
-      setCursorId(anchor);
-      scrollInto(anchor);
-      return;
-    }
-    const idx = rootIndexMap.get(cursorId) ?? 0;
-    const nextIdx = Math.max(0, Math.min(rootIds.length-1, idx + dir));
-    const nextId = rootIds[nextIdx];
-    setCursorId(nextId);
-    scrollInto(nextId);
-  };
   const scrollInto = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -215,7 +189,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   const typingList = typingUsers[channelId] || [];
   const typingText = typingList.length ? `${typingList.join(", ")} is typing...` : "";
   const lastReadTs = lastReadAt[channelId] || 0;
-  const { sections, otherSeen, rootIds, rootIndexMap } = useMessageSections({
+  const { sections, otherSeen } = useMessageSections({
     messages,
     lastReadTs,
     meId: me.id,
@@ -414,7 +388,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
       <div className="flex min-h-0 flex-1 flex-col border border-border border-r-0 bg-panel/80 overflow-hidden">
         <div className="sticky top-0 z-10 bg-panel/90 backdrop-blur">
           <HuddleBar channelId={channelId} />
-          <LiveReadersBar meId={me.id} meName={me.name} channelId={channelId} />
+          <LiveReadersBar meId={me.id} channelId={channelId} />
           <ChatHeader
             isDM={isDM}
             channelName={channelDisplayName}
@@ -455,9 +429,8 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
         >
           {sections.map((section) => {
             const { head, items, showDayDivider, showNewDivider } = section;
-            const isCursor = cursorId === head.id;
             return (
-              <div key={head.id} id={head.id} className={isCursor ? 'ring-1 ring-brand/60 rounded-md' : ''}>
+              <div key={head.id} id={head.id}>
                 {showDayDivider && <DayDivider ts={head.ts} />}
                 {showNewDivider && <NewDivider />}
                 <MessageGroup

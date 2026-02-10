@@ -1,4 +1,4 @@
-// src/lib/notifications.ts
+// lib/notifications.ts
 import api from "./api";
 
 export type NotificationItem = {

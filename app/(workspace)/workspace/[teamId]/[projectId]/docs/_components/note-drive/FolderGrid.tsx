@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/FolderGrid.tsx
 'use client';
 
 import { useState } from 'react';
@@ -5,7 +6,7 @@ import { MoreHorizontal } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { DocFolder } from '@/workspace/docs/_model/docs';
-import { MENU_ATTR } from './utils';
+import { MENU_ATTR } from "@/workspace/docs/_model/utils/noteDriveViewUtils";
 
 type FolderGridProps = {
   folders: DocFolder[];

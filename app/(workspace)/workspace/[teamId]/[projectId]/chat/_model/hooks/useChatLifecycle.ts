@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_model/hooks/useChatLifecycle.ts
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -44,7 +45,6 @@ export function useChatLifecycle({
         await setChannel(channelId);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

@@ -1,10 +1,10 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/IssuesBoardView.tsx
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BarChart3, CalendarRange, KanbanSquare, LayoutDashboard, Table2 } from "lucide-react";
 
-import type { Issue, IssueGroup } from "@/workspace/issues/_model/types";
+import type { Issue } from "@/workspace/issues/_model/types";
 import {
   addSubtask,
   createIssue,
@@ -16,22 +16,9 @@ import IssuesTimelineView from "@/workspace/issues/_components/views/IssuesTimel
 import IssuesKanbanView from "@/workspace/issues/_components/views/IssuesKanbanView";
 import IssuesChartView from "@/workspace/issues/_components/views/IssuesChartView";
 import IssuesDashboardView from "@/workspace/issues/_components/views/IssuesDashboardView";
-import { useIssuesBoardState, ViewMode } from "@/workspace/issues/_components/hooks/useIssuesBoardState";
-
-const BASE_COLUMNS: Array<{ key: Issue["status"]; label: string }> = [
-  { key: "todo", label: "할 일" },
-  { key: "in_progress", label: "작업 중" },
-  { key: "review", label: "리뷰 대기" },
-  { key: "done", label: "완료" },
-];
-
-const VIEW_META: Record<ViewMode, { label: string; description: string; icon: typeof Table2 }> = {
-  table: { label: "메인 테이블", description: "업무를 표 형식으로 관리합니다.", icon: Table2 },
-  timeline: { label: "타임라인", description: "기간별 일정 흐름을 확인합니다.", icon: CalendarRange },
-  kanban: { label: "칸반", description: "상태별로 업무를 이동하며 관리합니다.", icon: KanbanSquare },
-  chart: { label: "차트", description: "업무 진행 지표를 시각화합니다.", icon: BarChart3 },
-  dashboard: { label: "대시보드", description: "프로젝트 요약 지표를 확인합니다.", icon: LayoutDashboard },
-};
+import type { ViewMode } from "@/workspace/issues/_model/board.types";
+import { useIssuesBoardState } from "@/workspace/issues/_model/hooks/useIssuesBoardState";
+import { ISSUES_BASE_COLUMNS, ISSUES_VIEW_META } from "@/workspace/issues/_model/view.constants";
 
 export default function IssuesBoardView() {
   const params = useParams<{ teamId?: string; projectId?: string; id?: string }>();
@@ -46,7 +33,6 @@ export default function IssuesBoardView() {
     issues,
     setIssues,
     issueGroups,
-    setIssueGroups,
     groupModal,
     setGroupModal,
     groupDeleteModal,
@@ -59,12 +45,10 @@ export default function IssuesBoardView() {
     setIssueDeleteModal,
     issueEditModal,
     setIssueEditModal,
-    issueDetail,
     setIssueDetail,
     commentThreads,
     setCommentThreads,
     openCommentThreads,
-    setOpenCommentThreads,
     commentThreadDrafts,
     setCommentThreadDrafts,
     commentSubmitting,
@@ -109,7 +93,7 @@ export default function IssuesBoardView() {
     handleProgressCommit,
     handlePriorityChange,
     updateIssueTree,
-  } = useIssuesBoardState({ teamId, projectId, baseColumns: BASE_COLUMNS });
+  } = useIssuesBoardState({ teamId, projectId, baseColumns: ISSUES_BASE_COLUMNS });
   const [timelineFilters, setTimelineFilters] = useState<Record<string, boolean>>({});
 
   const timelineOptions = useMemo(() => {
@@ -309,13 +293,13 @@ export default function IssuesBoardView() {
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
               {(() => {
-                const Icon = VIEW_META[view].icon;
+                const Icon = ISSUES_VIEW_META[view].icon;
                 return <Icon size={20} />;
               })()}
             </span>
             <div>
-              <div className="text-lg font-semibold text-foreground">{VIEW_META[view].label}</div>
-              <div className="text-sm text-muted">{VIEW_META[view].description}</div>
+              <div className="text-lg font-semibold text-foreground">{ISSUES_VIEW_META[view].label}</div>
+              <div className="text-sm text-muted">{ISSUES_VIEW_META[view].description}</div>
               {view === "timeline" && timelineOptions.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
                   {timelineOptions.map((opt) => (
@@ -349,7 +333,6 @@ export default function IssuesBoardView() {
                   columns={columns}
                   grouped={grouped}
                   memberMap={memberMap}
-                  issueGroups={issueGroups}
                   onCreateIssue={(status) =>
                     setIssueCreateModal({
                       groupKey: defaultIssueGroup?.id ?? "ungrouped",

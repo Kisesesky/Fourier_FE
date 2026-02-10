@@ -1,4 +1,4 @@
-// src/hooks/useCollapse.ts
+// hooks/useSidebarCollapse.ts
 'use client';
 
 import { useEffect, useState } from 'react';

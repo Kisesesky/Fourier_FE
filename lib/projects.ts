@@ -1,4 +1,4 @@
-// src/lib/projects.ts
+// lib/projects.ts
 import api from "./api";
 
 export type CreateProjectPayload = {

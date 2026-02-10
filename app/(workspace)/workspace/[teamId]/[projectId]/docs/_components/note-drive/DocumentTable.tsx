@@ -1,20 +1,20 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/DocumentTable.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, Check, MoreHorizontal, Star } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { DocFolder, DocMeta } from '@/workspace/docs/_model/docs';
-import { MENU_ATTR, relativeTime } from './utils';
-
-export type SortKey = 'title' | 'updatedAt' | 'owner';
+import type { DocsSortKey } from '@/workspace/docs/_model/view.types';
+import { MENU_ATTR, relativeTime } from "@/workspace/docs/_model/utils/noteDriveViewUtils";
 
 type DocumentTableProps = {
   docs: DocMeta[];
   folders: DocFolder[];
-  sortKey: SortKey;
+  sortKey: DocsSortKey;
   sortDir: 'asc' | 'desc';
-  onSortChange: (key: SortKey) => void;
+  onSortChange: (key: DocsSortKey) => void;
   onOpen: (doc: DocMeta) => void;
   onRename: (doc: DocMeta) => void;
   onDuplicate: (doc: DocMeta) => void;
@@ -65,7 +65,7 @@ export function DocumentTable({
     );
   }
 
-  const headerButtonClasses = (key: SortKey) =>
+  const headerButtonClasses = (key: DocsSortKey) =>
     clsx(
       'flex items-center gap-1 text-left',
       sortKey === key ? 'text-foreground' : 'text-muted'

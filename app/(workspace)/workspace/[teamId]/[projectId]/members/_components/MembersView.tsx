@@ -1,5 +1,5 @@
-// components/members/MembersView.tsx
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/members/_components/MembersView.tsx
+'use client';
 
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";

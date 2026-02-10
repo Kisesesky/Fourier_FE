@@ -1,3 +1,4 @@
+// app/(auth)/sign-in/page.tsx
 'use client';
 
 import { useState } from "react";
@@ -8,24 +9,16 @@ import { useToast } from "@/components/ui/Toast";
 import { signIn } from "@/lib/auth";
 import { setAuthToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
-
-type FormState = {
-  email: string;
-  password: string;
-};
-
-const initialState: FormState = {
-  email: "",
-  password: "",
-};
+import { AUTH_PATHS, SIGN_IN_INITIAL_STATE } from "@/app/(auth)/_model/auth.constants";
+import type { SignInFormState } from "@/app/(auth)/_model/auth.types";
 
 export default function LoginPage() {
-  const [form, setForm] = useState<FormState>(initialState);
+  const [form, setForm] = useState<SignInFormState>(SIGN_IN_INITIAL_STATE);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { show } = useToast();
   const router = useRouter();
 
-  const handleChange = (key: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (key: keyof SignInFormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
@@ -43,7 +36,7 @@ export default function LoginPage() {
         setAuthToken(data.accessToken);
       }
       sessionStorage.setItem("auth:justSignedIn", "1");
-      router.replace("/");
+      router.replace(AUTH_PATHS.home);
     } catch (error) {
       console.error(error);
       const message =
@@ -91,10 +84,10 @@ export default function LoginPage() {
           onChange={handleChange("password")}
         />
         <div className="flex flex-col gap-2 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/find-password" className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">
+          <Link href={AUTH_PATHS.findPassword} className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">
             비밀번호 찾기
           </Link>
-          <Link href="/sign-up" className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">
+          <Link href={AUTH_PATHS.signUp} className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">
             회원가입
           </Link>
         </div>

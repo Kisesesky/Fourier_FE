@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/threads/page.tsx
+'use client';
 
 import { Suspense, useEffect } from "react";
 import { useParams } from "next/navigation";

@@ -1,4 +1,4 @@
-// src/lib/team.ts
+// lib/team.ts
 import type { Team } from "@/types/workspace";
 import api from "./api";
 

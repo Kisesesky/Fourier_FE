@@ -1,4 +1,4 @@
-// components/chat/FilesPanel.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/FilesPanel.tsx
 'use client';
 
 import React, { useMemo, useState } from 'react';

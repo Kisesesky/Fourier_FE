@@ -1,4 +1,4 @@
-// components/chat/ChannelModals.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChannelModals.tsx
 'use client';
 
 import React, { useMemo, useState } from "react";

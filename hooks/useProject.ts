@@ -1,4 +1,4 @@
-// src/hooks/useProject.ts
+// hooks/useProject.ts
 import api from "@/lib/api";
 import { Project } from "@/types/project";
 import { useEffect, useState } from "react";

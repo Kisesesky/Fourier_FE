@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_model/types.ts
 import type { JSONContent } from "@tiptap/react";
 
 // default ID type

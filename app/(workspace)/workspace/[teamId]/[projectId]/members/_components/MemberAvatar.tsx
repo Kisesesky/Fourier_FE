@@ -1,4 +1,4 @@
-// components/members/MemberAvatar.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/members/_components/MemberAvatar.tsx
 
 import clsx from "clsx";
 import type { Member, PresenceStatus } from "@/workspace/members/_model/types";

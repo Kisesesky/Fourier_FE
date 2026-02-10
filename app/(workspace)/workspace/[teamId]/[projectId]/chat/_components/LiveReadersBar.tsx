@@ -1,11 +1,11 @@
-// components/chat/LiveReadersBar.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/LiveReadersBar.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 
 export type Reader = { id: string; name: string; ts: number; channelId: string };
 
-export default function LiveReadersBar({ meId, meName, channelId }: { meId: string; meName: string; channelId: string }) {
+export default function LiveReadersBar({ meId, channelId }: { meId: string; channelId: string }) {
   const [peers, setPeers] = useState<Record<string, Reader>>({});
 
   useEffect(() => {

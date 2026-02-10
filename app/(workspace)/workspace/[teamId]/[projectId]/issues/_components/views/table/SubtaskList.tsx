@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/table/SubtaskList.tsx
+'use client';
 
 import type React from "react";
 import type { Issue, IssueComment } from "@/workspace/issues/_model/types";

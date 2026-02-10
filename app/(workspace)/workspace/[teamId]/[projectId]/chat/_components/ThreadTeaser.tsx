@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ThreadTeaser.tsx
 'use client';
 
 import { Quote } from 'lucide-react';

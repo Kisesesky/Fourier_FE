@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/members/_model/types.ts
 export type MemberRole = "owner" | "manager" | "member" | "guest";
 
 export type PresenceStatus = "online" | "away" | "offline" | "dnd";

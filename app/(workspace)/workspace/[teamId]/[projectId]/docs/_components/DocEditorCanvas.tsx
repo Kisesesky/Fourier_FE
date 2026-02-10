@@ -1,9 +1,10 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocEditorCanvas.tsx
+'use client';
 
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 
-import type { AlignKey } from "./DocEditorToolbar";
+import type { AlignKey } from "@/workspace/docs/_model/view.types";
 import { cn } from "@/lib/utils";
 
 interface DocEditorCanvasProps {

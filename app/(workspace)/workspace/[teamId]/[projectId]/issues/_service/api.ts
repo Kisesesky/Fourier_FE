@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_service/api.ts
 import api from "@/lib/api";
 import type { ActivityType, ID, Issue, IssueActivity, IssueComment, IssueGroup, User } from "@/workspace/issues/_model/types";
 
@@ -164,7 +165,7 @@ export async function getIssueById(id: ID, projectId?: string): Promise<Issue | 
     const { data } = await api.get<any[]>(`/projects/${pid}/issues`);
     const found = data.find((item) => item.id === id);
     return found ? mapIssue(found) : null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }

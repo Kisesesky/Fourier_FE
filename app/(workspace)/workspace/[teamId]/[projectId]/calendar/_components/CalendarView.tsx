@@ -1,26 +1,34 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/calendar/_components/CalendarView.tsx
+'use client';
 
 import { endOfMonth, parseISO, startOfMonth, startOfDay } from "date-fns";
 import { useMemo, useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 
-import { COLOR_PALETTE } from "@/workspace/calendar/_model/mocks";
+import { COLOR_PALETTE } from "@/workspace/calendar/_model/constants";
 import { toDateKey, toZonedDate } from "@/workspace/calendar/_model/utils";
+import { MAX_VISIBLE_EVENTS_PER_DAY } from "@/workspace/calendar/_model/view.constants";
+import type { CalendarCategoryGroup } from "@/workspace/calendar/_model/view.types";
 import { useCalendarState } from "@/workspace/calendar/_model/hooks/useCalendarState";
-import type { CalendarEvent, EventDraft, ViewMode } from "@/workspace/calendar/_model/types";
+import type {
+  CalendarEvent,
+  CalendarManageTarget,
+  CalendarMemberOption,
+  CalendarType,
+  EventDraft,
+  ViewMode,
+} from "@/workspace/calendar/_model/types";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { CalendarHeader } from "./components/CalendarHeader";
-import { CalendarMonthView } from "./components/CalendarMonthView";
-import { CalendarTimelineView } from "./components/CalendarTimelineView";
-import { AgendaView } from "./components/AgendaView";
-import { CalendarDetailsPanel } from "./components/CalendarDetailsPanel";
-import { CalendarCreateModal } from "./components/CalendarCreateModal";
-import { CalendarManageModal } from "./components/CalendarManageModal";
+import { CalendarHeader } from "./CalendarHeader";
+import { CalendarMonthView } from "./CalendarMonthView";
+import { CalendarTimelineView } from "./CalendarTimelineView";
+import { CalendarAgendaView } from "./CalendarAgendaView";
+import { CalendarDetailsPanel } from "./CalendarDetailsPanel";
+import { CalendarCreateModal } from "./CalendarCreateModal";
+import { CalendarManageModal } from "./CalendarManageModal";
 import Modal from "@/components/common/Modal";
 import { fetchProjectMembers } from "@/lib/projects";
 import { getCalendarMembers } from "@/workspace/calendar/_service/api";
-
-const MAX_VISIBLE_EVENTS_PER_DAY = 3;
 
 export default function CalendarView({
   initialDate = new Date(),
@@ -40,8 +48,6 @@ export default function CalendarView({
     calendars,
     projectCalendars,
     calendarFolders,
-    selectedCalendarId,
-    events,
     searchTerm,
     setSearchTerm,
     isFormOpen,
@@ -70,7 +76,6 @@ export default function CalendarView({
     goPrev,
     goNext,
     goToday,
-    handleToggleCalendar,
     handleAddCalendar,
     handleUpdateCalendar,
     handleDeleteCalendar,
@@ -94,9 +99,9 @@ export default function CalendarView({
   const [manageName, setManageName] = useState("");
   const [manageColor, setManageColor] = useState("#0c66e4");
   const [manageError, setManageError] = useState<string | null>(null);
-  const [manageType, setManageType] = useState<"TEAM" | "PERSONAL" | "PRIVATE">("TEAM");
+  const [manageType, setManageType] = useState<CalendarType>("TEAM");
   const [manageMemberIds, setManageMemberIds] = useState<string[]>([]);
-  const [memberOptions, setMemberOptions] = useState<Array<{ id: string; name: string; avatarUrl?: string | null }>>([]);
+  const [memberOptions, setMemberOptions] = useState<CalendarMemberOption[]>([]);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState<string>(COLOR_PALETTE[0] ?? "#0c66e4");
@@ -135,7 +140,7 @@ export default function CalendarView({
   }, [filteredEvents, selectedDate]);
 
   const groupedCategories = useMemo(() => {
-    const map = new Map<string, { key: string; name: string; color: string; visible: boolean }>();
+    const map = new Map<string, CalendarCategoryGroup>();
     calendars.forEach((cat) => {
       const key = `${cat.name}||${cat.color}`;
       const entry = map.get(key);
@@ -271,7 +276,7 @@ export default function CalendarView({
     closeForm();
   };
 
-  const handleOpenManageCalendar = (calendar: { id: string; name: string; color: string }) => {
+  const handleOpenManageCalendar = (calendar: CalendarManageTarget) => {
     setManageCalendarId(calendar.id);
     setManageName(calendar.name);
     setManageColor(calendar.color);
@@ -387,7 +392,6 @@ export default function CalendarView({
         searchTerm={searchTerm}
         categories={groupedCategories}
         focusedCalendar={focusedCalendar}
-        hideCalendarList={false}
         onSearch={setSearchTerm}
         onPrev={goPrev}
         onNext={goNext}
@@ -396,14 +400,13 @@ export default function CalendarView({
         onOpenCreate={() => handleOpenForm(selectedDate)}
         onToggleCategoryGroup={handleToggleCategoryGroup}
         onAddCategory={focusCalendarId ? handleOpenCategoryModal : undefined}
-        onRequestManageCalendar={handleOpenManageCalendar}
       />
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <section className="flex min-h-0 flex-1 flex-col px-4 py-4">
           <div className="flex-1 overflow-auto scrollbar-thin">
             {view === "agenda" ? (
-              <AgendaView
+              <CalendarAgendaView
                 current={current}
                 events={agendaEvents}
                 calendarMap={calendarMap}

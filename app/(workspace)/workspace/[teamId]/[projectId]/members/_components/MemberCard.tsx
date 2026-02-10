@@ -1,4 +1,4 @@
-// components/members/MemberCard.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/members/_components/MemberCard.tsx
 
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";

@@ -33,9 +33,6 @@
       "@/workspace/members/*": [
         "./app/(workspace)/workspace/[teamId]/[projectId]/members/*"
       ],
-      "@/workspace/worksheet/*": [
-        "./app/(workspace)/workspace/[teamId]/[projectId]/worksheet/*"
-      ],
       "@/workspace/root/*": [
         "./app/(workspace)/workspace/[teamId]/_components/*"
       ],

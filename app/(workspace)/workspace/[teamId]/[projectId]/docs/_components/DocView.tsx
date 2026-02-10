@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocView.tsx
+'use client';
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { format } from "date-fns";
@@ -20,7 +21,6 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { JSONContent } from "@tiptap/react";
 
 import { useDocEditor } from "./DocEditorContext";
 import { cn } from "@/lib/utils";

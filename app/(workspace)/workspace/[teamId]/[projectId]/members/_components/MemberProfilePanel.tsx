@@ -1,4 +1,4 @@
-// components/members/MemberProfilePanel.tsx
+// app/(workspace)/workspace/[teamId]/[projectId]/members/_components/MemberProfilePanel.tsx
 
 import { useEffect, useRef, useState } from "react";
 import { Activity, Ban, ChevronDown, Mail, MapPin, Moon, Pencil, ShieldCheck } from "lucide-react";

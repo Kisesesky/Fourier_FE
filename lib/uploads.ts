@@ -1,4 +1,4 @@
-// src/lib/uploads.ts
+// lib/uploads.ts
 import api from "./api";
 
 export async function uploadImage(file: File): Promise<string> {

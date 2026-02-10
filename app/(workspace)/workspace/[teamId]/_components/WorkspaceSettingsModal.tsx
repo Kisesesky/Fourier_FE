@@ -1,9 +1,10 @@
+// app/(workspace)/workspace/[teamId]/_components/WorkspaceSettingsModal.tsx
 'use client';
 
 import { useState } from "react";
 import clsx from "clsx";
 import { ChevronRight, X } from "lucide-react";
-import { currentPlan } from "@/workspace/root-model/workspaceData";
+import { currentPlan } from "@/workspace/root-model/workspace.constants";
 import { useWorkspaceUser } from "@/hooks/useWorkspaceUser";
 
 const workspaceSettingsTabs = ["Workspace", "Members", "Billing", "Notifications", "Automation", "My Account"] as const;
@@ -155,7 +156,6 @@ const WorkspaceSettingsModal = ({ onClose }: WorkspaceSettingsModalProps) => {
 };
 
 export default WorkspaceSettingsModal;
-
 
 
 

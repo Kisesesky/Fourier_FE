@@ -1,4 +1,4 @@
-// src/lib/workspace.ts
+// lib/workspace.ts
 import type { Workspace } from "@/types/workspace";
 import api from "./api";
 

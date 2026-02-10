@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree/index.ts
 export { default as DocsTree } from "./DocsTree";
 export { default as FolderNode } from "./FolderNode";
 export { default as DocNode } from "./DocNode";

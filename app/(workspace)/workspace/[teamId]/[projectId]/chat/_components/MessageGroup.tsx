@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/MessageGroup.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -63,7 +64,6 @@ function AttachmentBubble({ attachment, all, index }: { attachment: Attachment; 
     const items: LightboxItem[] = all
       .map((item) => {
         const isVideo = item.type.startsWith('video/');
-        const isImage = item.type.startsWith('image/');
         const kind: 'image' | 'video' = isVideo ? 'video' : 'image';
         const src = item.dataUrl || '';
         return { id: item.id, kind, src, name: item.name, mime: item.type };
@@ -176,7 +176,6 @@ function MessageRow({
   const timestampLabel = ts.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
   const timestampIso = ts.toISOString();
   const contentSpacing = showHeader ? 'space-y-1' : 'space-y-0';
-  const metaMargin = showHeader ? 'mt-0.5' : 'mt-0';
 
   const effectiveThread = threadMeta ?? (m.threadCount ? { count: m.threadCount } : undefined);
   const lastReplyTime = effectiveThread?.lastTs ? new Date(effectiveThread.lastTs).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' }) : null;

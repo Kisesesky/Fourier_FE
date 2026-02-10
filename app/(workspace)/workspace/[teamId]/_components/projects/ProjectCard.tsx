@@ -1,17 +1,9 @@
+// app/(workspace)/workspace/[teamId]/_components/projects/ProjectCard.tsx
 import clsx from "clsx";
 import { ExternalLink, Grid2x2, MoreHorizontal, Star } from "lucide-react";
 import type { KeyboardEvent } from "react";
-import type { Project, ProjectViewMode } from "@/types/workspace";
-
-interface ProjectCardProps {
-  project: Project;
-  viewMode: ProjectViewMode;
-  isStarred: boolean;
-  onToggleStar: (id: string) => void;
-  onOpenMenu: (id: string) => void;
-  onOpenProject?: (id: string) => void;
-  hideActions?: boolean;
-}
+import { PROJECT_STATUS_TONE } from "@/app/(workspace)/workspace/[teamId]/_model/project.constants";
+import type { ProjectCardProps } from "@/app/(workspace)/workspace/[teamId]/_model/project.types";
 
 const ProjectCard = ({
   project,
@@ -30,12 +22,7 @@ const ProjectCard = ({
     }
   };
   const status = project.status ?? project.tag ?? "ACTIVE";
-  const statusTone =
-    status === "ACTIVE"
-      ? "text-emerald-400 border-emerald-500/40"
-      : status === "DRAFT"
-        ? "text-amber-300 border-amber-400/40"
-        : "text-rose-300 border-rose-400/40";
+  const statusTone = PROJECT_STATUS_TONE[status as keyof typeof PROJECT_STATUS_TONE] ?? PROJECT_STATUS_TONE.DEFAULT;
 
   if (viewMode === "list") {
     return (

@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/chat/_service/api.ts
 import api from "@/lib/api";
 import type { Channel } from "@/workspace/chat/_model/types";
 

@@ -1,4 +1,4 @@
-// src/lib/auth.ts
+// lib/auth.ts
 import api from "./api";
 
 export type AuthProfile = {

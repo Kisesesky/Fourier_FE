@@ -1,4 +1,4 @@
-// src/hooks/useWorkspace.ts
+// hooks/useWorkspace.ts
 import { useCallback, useEffect, useState } from "react";
 import type { Workspace } from "@/types/workspace";
 import { fetchMyWorkspaces } from "@/lib/workspace";

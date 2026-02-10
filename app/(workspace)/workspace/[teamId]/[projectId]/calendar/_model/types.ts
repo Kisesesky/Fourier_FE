@@ -1,4 +1,6 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/calendar/_model/types.ts
 export type ViewMode = "agenda" | "month" | "timeline";
+export type CalendarType = "TEAM" | "PERSONAL" | "PRIVATE";
 
 export type CalendarSource = {
   id: string;
@@ -12,7 +14,7 @@ export type CalendarSource = {
 export type ProjectCalendar = {
   id: string;
   name: string;
-  type: "TEAM" | "PERSONAL" | "PRIVATE";
+  type: CalendarType;
   color: string;
   ownerId?: string | null;
   folderId?: string | null;
@@ -53,4 +55,20 @@ export type EventDraft = {
   endTime: string;
   location: string;
   description: string;
+};
+
+export type CalendarMemberOption = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
+export type CalendarFolderOption = Pick<CalendarFolder, "id" | "name">;
+export type CalendarManageTarget = Pick<ProjectCalendar, "id" | "name" | "color">;
+
+export type CalendarMemberRecord = {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+  role?: string;
 };

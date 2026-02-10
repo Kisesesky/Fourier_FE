@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/IssuesTimelineView.tsx
+'use client';
 
 import { useMemo, useState } from "react";
 

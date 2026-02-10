@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_model/types.ts
 export type ID = string;
 
 export type Priority = "very_low" | "low" | "medium" | "high" | "urgent";

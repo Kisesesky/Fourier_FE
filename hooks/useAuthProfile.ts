@@ -1,4 +1,4 @@
-// src/hooks/useAuthProfile.ts
+// hooks/useAuthProfile.ts
 import { useEffect, useState } from "react";
 import { fetchProfile, type AuthProfile } from "@/lib/auth";
 

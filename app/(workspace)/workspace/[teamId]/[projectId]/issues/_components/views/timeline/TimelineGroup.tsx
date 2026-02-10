@@ -1,8 +1,9 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/timeline/TimelineGroup.tsx
+'use client';
 
 import type React from "react";
 import type { Issue } from "@/workspace/issues/_model/types";
-import { formatIssueDateRange } from "@/workspace/issues/_components/utils/issueViewUtils";
+import { formatIssueDateRange } from "@/workspace/issues/_model/utils/issueViewUtils";
 
 export default function TimelineGroup({
   groupId,

@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree/TreeToolbar.tsx
+'use client';
 
 import { RefreshCcw, History, FolderPlus, FilePlus } from "lucide-react";
 import { useState } from "react";

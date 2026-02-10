@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/timeline/TimelineTooltip.tsx
+'use client';
 
 export default function TimelineTooltip({
   hoveredIssue,

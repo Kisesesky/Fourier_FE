@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree/DeleteConfirmModal.tsx
+'use client';
 
 import { useEffect } from "react";
 

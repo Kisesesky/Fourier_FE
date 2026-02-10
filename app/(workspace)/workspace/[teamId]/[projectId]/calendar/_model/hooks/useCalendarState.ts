@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/calendar/_model/hooks/useCalendarState.ts
 import { useEffect, useMemo, useState } from "react";
 import {
   addMonths,
@@ -14,9 +15,17 @@ import {
 } from "date-fns";
 import { ko } from "date-fns/locale";
 
-import { COLOR_PALETTE } from "@/workspace/calendar/_model/mocks";
+import { COLOR_PALETTE } from "@/workspace/calendar/_model/constants";
 import { toDateKey, toZonedDate, toZonedDateKey } from "@/workspace/calendar/_model/utils";
-import type { CalendarEvent, CalendarSource, EventDraft, ViewMode, ProjectCalendar } from "@/workspace/calendar/_model/types";
+import type {
+  CalendarEvent,
+  CalendarFolderOption,
+  CalendarSource,
+  CalendarType,
+  EventDraft,
+  ViewMode,
+  ProjectCalendar,
+} from "@/workspace/calendar/_model/types";
 import { useParams } from "next/navigation";
 import {
   createProjectCalendar,
@@ -57,7 +66,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
   const [view, setView] = useState<ViewMode>(initialView);
   const [calendars, setCalendars] = useState<CalendarSource[]>([]);
   const [projectCalendars, setProjectCalendars] = useState<ProjectCalendar[]>([]);
-  const [calendarFolders, setCalendarFolders] = useState<Array<{ id: string; name: string }>>([]);
+  const [calendarFolders, setCalendarFolders] = useState<CalendarFolderOption[]>([]);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>(focusCalendarId ?? "");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,7 +78,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [showCalendarForm, setShowCalendarForm] = useState(false);
   const [newCalendarName, setNewCalendarName] = useState("");
-  const [newCalendarType, setNewCalendarType] = useState<"TEAM" | "PERSONAL" | "PRIVATE">("TEAM");
+  const [newCalendarType, setNewCalendarType] = useState<CalendarType>("TEAM");
   const [newCalendarColor, setNewCalendarColor] = useState<string>(COLOR_PALETTE[0] ?? "#0c66e4");
   const [newCalendarMemberIds, setNewCalendarMemberIds] = useState<string[]>([]);
   const [newCalendarFolderId, setNewCalendarFolderId] = useState<string>("");

@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree/FolderNode.tsx
+'use client';
 
 import { useState } from "react";
 import { Folder, ChevronDown, ChevronRight } from "lucide-react";

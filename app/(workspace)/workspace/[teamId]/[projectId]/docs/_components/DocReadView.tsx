@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocReadView.tsx
+'use client';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";

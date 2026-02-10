@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_service/api.ts
 import api from "@/lib/api";
 import type { JSONContent } from "@tiptap/react";
 

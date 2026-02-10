@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/table/IssueRow.tsx
+'use client';
 
 import { CornerDownRight } from "lucide-react";
 import type React from "react";
@@ -8,7 +9,7 @@ import {
   PRIORITY_STYLE,
   STATUS_STYLE,
   formatIssueDateRange,
-} from "@/workspace/issues/_components/utils/issueViewUtils";
+} from "@/workspace/issues/_model/utils/issueViewUtils";
 
 export default function IssueRow({
   issue,

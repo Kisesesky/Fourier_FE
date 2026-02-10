@@ -1,3 +1,4 @@
+// app/(workspace)/workspace/[teamId]/_components/views/FriendsView.tsx
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -5,6 +6,9 @@ import { MessageSquareMore, UserPlus, Users } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import Modal from "@/components/common/Modal";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { FRIEND_STATUS_COLOR, HIDDEN_FRIENDS_KEY } from "../../_model/view.constants";
+import type { FriendsTab } from "../../_model/view.types";
+import { getOptionalInitials } from "../../_model/view.utils";
 import { getChatSocket } from "@/lib/socket";
 import {
   acceptFriendRequest,
@@ -19,32 +23,15 @@ import {
   type FriendProfile,
 } from "@/lib/members";
 
-const getInitials = (name?: string | null) => {
-  if (!name) return "?";
-  const trimmed = name.trim();
-  if (!trimmed) return "?";
-  return trimmed
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-};
-
 const formatCount = (count: number) => count.toLocaleString();
 
 type FriendsViewProps = {
   onSelectTeam?: (teamId: string) => void;
-  activeTab?: "friends" | "requests" | "manage";
-  onTabChange?: (tab: "friends" | "requests" | "manage") => void;
+  activeTab?: FriendsTab;
+  onTabChange?: (tab: FriendsTab) => void;
 };
 
-const HIDDEN_FRIENDS_KEY = "friends:hidden";
-const statusColor: Record<"online" | "offline", string> = {
-  online: "bg-emerald-400/10 text-emerald-300",
-  offline: "bg-slate-500/15 text-muted",
-};
-
-export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, onTabChange }: FriendsViewProps) {
+export default function FriendsView({ activeTab: activeTabProp, onTabChange }: FriendsViewProps) {
   const { show } = useToast();
   const { workspace } = useWorkspace();
   const [friends, setFriends] = useState<FriendProfile[]>([]);
@@ -60,7 +47,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
   const [sending, setSending] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [internalTab, setInternalTab] = useState<"friends" | "requests" | "manage">("friends");
+  const [internalTab, setInternalTab] = useState<FriendsTab>("friends");
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const activeTab = activeTabProp ?? internalTab;
   const setActiveTab = onTabChange ?? setInternalTab;
@@ -394,7 +381,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                             <img src={friend.avatarUrl} alt={friend.displayName} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-sm">
-                              {getInitials(friend.displayName)}
+                              {getOptionalInitials(friend.displayName)}
                             </div>
                           )}
                           <span
@@ -407,7 +394,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                           <p className="text-base font-semibold text-foreground">{friend.displayName}</p>
                           <span
                             className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase ${
-                              statusColor[onlineUserIds.includes(friend.userId) ? "online" : "offline"]
+                              FRIEND_STATUS_COLOR[onlineUserIds.includes(friend.userId) ? "online" : "offline"]
                             }`}
                           >
                             {onlineUserIds.includes(friend.userId) ? "Online" : "Offline"}
@@ -462,7 +449,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                             <img src={request.avatarUrl} alt={request.displayName} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
-                              {getInitials(request.displayName)}
+                              {getOptionalInitials(request.displayName)}
                             </div>
                           )}
                         </div>
@@ -521,7 +508,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                             <img src={request.avatarUrl} alt={request.displayName} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
-                              {getInitials(request.displayName)}
+                              {getOptionalInitials(request.displayName)}
                             </div>
                           )}
                         </div>
@@ -584,7 +571,7 @@ export default function FriendsView({ onSelectTeam, activeTab: activeTabProp, on
                           <img src={friend.avatarUrl} alt={friend.displayName} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
-                            {getInitials(friend.displayName)}
+                            {getOptionalInitials(friend.displayName)}
                           </div>
                         )}
                       </div>

@@ -1,4 +1,5 @@
-"use client";
+// app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocsDashboard.tsx
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,11 +22,12 @@ import {
 
 import { subscribeDocsEvent } from "@/workspace/docs/_model/events";
 import { DocumentGrid } from "@/workspace/docs/_components/note-drive/DocumentGrid";
-import { DocumentTable, type SortKey } from "@/workspace/docs/_components/note-drive/DocumentTable";
+import { DocumentTable } from "@/workspace/docs/_components/note-drive/DocumentTable";
 import { FolderGrid } from "@/workspace/docs/_components/note-drive/FolderGrid";
 import { SortMenu } from "@/workspace/docs/_components/note-drive/SortMenu";
 import { CreateFolderModal } from "@/workspace/docs/_components/note-drive/CreateFolderModal";
 import { DocMeta, DocFolder } from "@/workspace/docs/_model/types";
+import type { DocsFilterKey, DocsSortKey } from "@/workspace/docs/_model/view.types";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import {
   createDocumentComment,
@@ -33,8 +35,6 @@ import {
   type DocumentCommentDto,
 } from "@/workspace/docs/_service/api";
 import { docToMarkdown, renderMarkdownToHtml } from "../_model/markdown";
-
-type FilterKey = "all" | "starred" | "shared" | "recent";
 
 export default function DocsDashboard() {
   const router = useRouter();
@@ -47,11 +47,11 @@ export default function DocsDashboard() {
   const [folders, setFolders] = useState<DocFolder[]>(() => getFolders());
   const [activeFolder, setActiveFolder] = useState<"all" | "unfiled" | string>("all");
 
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [filter] = useState<DocsFilterKey>("all");
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
-  const [sortKey, setSortKey] = useState<SortKey>("title");
+  const [sortKey, setSortKey] = useState<DocsSortKey>("title");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [folderModalOpen, setFolderModalOpen] = useState(false);
@@ -88,12 +88,6 @@ export default function DocsDashboard() {
   }, [activeFolder, folders]);
 
   /* HELPERS ------------------------------------------------------ */
-  const folderMap = useMemo(() => {
-    const map = new Map<string, DocFolder>();
-    folders.forEach((f) => map.set(f.id, f));
-    return map;
-  }, [folders]);
-
   const resolvePrimaryLocation = (doc: DocMeta) => {
     return doc.locations?.[0] ?? null;
   };

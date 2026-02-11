@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChatView.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { MouseEvent } from "react";
 import { useChat } from "@/workspace/chat/_model/store";
 import type { Msg, ViewMode } from "@/workspace/chat/_model/types";
@@ -24,6 +24,7 @@ import Drawer from "@/components/ui/Drawer";
 import { useMessageSections } from "@/workspace/chat/_model/hooks/useMessageSections";
 import { useChatLifecycle } from "@/workspace/chat/_model/hooks/useChatLifecycle";
 import { rtbroadcast, rtlisten } from "@/lib/realtime";
+import { useChatViewUiStore } from "@/workspace/chat/_model/store/useChatViewUiStore";
 
 const VIEWMODE_KEY = 'fd.chat.viewmode';
 
@@ -79,13 +80,41 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     const stored = localStorage.getItem(VIEWMODE_KEY) as ViewMode | null;
     return stored === "compact" ? "compact" : "cozy";
   };
-  const [view, setView] = useState<ViewMode>("cozy");
+  const {
+    view,
+    setView,
+    rightOpen,
+    setRightOpen,
+    cmdOpen,
+    setCmdOpen,
+    selectMode,
+    setSelectMode,
+    selectedIds,
+    setSelectedIds,
+    menu,
+    setMenu,
+    pinOpen,
+    setPinOpen,
+    savedOpen,
+    setSavedOpen,
+    inviteOpen,
+    setInviteOpen,
+    settingsOpen,
+    setSettingsOpen,
+    replyTarget,
+    setReplyTarget,
+    resetChatViewUiState,
+  } = useChatViewUiStore();
+
+  useEffect(() => {
+    resetChatViewUiState();
+  }, [resetChatViewUiState]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     setView(getStoredView());
   }, []);
 
-  const [rightOpen, setRightOpen] = useState(false);
   useEffect(() => {
     const handleOpen = () => setRightOpen(true);
     const handleClose = () => setRightOpen(false);
@@ -98,8 +127,6 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   }, []);
 
   /** 커맨드 팔레트 */
-  const [cmdOpen, setCmdOpen] = useState(false);
-
   useEffect(() => {
     if (!initialChannelId) return;
     if (channelId === initialChannelId) return;
@@ -144,8 +171,6 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   }, [listRef]);
 
   /** 멀티선택 상태 */
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const toggleSelect = (id: string, multi?: boolean) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -181,7 +206,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   };
 
   // 컨텍스트 메뉴
-  const [menu, setMenu] = useState<{ open:boolean; x:number; y:number; msg?: Msg; mine?: boolean }>({ open:false, x:0, y:0 });
+  
   const openMenu = (e: MouseEvent<HTMLElement>, m: Msg, mine: boolean) => {
     setMenu({ open:true, x: e.clientX, y: e.clientY, msg: m, mine });
   };
@@ -274,13 +299,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     setTyping(typing);
     rtbroadcast({ type: 'typing', channelId, userId: me.id, userName: me.name, on: typing });
   };
-  const [pinOpen, setPinOpen] = useState(false);
-  const [savedOpen, setSavedOpen] = useState(false);
-
   // 모달: 초대/설정
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [replyTarget, setReplyTarget] = useState<Msg | null>(null);
   const replyToId = replyTarget?.id;
 
   const currentChannel = useMemo(() => channels.find(c => c.id === channelId), [channels, channelId]);

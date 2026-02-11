@@ -1,5 +1,6 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/calendar/_service/api.ts
 import api from "@/lib/api";
+import { z } from "zod";
 import type {
   CalendarEvent,
   CalendarFolder,
@@ -49,6 +50,49 @@ type CalendarFolderResponse = {
   createdById?: string | null;
   isActive?: boolean;
 };
+
+const CalendarEventResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  startAt: z.string(),
+  endAt: z.string(),
+  location: z.string().nullable().optional(),
+  memo: z.string().nullable().optional(),
+  calendarId: z.string().optional(),
+  category: z.object({
+    id: z.string(),
+    name: z.string(),
+    categoryColor: z.string(),
+  }),
+  createdBy: z.object({ id: z.string(), name: z.string(), avatarUrl: z.string().nullable().optional() }).optional(),
+  sourceType: z.enum(["manual", "issue"]).optional(),
+  linkedIssueId: z.string().optional(),
+});
+
+const CalendarCategoryResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  categoryColor: z.string().optional(),
+  color: z.string().optional(),
+  calendarId: z.string().optional(),
+  isDefault: z.boolean().optional(),
+});
+
+const CalendarResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.custom<CalendarType>(),
+  color: z.string(),
+  ownerId: z.string().nullable().optional(),
+  folderId: z.string().nullable().optional(),
+});
+
+const CalendarFolderResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdById: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
 
 const toEvent = (event: CalendarEventResponse): CalendarEvent => {
   const start = new Date(event.startAt);
@@ -110,7 +154,8 @@ export async function getCalendarEvents(params: { start?: string | null; end?: s
   if (end) query.set("end", end);
   if (calendarId) query.set("calendarId", calendarId);
   const res = await api.get<CalendarEventResponse[]>(`/projects/${pid}/calendar/events${query.toString() ? `?${query}` : ""}`);
-  const data = res.data ?? [];
+  const parsed = z.array(CalendarEventResponseSchema).safeParse(res.data ?? []);
+  const data = parsed.success ? parsed.data : [];
   return {
     events: data.map(toEvent),
     start,
@@ -120,12 +165,14 @@ export async function getCalendarEvents(params: { start?: string | null; end?: s
 
 export async function getCalendarCategories(projectId: string, calendarId: string) {
   const res = await api.get<CalendarCategoryResponse[]>(`/projects/${projectId}/calendar/calendars/${calendarId}/categories`);
-  return (res.data ?? []).map(toCalendar);
+  const parsed = z.array(CalendarCategoryResponseSchema).safeParse(res.data ?? []);
+  return (parsed.success ? parsed.data : []).map(toCalendar);
 }
 
 export async function getProjectCalendarCategories(projectId: string) {
   const res = await api.get<CalendarCategoryResponse[]>(`/projects/${projectId}/calendar/categories`);
-  return (res.data ?? []).map(toCalendar);
+  const parsed = z.array(CalendarCategoryResponseSchema).safeParse(res.data ?? []);
+  return (parsed.success ? parsed.data : []).map(toCalendar);
 }
 
 export async function createCalendarCategory(projectId: string, calendarId: string, payload: { name: string; color?: string }) {
@@ -173,17 +220,20 @@ export async function getCalendarAnalytics(
   if (params.month) query.set("month", params.month);
   if (params.year) query.set("year", params.year);
   const res = await api.get<{ counts: number[]; granularity: string }>(`/projects/${projectId}/calendar/analytics?${query.toString()}`);
-  return res.data;
+  const parsed = z.object({ counts: z.array(z.number()), granularity: z.string() }).safeParse(res.data);
+  return parsed.success ? parsed.data : { counts: [], granularity: params.granularity };
 }
 
 export async function getProjectCalendars(projectId: string) {
   const res = await api.get<CalendarResponse[]>(`/projects/${projectId}/calendar/calendars`);
-  return (res.data ?? []).map(toProjectCalendar);
+  const parsed = z.array(CalendarResponseSchema).safeParse(res.data ?? []);
+  return (parsed.success ? parsed.data : []).map(toProjectCalendar);
 }
 
 export async function getCalendarFolders(projectId: string) {
   const res = await api.get<CalendarFolderResponse[]>(`/projects/${projectId}/calendar/folders`);
-  return (res.data ?? []).map(toCalendarFolder);
+  const parsed = z.array(CalendarFolderResponseSchema).safeParse(res.data ?? []);
+  return (parsed.success ? parsed.data : []).map(toCalendarFolder);
 }
 
 export async function createCalendarFolder(projectId: string, payload: { name: string }) {

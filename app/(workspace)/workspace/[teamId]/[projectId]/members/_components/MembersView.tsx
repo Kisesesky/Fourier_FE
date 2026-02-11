@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/members/_components/MembersView.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Search, UserPlus, Users, X } from "lucide-react";
 import MemberCard from "./MemberCard";
@@ -19,27 +19,14 @@ import { loadUserPresence, saveUserPresence, USER_PRESENCE_EVENT, type UserPrese
 import { loadProfilePrefs, saveProfilePrefs, USER_PROFILE_PREFS_EVENT } from "@/lib/profile-prefs";
 import { updateProfile } from "@/lib/auth";
 import { useChat } from "@/workspace/chat/_model/store";
+import { useMembersViewStore } from "@/workspace/members/_model/store/useMembersViewStore";
+import { parseProjectMembers, parseTeamMembers } from "@/workspace/members/_model/schemas/member.schemas";
 
 const presenceOrder: Record<PresenceStatus, number> = {
   online: 0,
   dnd: 1,
   away: 2,
   offline: 3,
-};
-
-const mapProjectRole = (role: string): Member["role"] => {
-  switch (role) {
-    case "OWNER":
-      return "owner";
-    case "MANAGER":
-      return "manager";
-    case "MEMBER":
-      return "member";
-    case "GUEST":
-      return "guest";
-    default:
-      return "member";
-  }
 };
 
 const mapMemberRoleToProjectRole = (role: Member["role"]) => {
@@ -65,42 +52,41 @@ export default function MembersView() {
   const { show } = useToast();
   const { workspace } = useWorkspace();
   const { profile } = useAuthProfile();
-  const [members, setMembers] = useState<Record<string, Member>>({});
-  const [memberIds, setMemberIds] = useState<string[]>([]);
-  const [presence, setPresence] = useState<Record<string, { memberId: string; status: PresenceStatus; lastSeenAt: number }>>({});
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; email?: string | null }>>([]);
-  const [myPresence, setMyPresence] = useState<UserPresenceStatus>("online");
-  const [profilePrefs, setProfilePrefs] = useState<{ displayName: string; avatarUrl: string; backgroundImageUrl: string }>({
-    displayName: "",
-    avatarUrl: "",
-    backgroundImageUrl: "",
-  });
-  const [projectName, setProjectName] = useState("");
+  const {
+    members,
+    setMembers,
+    memberIds,
+    setMemberIds,
+    presence,
+    setPresence,
+    selectedMemberId,
+    setSelectedMemberId,
+    teamMembers,
+    setTeamMembers,
+    myPresence,
+    setMyPresence,
+    profilePrefs,
+    setProfilePrefs,
+    projectName,
+    setProjectName,
+    query,
+    setQuery,
+    inviteOpen,
+    setInviteOpen,
+    profileOpen,
+    setProfileOpen,
+    resetMembersViewState,
+  } = useMembersViewStore();
 
-  const [query, setQuery] = useState("");
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  useEffect(() => {
+    resetMembersViewState();
+  }, [projectId, resetMembersViewState]);
 
   const loadMembers = async () => {
     if (!teamId || !projectId) return;
     try {
       const data = await fetchProjectMembers(teamId, projectId);
-      const mapped = (data ?? []).map((member: { userId: string; name: string; email?: string | null; avatarUrl?: string | null; backgroundImageUrl?: string | null; bio?: string | null; role: string }) => {
-        const mappedRole = mapProjectRole(member.role);
-        return {
-          id: member.userId,
-          name: member.name,
-          displayName: member.name,
-          email: member.email ?? "",
-          role: mappedRole,
-          description: member.bio ?? undefined,
-          avatarUrl: member.avatarUrl ?? undefined,
-          backgroundImageUrl: member.backgroundImageUrl ?? undefined,
-          joinedAt: Date.now(),
-          lastActiveAt: Date.now(),
-        };
-      });
+      const mapped = parseProjectMembers(data);
       const map = Object.fromEntries(mapped.map((m: Member) => [m.id, m]));
       setMembers(map);
       setMemberIds(mapped.map((m: Member) => m.id));
@@ -137,11 +123,7 @@ export default function MembersView() {
     const loadTeamMembers = async () => {
       try {
         const data = await fetchTeamMembers(workspace.id, teamId);
-        const mapped = (data ?? []).map((member: { userId: string; name: string; email?: string | null }) => ({
-          id: member.userId,
-          name: member.name,
-          email: member.email ?? null,
-        }));
+        const mapped = parseTeamMembers(data);
         setTeamMembers(mapped);
       } catch (err) {
         console.error("Failed to fetch team members", err);

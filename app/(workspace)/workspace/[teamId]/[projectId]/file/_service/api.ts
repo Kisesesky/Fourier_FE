@@ -1,5 +1,6 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/file/_service/api.ts
 import api from "@/lib/api";
+import { z } from "zod";
 
 export type FileFolderDto = {
   id: string;
@@ -20,9 +21,29 @@ export type ProjectFileDto = {
   folderId?: string | null;
 };
 
+const FileFolderDtoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const ProjectFileDtoSchema = z.object({
+  id: z.string(),
+  fileUrl: z.string(),
+  thumbnailUrl: z.string().nullable().optional(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  fileSize: z.union([z.number(), z.string()]),
+  createdAt: z.string(),
+  folder: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
+  folderId: z.string().nullable().optional(),
+});
+
 export async function listFileFolders(projectId: string) {
   const res = await api.get<FileFolderDto[]>("/files/folders", { params: { projectId } });
-  return res.data ?? [];
+  const parsed = z.array(FileFolderDtoSchema).safeParse(res.data ?? []);
+  return parsed.success ? parsed.data : [];
 }
 
 export async function createFileFolder(projectId: string, name: string) {
@@ -47,7 +68,8 @@ export async function listProjectFiles(projectId: string, folderId?: string) {
       folderId: folderId ?? undefined,
     },
   });
-  return res.data ?? [];
+  const parsed = z.array(ProjectFileDtoSchema).safeParse(res.data ?? []);
+  return parsed.success ? parsed.data : [];
 }
 
 export async function uploadProjectFile(projectId: string, file: globalThis.File, folderId?: string) {
@@ -74,4 +96,3 @@ export async function deleteProjectFile(fileId: string) {
   const res = await api.delete<{ ok: boolean }>(`/files/${fileId}`);
   return res.data;
 }
-

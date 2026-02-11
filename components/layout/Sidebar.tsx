@@ -126,10 +126,10 @@ export default function Sidebar() {
                   className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
                   onClick={() => router.push(`${buildHref(null)}?view=chat`)}
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
-                    채널
-                  </span>
+                    <span className="flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
+                    채팅
+                    </span>
                   <span className="text-muted">상세 보기</span>
                 </button>
                 <button
@@ -173,6 +173,17 @@ export default function Sidebar() {
                   <span className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
                     일정
+                  </span>
+                  <span className="text-muted">상세 보기</span>
+                </button>
+                <button
+                  type="button"
+                  className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
+                  onClick={() => router.push(`${buildHref(null)}?view=file`)}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
+                    파일
                   </span>
                   <span className="text-muted">상세 보기</span>
                 </button>

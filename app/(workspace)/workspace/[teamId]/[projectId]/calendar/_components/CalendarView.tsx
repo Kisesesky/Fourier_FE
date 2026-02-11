@@ -2,7 +2,7 @@
 'use client';
 
 import { endOfMonth, parseISO, startOfMonth, startOfDay } from "date-fns";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 
 import { COLOR_PALETTE } from "@/workspace/calendar/_model/constants";
@@ -13,11 +13,11 @@ import { useCalendarState } from "@/workspace/calendar/_model/hooks/useCalendarS
 import type {
   CalendarEvent,
   CalendarManageTarget,
-  CalendarMemberOption,
-  CalendarType,
   EventDraft,
   ViewMode,
 } from "@/workspace/calendar/_model/types";
+import { useCalendarViewStore } from "@/workspace/calendar/_model/store/useCalendarViewStore";
+import { parseCalendarMemberIds, parseCalendarMemberOptions } from "@/workspace/calendar/_model/schemas/calendar-view.schemas";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { CalendarHeader } from "./CalendarHeader";
 import { CalendarMonthView } from "./CalendarMonthView";
@@ -92,19 +92,38 @@ export default function CalendarView({
   const router = useRouter();
   const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
   const { buildHref } = useWorkspacePath();
+  const {
+    detailsOpen,
+    setDetailsOpen,
+    manageOpen,
+    setManageOpen,
+    manageCalendarId,
+    setManageCalendarId,
+    manageName,
+    setManageName,
+    manageColor,
+    setManageColor,
+    manageError,
+    setManageError,
+    manageType,
+    setManageType,
+    manageMemberIds,
+    setManageMemberIds,
+    memberOptions,
+    setMemberOptions,
+    categoryModalOpen,
+    setCategoryModalOpen,
+    newCategoryName,
+    setNewCategoryName,
+    newCategoryColor,
+    setNewCategoryColor,
+    resetCalendarViewState,
+  } = useCalendarViewStore();
 
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [manageOpen, setManageOpen] = useState(false);
-  const [manageCalendarId, setManageCalendarId] = useState<string | null>(null);
-  const [manageName, setManageName] = useState("");
-  const [manageColor, setManageColor] = useState("#0c66e4");
-  const [manageError, setManageError] = useState<string | null>(null);
-  const [manageType, setManageType] = useState<CalendarType>("TEAM");
-  const [manageMemberIds, setManageMemberIds] = useState<string[]>([]);
-  const [memberOptions, setMemberOptions] = useState<CalendarMemberOption[]>([]);
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryColor, setNewCategoryColor] = useState<string>(COLOR_PALETTE[0] ?? "#0c66e4");
+  useEffect(() => {
+    resetCalendarViewState();
+    setNewCategoryColor(COLOR_PALETTE[0] ?? "#0c66e4");
+  }, [projectId, resetCalendarViewState, setNewCategoryColor]);
 
   useEffect(() => {
     if (newCalendarType !== "PRIVATE" && newCalendarMemberIds.length > 0) {
@@ -333,12 +352,7 @@ export default function CalendarView({
     fetchProjectMembers(teamId, projectId)
       .then((data) => {
         if (!active) return;
-        const mapped = (data ?? []).map((member: { userId: string; name: string; avatarUrl?: string | null }) => ({
-          id: member.userId,
-          name: member.name,
-          avatarUrl: member.avatarUrl ?? null,
-        }));
-        setMemberOptions(mapped);
+        setMemberOptions(parseCalendarMemberOptions(data));
       })
       .catch(() => {
         if (!active) return;
@@ -355,7 +369,7 @@ export default function CalendarView({
     getCalendarMembers(projectId, manageCalendarId)
       .then((members) => {
         if (!active) return;
-        setManageMemberIds((members ?? []).map((member) => member.userId));
+        setManageMemberIds(parseCalendarMemberIds(members));
       })
       .catch(() => {
         if (!active) return;

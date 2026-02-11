@@ -1,6 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/chat/_service/api.ts
 import api from "@/lib/api";
 import type { Channel } from "@/workspace/chat/_model/types";
+import { z } from "zod";
 
 type ChannelResponse = {
   id: string;
@@ -21,9 +22,34 @@ type MessageResponse = {
   thread?: { count: number };
 };
 
+const ChannelResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  projectId: z.string().optional(),
+  isDefault: z.boolean().optional(),
+  memberIds: z.array(z.string()).optional(),
+});
+
+const MessageResponseSchema = z.object({
+  id: z.string(),
+  content: z.string().optional(),
+  senderId: z.string(),
+  sender: z.object({ id: z.string(), name: z.string(), avatar: z.string().optional() }).optional(),
+  createdAt: z.string(),
+  editedAt: z.string().optional(),
+  threadParentId: z.string().optional(),
+  thread: z.object({ count: z.number() }).optional(),
+});
+
+const AnalyticsSchema = z.object({
+  counts: z.array(z.number()),
+  granularity: z.string(),
+});
+
 export async function listChannels(projectId: string): Promise<Channel[]> {
   const res = await api.get<ChannelResponse[]>("/chat/channels", { params: { projectId } });
-  const data = res.data ?? [];
+  const parsed = z.array(ChannelResponseSchema).safeParse(res.data ?? []);
+  const data = parsed.success ? parsed.data : [];
   return data.map((item) => ({
     id: item.id,
     name: item.name,
@@ -46,7 +72,8 @@ export async function createChannel(
 
 export async function listMessages(channelId: string): Promise<MessageResponse[]> {
   const res = await api.get<MessageResponse[]>("/chat/channel/messages", { params: { channelId, limit: 100 } });
-  return res.data ?? [];
+  const parsed = z.array(MessageResponseSchema).safeParse(res.data ?? []);
+  return parsed.success ? parsed.data : [];
 }
 
 export async function getPinnedMessages(channelId: string): Promise<string[]> {
@@ -95,12 +122,31 @@ export async function sendThreadMessage(threadParentId: string, content: string,
 
 export async function listProjectMembers(teamId: string, projectId: string): Promise<Array<{ userId: string; name: string; avatarUrl?: string | null }>> {
   const res = await api.get(`/team/${teamId}/project/${projectId}/members`);
-  return res.data ?? [];
+  const schema = z.array(
+    z.object({
+      userId: z.string().optional(),
+      id: z.string().optional(),
+      name: z.string(),
+      avatarUrl: z.string().nullable().optional(),
+    }).passthrough(),
+  );
+  const parsed = schema.safeParse(res.data ?? []);
+  return parsed.success ? parsed.data.map((item) => ({
+    userId: item.userId ?? item.id ?? "",
+    name: item.name,
+    avatarUrl: item.avatarUrl ?? null,
+  })) : [];
 }
 
 export async function getChannelPreferences(projectId: string): Promise<{ pinnedChannelIds: string[]; archivedChannelIds: string[] }> {
   const res = await api.get("/chat/channel/preferences", { params: { projectId } });
-  return res.data ?? { pinnedChannelIds: [], archivedChannelIds: [] };
+  const parsed = z
+    .object({
+      pinnedChannelIds: z.array(z.string()).default([]),
+      archivedChannelIds: z.array(z.string()).default([]),
+    })
+    .safeParse(res.data ?? {});
+  return parsed.success ? parsed.data : { pinnedChannelIds: [], archivedChannelIds: [] };
 }
 
 export async function getMessageAnalytics(params: {
@@ -113,7 +159,8 @@ export async function getMessageAnalytics(params: {
   const res = await api.get<{ counts: number[]; granularity: string }>("/chat/analytics/messages", {
     params,
   });
-  return res.data;
+  const parsed = AnalyticsSchema.safeParse(res.data);
+  return parsed.success ? parsed.data : { counts: [], granularity: params.granularity };
 }
 
 export async function saveChannelPreferences(

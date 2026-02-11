@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/DocsDashboard.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid, List as ListIcon, FileText } from "lucide-react";
 import Image from "next/image";
@@ -27,14 +27,14 @@ import { FolderGrid } from "@/workspace/docs/_components/note-drive/FolderGrid";
 import { SortMenu } from "@/workspace/docs/_components/note-drive/SortMenu";
 import { CreateFolderModal } from "@/workspace/docs/_components/note-drive/CreateFolderModal";
 import { DocMeta, DocFolder } from "@/workspace/docs/_model/types";
-import type { DocsFilterKey, DocsSortKey } from "@/workspace/docs/_model/view.types";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import {
   createDocumentComment,
   listDocumentComments,
-  type DocumentCommentDto,
 } from "@/workspace/docs/_service/api";
 import { docToMarkdown, renderMarkdownToHtml } from "../_model/markdown";
+import { useDocsDashboardStore } from "@/workspace/docs/_model/store/useDocsDashboardStore";
+import { parseDocumentComments } from "@/workspace/docs/_model/schemas/docs-dashboard.schemas";
 
 export default function DocsDashboard() {
   const router = useRouter();
@@ -43,25 +43,45 @@ export default function DocsDashboard() {
   const readAllMode = searchParams?.get("read") === "all";
 
   /* STATE */
-  const [docs, setDocs] = useState<DocMeta[]>(() => getDocs());
-  const [folders, setFolders] = useState<DocFolder[]>(() => getFolders());
-  const [activeFolder, setActiveFolder] = useState<"all" | "unfiled" | string>("all");
+  const {
+    docs,
+    setDocs,
+    folders,
+    setFolders,
+    activeFolder,
+    setActiveFolder,
+    query,
+    setQuery,
+    viewMode,
+    setViewMode,
+    sortKey,
+    setSortKey,
+    sortDir,
+    setSortDir,
+    folderModalOpen,
+    setFolderModalOpen,
+    commentsByDoc,
+    setCommentsByDoc,
+    commentCountByDoc,
+    setCommentCountByDoc,
+    openCommentsByDoc,
+    setOpenCommentsByDoc,
+    visibleCommentsByDoc,
+    setVisibleCommentsByDoc,
+    loadingCommentsByDoc,
+    setLoadingCommentsByDoc,
+    draftByDoc,
+    setDraftByDoc,
+    savingByDoc,
+    setSavingByDoc,
+    resetDocsDashboardState,
+  } = useDocsDashboardStore();
 
-  const [filter] = useState<DocsFilterKey>("all");
-  const [query, setQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-
-  const [sortKey, setSortKey] = useState<DocsSortKey>("title");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-
-  const [folderModalOpen, setFolderModalOpen] = useState(false);
-  const [commentsByDoc, setCommentsByDoc] = useState<Record<string, DocumentCommentDto[]>>({});
-  const [commentCountByDoc, setCommentCountByDoc] = useState<Record<string, number>>({});
-  const [openCommentsByDoc, setOpenCommentsByDoc] = useState<Record<string, boolean>>({});
-  const [visibleCommentsByDoc, setVisibleCommentsByDoc] = useState<Record<string, number>>({});
-  const [loadingCommentsByDoc, setLoadingCommentsByDoc] = useState<Record<string, boolean>>({});
-  const [draftByDoc, setDraftByDoc] = useState<Record<string, string>>({});
-  const [savingByDoc, setSavingByDoc] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    resetDocsDashboardState();
+    setDocs(getDocs());
+    setFolders(getFolders());
+  }, [resetDocsDashboardState, setDocs, setFolders]);
 
   /* SYNC EVENTS -------------------------------------------------- */
   useEffect(() => {
@@ -162,16 +182,11 @@ export default function DocsDashboard() {
     const q = query.toLowerCase().trim();
 
     return docsInFolder.filter((doc) => {
-      if (filter === "starred" && !doc.starred) return false;
-      if (filter === "recent") {
-        const diff = Date.now() - new Date(doc.updatedAt).getTime();
-        if (diff > 24 * 60 * 60 * 1000) return false;
-      }
       if (!q) return true;
 
       return doc.title.toLowerCase().includes(q);
     });
-  }, [docsInFolder, filter, query]);
+  }, [docsInFolder, query]);
 
   const sortedDocs = useMemo(() => {
     return [...filteredDocs].sort((a, b) => {
@@ -223,7 +238,7 @@ export default function DocsDashboard() {
     if (commentsByDoc[docId]) return commentsByDoc[docId];
     setLoadingCommentsByDoc((prev) => ({ ...prev, [docId]: true }));
     try {
-      const list = await listDocumentComments(docId);
+      const list = parseDocumentComments(await listDocumentComments(docId));
       setCommentsByDoc((prev) => ({ ...prev, [docId]: list }));
       setCommentCountByDoc((prev) => ({ ...prev, [docId]: list.length }));
       return list;

@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChatDashboard.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useEffect, useRef, type MouseEvent } from "react";
+import { useMemo, useCallback, useEffect, useRef, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
@@ -24,6 +24,7 @@ import {
 import { useChat } from "@/workspace/chat/_model/store";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Channel, ChatUser, PresenceState } from "@/workspace/chat/_model/types";
+import { useChatDashboardUiStore } from "@/workspace/chat/_model/store/useChatDashboardUiStore";
 
 type FilterKey = "all" | "starred" | "unread" | "mentions" | "dm";
 
@@ -100,17 +101,30 @@ export default function ChatDashboard() {
     toggleArchivedChannel,
     loadChannels,
   } = useChat();
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const [query, setQuery] = useState("");
-  const [listMode, setListMode] = useState<"all" | "unreads">("all");
-  const [showArchived, setShowArchived] = useState(false);
-  const [mentionsOnly, setMentionsOnly] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const {
+    filter,
+    setFilter,
+    query,
+    setQuery,
+    listMode,
+    setListMode,
+    showArchived,
+    setShowArchived,
+    mentionsOnly,
+    setMentionsOnly,
+    menuOpen,
+    setMenuOpen,
+    resetChatDashboardUiState,
+  } = useChatDashboardUiStore();
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void loadChannels();
   }, [loadChannels]);
+
+  useEffect(() => {
+    resetChatDashboardUiState();
+  }, [resetChatDashboardUiState]);
 
   useEffect(() => {
     if (!menuOpen) return;

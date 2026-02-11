@@ -1,8 +1,6 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/file/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { usePathname, useRouter, useSearchParams, useParams } from "next/navigation";
 import {
   Archive,
   Download,
@@ -15,35 +13,9 @@ import {
   X,
 } from "lucide-react";
 
-import { emitFileVaultChanged } from "@/workspace/file/_model/vault";
-import { useProjectFileFolders } from "@/workspace/file/_model/hooks/useProjectFileFolders";
-import {
-  deleteProjectFile,
-  listProjectFiles,
-  type ProjectFileDto,
-  uploadProjectFile,
-} from "@/workspace/file/_service/api";
-
-type ViewFile = {
-  id: string;
-  name: string;
-  size: number;
-  mimeType: string;
-  ext: string;
-  category: "image" | "document" | "other";
-  createdAt: string;
-  url: string;
-  folderId: string | null;
-};
-
-const MAX_SIZE_MB = {
-  image: 10,
-  document: 20,
-  other: 30,
-};
-
-const PREVIEWABLE_TEXT_EXTS = new Set(["txt", "md", "csv", "json", "js", "ts", "tsx", "jsx"]);
-const PREVIEWABLE_DOC_EXTS = new Set(["pdf", ...PREVIEWABLE_TEXT_EXTS]);
+import { useFilePageData } from "@/workspace/file/_model/hooks/useFilePageData";
+import { PREVIEWABLE_DOC_EXTS, PREVIEWABLE_TEXT_EXTS } from "@/workspace/file/_model/schemas/file.schemas";
+import type { ViewFile } from "@/workspace/file/_model/file-page.types";
 
 const formatSize = (size: number) => {
   if (size < 1024) return `${size} B`;
@@ -60,20 +32,6 @@ const formatDate = (value: string) =>
     minute: "2-digit",
   });
 
-const getExt = (name: string) => {
-  const parts = name.toLowerCase().split(".");
-  return parts.length > 1 ? parts[parts.length - 1] : "";
-};
-
-const detectCategory = (fileName: string, mimeType: string): ViewFile["category"] => {
-  const ext = getExt(fileName);
-  if (mimeType.startsWith("image/")) return "image";
-  if (["pdf", "txt", "md", "csv", "json", "js", "ts", "tsx", "jsx", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp"].includes(ext)) {
-    return "document";
-  }
-  return "other";
-};
-
 const getCategoryLabel = (category: ViewFile["category"]) => {
   if (category === "image") return "사진";
   if (category === "document") return "문서";
@@ -87,126 +45,20 @@ const getTypeIcon = (file: ViewFile) => {
   return <FileArchive size={16} className="text-slate-600" />;
 };
 
-const toViewFile = (item: ProjectFileDto): ViewFile => {
-  const name = item.fileName;
-  const ext = getExt(name);
-  const mimeType = item.mimeType;
-  return {
-    id: item.id,
-    name,
-    size: Number(item.fileSize || 0),
-    mimeType,
-    ext,
-    category: detectCategory(name, mimeType),
-    createdAt: item.createdAt,
-    url: item.fileUrl,
-    folderId: item.folder?.id ?? item.folderId ?? null,
-  };
-};
-
 export default function WorkspaceFilePage() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { projectId } = useParams<{ projectId: string }>();
-  const { folders } = useProjectFileFolders(projectId);
-
-  const selectedFolderId = searchParams?.get("folder") ?? null;
-
-  const [files, setFiles] = useState<ViewFile[]>([]);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [previewFile, setPreviewFile] = useState<ViewFile | null>(null);
-  const [previewText, setPreviewText] = useState("");
-  const [previewLoading, setPreviewLoading] = useState(false);
-
-  const loadFiles = async () => {
-    if (!projectId) return;
-    const data = await listProjectFiles(projectId, selectedFolderId ?? undefined);
-    setFiles(data.map(toViewFile));
-  };
-
-  useEffect(() => {
-    if (!projectId) return;
-    void loadFiles();
-  }, [projectId, selectedFolderId]);
-
-  useEffect(() => {
-    void loadFiles();
-  }, [folders, projectId, selectedFolderId]);
-
-  useEffect(() => {
-    if (!selectedFolderId) return;
-    const exists = folders.some((folder) => folder.id === selectedFolderId);
-    if (!exists && pathname) {
-      router.replace(pathname);
-    }
-  }, [folders, pathname, router, selectedFolderId]);
-
-  const totalSize = useMemo(() => files.reduce((sum, item) => sum + item.size, 0), [files]);
-
-  const onUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.target.files ?? []);
-    if (!selected.length || !projectId) return;
-
-    const rejected: string[] = [];
-    const accepted: globalThis.File[] = [];
-
-    selected.forEach((file) => {
-      const category = detectCategory(file.name, file.type);
-      const maxBytes = MAX_SIZE_MB[category] * 1024 * 1024;
-      if (file.size > maxBytes) {
-        rejected.push(`${file.name}: ${MAX_SIZE_MB[category]}MB 초과`);
-        return;
-      }
-      accepted.push(file);
-    });
-
-    if (rejected.length > 0) {
-      setErrorMessage(`업로드 제한: ${rejected.slice(0, 3).join(" / ")}`);
-    } else {
-      setErrorMessage("");
-    }
-
-    if (!accepted.length) {
-      event.target.value = "";
-      return;
-    }
-
-    for (const file of accepted) {
-      await uploadProjectFile(projectId, file, selectedFolderId ?? undefined);
-    }
-
-    emitFileVaultChanged();
-    await loadFiles();
-    event.target.value = "";
-  };
-
-  const removeFile = async (id: string) => {
-    await deleteProjectFile(id);
-    await loadFiles();
-  };
-
-  const openPreview = async (file: ViewFile) => {
-    setPreviewFile(file);
-    setPreviewText("");
-    if (file.category === "other") return;
-
-    if (file.category === "document" && PREVIEWABLE_TEXT_EXTS.has(file.ext)) {
-      try {
-        setPreviewLoading(true);
-        const text = await fetch(file.url).then((res) => res.text());
-        setPreviewText(text);
-      } catch {
-        setPreviewText("문서 미리보기를 불러오지 못했습니다.");
-      } finally {
-        setPreviewLoading(false);
-      }
-    }
-  };
-
-  const scopeLabel = selectedFolderId
-    ? folders.find((folder) => folder.id === selectedFolderId)?.name ?? "폴더"
-    : "전체보기";
+  const {
+    files,
+    errorMessage,
+    previewFile,
+    previewText,
+    previewLoading,
+    totalSize,
+    scopeLabel,
+    setPreviewFile,
+    onUpload,
+    removeFile,
+    openPreview,
+  } = useFilePageData();
 
   return (
     <div className="h-full bg-background px-6 py-6">
@@ -282,7 +134,7 @@ export default function WorkspaceFilePage() {
                 <div className="flex items-center justify-end gap-1">
                   <button
                     type="button"
-                    onClick={() => void openPreview(file)}
+                    onClick={() => void openPreview(file, PREVIEWABLE_TEXT_EXTS)}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition hover:bg-subtle hover:text-foreground"
                     title="열기"
                   >

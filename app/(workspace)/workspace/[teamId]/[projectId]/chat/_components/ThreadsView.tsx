@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ThreadsView.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Check, Filter, Search } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
 import MarkdownText from "./MarkdownText";
@@ -10,6 +10,7 @@ import { useThreadItems } from "@/workspace/chat/_model/hooks/useThreadItems";
 import EmojiPicker from "./EmojiPicker";
 import { useToast } from "@/components/ui/Toast";
 import type { Msg } from "@/workspace/chat/_model/types";
+import { useThreadsViewStore } from "@/workspace/chat/_model/store/useThreadsViewStore";
 
 function ThreadHeader({ channelName }: { channelName: string }) {
   return (
@@ -144,15 +145,30 @@ function ThreadRow({
 export default function ThreadsView() {
   const { channels, users, me, lastReadAt, send, setChannel, channelActivity, updateMessage, deleteMessage, restoreMessage, toggleReaction, channelId: activeChannelId } = useChat();
   const threadItems = useThreadItems({ channels, lastReadAt, meId: me.id, activityKey: channelActivity });
-  const [sortMode, setSortMode] = useState<"recent" | "oldest">("recent");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [query, setQuery] = useState("");
-  const [searchMode, setSearchMode] = useState<"content" | "author">("content");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const {
+    sortMode,
+    setSortMode,
+    expanded,
+    setExpanded,
+    query,
+    setQuery,
+    searchMode,
+    setSearchMode,
+    editingId,
+    setEditingId,
+    draft,
+    setDraft,
+    selectedId,
+    setSelectedId,
+    filterOpen,
+    setFilterOpen,
+    resetThreadsViewState,
+  } = useThreadsViewStore();
   const { show } = useToast();
+
+  useEffect(() => {
+    resetThreadsViewState();
+  }, [resetThreadsViewState]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

@@ -23,8 +23,8 @@ import type {
   GroupModalState,
   IssueCreateModalState,
   IssueEditModalState,
-  ViewMode,
 } from "@/workspace/issues/_model/board.types";
+import { useIssuesViewStore } from "@/workspace/issues/_model/store/useIssuesViewStore";
 
 export function useIssuesBoardState({
   teamId,
@@ -76,15 +76,27 @@ export function useIssuesBoardState({
   const [loading, setLoading] = useState(true);
   const [memberMap, setMemberMap] = useState<Record<string, { name: string; avatarUrl?: string | null }>>({});
   const { profile } = useAuthProfile();
-  const [tableStatusFilter, setTableStatusFilter] = useState<Record<string, Set<Issue["status"]>>>({});
-  const [tablePriorityFilter, setTablePriorityFilter] = useState<Record<string, Set<Issue["priority"]>>>({});
-  const [tableOwnerFilter, setTableOwnerFilter] = useState<Record<string, Set<string>>>({});
-  const [tableDateFilter, setTableDateFilter] = useState<Record<string, Set<string>>>({});
-  const [tablePrioritySort, setTablePrioritySort] = useState<Record<string, "none" | "asc" | "desc">>({});
-  const [tableOwnerSort, setTableOwnerSort] = useState<Record<string, "none" | "asc" | "desc">>({});
-  const [tableDateSort, setTableDateSort] = useState<Record<string, "none" | "asc" | "desc">>({});
-  const [openFilter, setOpenFilter] = useState<string | null>(null);
-  const [view, setView] = useState<ViewMode>("table");
+  const {
+    tableStatusFilter,
+    setTableStatusFilter,
+    tablePriorityFilter,
+    setTablePriorityFilter,
+    tableOwnerFilter,
+    setTableOwnerFilter,
+    tableDateFilter,
+    setTableDateFilter,
+    tablePrioritySort,
+    setTablePrioritySort,
+    tableOwnerSort,
+    setTableOwnerSort,
+    tableDateSort,
+    setTableDateSort,
+    openFilter,
+    setOpenFilter,
+    view,
+    setView,
+    resetIssuesViewState,
+  } = useIssuesViewStore();
   const issueActionsRef = useRef<HTMLDivElement | null>(null);
 
   const refresh = useCallback(async () => {
@@ -126,6 +138,10 @@ export function useIssuesBoardState({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    resetIssuesViewState();
+  }, [projectId, resetIssuesViewState]);
 
   useEffect(() => {
     if (!teamId || !projectId) return;

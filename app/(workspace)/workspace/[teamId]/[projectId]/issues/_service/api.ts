@@ -1,8 +1,24 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/issues/_service/api.ts
 import api from "@/lib/api";
 import type { ActivityType, ID, Issue, IssueActivity, IssueComment, IssueGroup, User } from "@/workspace/issues/_model/types";
+import { z } from "zod";
 
 const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID;
+const UnknownArraySchema = z.array(z.unknown());
+const AnalyticsSchema = z.object({ counts: z.array(z.number()), granularity: z.string() });
+const IssueGroupSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string().optional(),
+  sortOrder: z.number().optional(),
+  createdAt: z.string().optional(),
+});
+const UserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().optional(),
+  avatarUrl: z.string().optional(),
+});
 
 const mapStatus = (status?: string): Issue["status"] => {
   switch ((status || "").toUpperCase()) {
@@ -138,14 +154,16 @@ export async function listIssues(projectId?: string): Promise<Issue[]> {
   const pid = projectId || DEFAULT_PROJECT_ID;
   if (!pid) return [];
   const { data } = await api.get<any[]>(`/projects/${pid}/issues`);
-  return data.map(mapIssue);
+  const parsed = UnknownArraySchema.safeParse(data ?? []);
+  return (parsed.success ? parsed.data : []).map(mapIssue);
 }
 
 export async function getIssueBoard(projectId?: string): Promise<Issue[]> {
   const pid = projectId || DEFAULT_PROJECT_ID;
   if (!pid) return [];
   const { data } = await api.get<any[]>(`/projects/${pid}/issues/board`);
-  return data.map(mapIssue);
+  const parsed = UnknownArraySchema.safeParse(data ?? []);
+  return (parsed.success ? parsed.data : []).map(mapIssue);
 }
 
 export async function getIssueAnalytics(projectId: string, params: { granularity: "hourly" | "daily" | "monthly"; date?: string; month?: string; year?: string }) {
@@ -155,7 +173,8 @@ export async function getIssueAnalytics(projectId: string, params: { granularity
   if (params.month) query.set("month", params.month);
   if (params.year) query.set("year", params.year);
   const { data } = await api.get<{ counts: number[]; granularity: string }>(`/projects/${projectId}/issues/analytics?${query.toString()}`);
-  return data;
+  const parsed = AnalyticsSchema.safeParse(data);
+  return parsed.success ? parsed.data : { counts: [], granularity: params.granularity };
 }
 
 export async function getIssueById(id: ID, projectId?: string): Promise<Issue | null> {
@@ -243,7 +262,8 @@ export async function deleteIssue(projectId: string, issueId: ID): Promise<{ ok:
 
 export async function listIssueGroups(projectId: string): Promise<IssueGroup[]> {
   const { data } = await api.get<IssueGroup[]>(`/projects/${projectId}/issues/groups`);
-  return data ?? [];
+  const parsed = z.array(IssueGroupSchema).safeParse(data ?? []);
+  return parsed.success ? (parsed.data as IssueGroup[]) : [];
 }
 
 export async function createIssueGroup(projectId: string, payload: { name?: string; color?: string }): Promise<IssueGroup> {
@@ -328,7 +348,8 @@ export async function listActivities(issueId: ID, projectId?: string, type?: Act
   const pid = projectId || DEFAULT_PROJECT_ID;
   if (!pid) return [];
   const { data } = await api.get<any[]>(`/projects/${pid}/activity`);
-  const items = data.filter((item) => item.targetType === "ISSUE" && item.targetId === issueId);
+  const parsed = UnknownArraySchema.safeParse(data ?? []);
+  const items = (parsed.success ? parsed.data : []).filter((item: any) => item.targetType === "ISSUE" && item.targetId === issueId);
   const mapped = items.map((item) => mapActivity(item, issueId));
   if (!type) return mapped;
   return mapped.filter((item) => item.type === type);
@@ -337,5 +358,6 @@ export async function listActivities(issueId: ID, projectId?: string, type?: Act
 export async function searchUsers(q: string, limit = 8): Promise<User[]> {
   if (!q.trim()) return [];
   const { data } = await api.get<any[]>(`/users/search?q=${encodeURIComponent(q)}&limit=${limit}`);
-  return data.map(mapUser);
+  const parsed = z.array(UserSchema).safeParse(data ?? []);
+  return (parsed.success ? parsed.data : []).map(mapUser);
 }

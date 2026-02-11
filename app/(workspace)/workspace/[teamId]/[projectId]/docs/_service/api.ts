@@ -1,10 +1,44 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/docs/_service/api.ts
 import api from "@/lib/api";
 import type { JSONContent } from "@tiptap/react";
+import { z } from "zod";
+
+const AnalyticsSchema = z.object({ counts: z.array(z.number()), granularity: z.string() });
+const FolderDtoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  parentId: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+const DocumentDtoSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string().nullable().optional(),
+  starred: z.boolean().optional(),
+  folderId: z.string().nullable().optional(),
+  authorId: z.string().nullable().optional(),
+  authorName: z.string().nullable().optional(),
+  authorAvatarUrl: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+const DocumentCommentDtoSchema = z.object({
+  id: z.string(),
+  content: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  authorId: z.string().nullable().optional(),
+  authorName: z.string().nullable().optional(),
+  authorAvatarUrl: z.string().nullable().optional(),
+  authorRole: z.string().nullable().optional(),
+  mine: z.boolean().optional(),
+});
 
 export async function getDocsAnalytics(params: { granularity: "hourly" | "daily" | "monthly"; date?: string; month?: string; year?: string }) {
   const res = await api.get<{ counts: number[]; granularity: string }>("/docs/analytics", { params });
-  return res.data;
+  const parsed = AnalyticsSchema.safeParse(res.data);
+  return parsed.success ? parsed.data : { counts: [], granularity: params.granularity };
 }
 
 export type FolderDto = {
@@ -42,7 +76,8 @@ export type DocumentCommentDto = {
 
 export async function listFolders(projectId: string) {
   const res = await api.get<FolderDto[]>("/docs/folders", { params: { projectId } });
-  return res.data ?? [];
+  const parsed = z.array(FolderDtoSchema).safeParse(res.data ?? []);
+  return parsed.success ? parsed.data : [];
 }
 
 export async function createFolder(payload: { projectId: string; name: string; parentId?: string }) {
@@ -67,7 +102,8 @@ export async function deleteFolder(id: string) {
 
 export async function listDocuments(projectId: string) {
   const res = await api.get<DocumentDto[]>("/docs/documents", { params: { projectId } });
-  return res.data ?? [];
+  const parsed = z.array(DocumentDtoSchema).safeParse(res.data ?? []);
+  return parsed.success ? parsed.data : [];
 }
 
 export async function createDocument(payload: { projectId: string; title: string; folderId?: string; content?: string; starred?: boolean }) {
@@ -87,12 +123,14 @@ export async function deleteDocument(id: string) {
 
 export async function searchDocuments(q: string) {
   const res = await api.get<DocumentDto[]>("/docs/search", { params: { q } });
-  return res.data ?? [];
+  const parsed = z.array(DocumentDtoSchema).safeParse(res.data ?? []);
+  return parsed.success ? parsed.data : [];
 }
 
 export async function listDocumentComments(documentId: string) {
   const res = await api.get<DocumentCommentDto[]>(`/docs/document/${documentId}/comments`);
-  return res.data ?? [];
+  const parsed = z.array(DocumentCommentDtoSchema).safeParse(res.data ?? []);
+  return parsed.success ? parsed.data : [];
 }
 
 export async function createDocumentComment(documentId: string, content: string) {

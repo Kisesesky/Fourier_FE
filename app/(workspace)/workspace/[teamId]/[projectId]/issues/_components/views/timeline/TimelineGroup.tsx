@@ -1,6 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/timeline/TimelineGroup.tsx
 'use client';
 
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import type { Issue } from "@/workspace/issues/_model/types";
 import { formatIssueDateRange } from "@/workspace/issues/_model/utils/issueViewUtils";
@@ -10,10 +11,11 @@ export default function TimelineGroup({
   group,
   memberMap,
   days,
-  weeks,
+  weekSegments,
   dayWidth,
   rowHeight,
   timelineStart,
+  timelineEnd,
   parseTimelineDate,
   diffDays,
   setHoveredIssue,
@@ -22,10 +24,11 @@ export default function TimelineGroup({
   group: { name: string; color: string; items: Issue[] };
   memberMap: Record<string, { name: string; avatarUrl?: string | null }>;
   days: number[];
-  weeks: number[];
+  weekSegments: Array<{ key: string; label: string; span: number }>;
   dayWidth: number;
   rowHeight: number;
   timelineStart: Date;
+  timelineEnd: Date;
   parseTimelineDate: (value: string, isEnd: boolean) => Date | null;
   diffDays: (date: Date, start: Date) => number;
   setHoveredIssue: React.Dispatch<React.SetStateAction<{
@@ -37,6 +40,28 @@ export default function TimelineGroup({
     y: number;
   } | null>>;
 }) {
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const [scrollSpacer, setScrollSpacer] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const measure = () => {
+      const el = scrollAreaRef.current;
+      if (!el) return;
+      const hasXScroll = el.scrollWidth - el.clientWidth > 1;
+      const nativeScrollbarHeight = Math.max(el.offsetHeight - el.clientHeight, 0);
+      // Keep left/right rail heights aligned but avoid oversized spacer on non-overlay scrollbars.
+      const compensatedHeight = hasXScroll
+        ? Math.max(8, nativeScrollbarHeight > 0 ? nativeScrollbarHeight - 2 : 8)
+        : 0;
+      setScrollSpacer(compensatedHeight);
+    };
+    measure();
+    const onResize = () => measure();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [days.length, dayWidth]);
+
   const assigneeMap = new Map<string, Issue[]>();
   group.items.forEach((issue) => {
     const key = issue.assigneeId || issue.assignee || "unassigned";
@@ -95,60 +120,61 @@ export default function TimelineGroup({
   const gridWidth = days.length * dayWidth;
 
   return (
-    <div className="rounded-xl border border-border bg-panel/60 overflow-hidden">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-panel/60">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
         <span>{group.name}</span>
       </div>
-      <div className="flex min-w-0">
-        <div className="w-40 shrink-0 border-r border-border">
-          <div className="sticky top-0 z-10 h-11 border-b border-border bg-panel/90 px-4 text-xs font-semibold text-muted flex items-center">
+      <div className="flex min-w-0 overflow-x-hidden">
+        <div className="w-32 shrink-0 border-r border-border md:w-40">
+          <div className="sticky top-0 z-10 flex h-10 items-center border-b border-border bg-panel/90 px-3 text-[11px] font-semibold text-muted md:h-11 md:px-4 md:text-xs">
             주차
           </div>
-          <div className="sticky top-11 z-10 h-9 border-b border-border bg-panel/90 px-4 text-xs font-semibold text-muted flex items-center">
+          <div className="sticky top-10 z-10 flex h-8 items-center border-b border-border bg-panel/90 px-3 text-[11px] font-semibold text-muted md:top-11 md:h-9 md:px-4 md:text-xs">
             담당자
           </div>
-          <div className="divide-y divide-border">
+          <div>
             {assigneeRows.map((row, rowIdx) => (
               <div
                 key={`${groupId}-${row.assigneeKey}`}
                 className={[
-                  "flex items-start gap-3 px-4 py-3 border-b border-border/60",
+                  "flex items-center gap-2 border-b border-border/60 px-3 md:gap-3 md:px-4",
                   rowIdx % 2 === 1 ? "bg-subtle/20" : "",
                 ].join(" ")}
-                style={{ minHeight: row.totalHeight }}
+                style={{ height: row.totalHeight }}
               >
                 {row.avatar ? (
-                  <img src={row.avatar} alt={row.name} className="h-9 w-9 rounded-full object-cover" />
+                  <img src={row.avatar} alt={row.name} className="h-8 w-8 rounded-full object-cover md:h-9 md:w-9" />
                 ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-muted">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-subtle text-[11px] font-semibold text-muted md:h-9 md:w-9 md:text-xs">
                     {row.name.slice(0, 1).toUpperCase()}
                   </div>
                 )}
-                <span className="text-sm font-medium">{row.name}</span>
+                <span className="min-w-0 break-words text-xs font-medium leading-tight md:text-sm">{row.name}</span>
               </div>
             ))}
           </div>
+          <div style={{ height: scrollSpacer }} />
         </div>
-        <div className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden">
-          <div style={{ minWidth: gridWidth }}>
-            <div className="sticky top-0 z-10 flex h-11 items-center border-b border-border bg-panel/90 text-xs font-semibold text-muted">
-              {weeks.map((week) => (
+        <div ref={scrollAreaRef} className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden [scrollbar-gutter:stable]">
+          <div style={{ width: gridWidth }}>
+            <div className="sticky top-0 z-10 flex h-10 items-center border-b border-border bg-panel/90 text-[11px] font-semibold text-muted md:h-11 md:text-xs">
+              {weekSegments.map((week) => (
                 <span
-                  key={week}
+                  key={week.key}
                   className="flex items-center justify-center border-r border-border/60 last:border-r-0"
-                  style={{ width: dayWidth * 7 }}
+                  style={{ width: dayWidth * week.span }}
                 >
-                  {week + 1}주차
+                  {week.label}
                 </span>
               ))}
             </div>
             <div
-              className="sticky top-11 z-10 flex h-9 items-center border-b border-border bg-panel/90 text-[10px] text-muted"
+              className="sticky top-10 z-10 flex h-8 items-center border-b border-border bg-panel/90 text-[10px] text-muted md:top-11 md:h-9"
               style={{
                 backgroundImage:
-                  "linear-gradient(to right, rgba(148,163,184,0.2) 1px, transparent 1px), linear-gradient(to right, rgba(148,163,184,0.45) 1px, transparent 1px)",
-                backgroundSize: `${dayWidth}px 100%, ${dayWidth * 7}px 100%`,
+                  "linear-gradient(to right, rgba(148,163,184,0.2) 1px, transparent 1px)",
+                backgroundSize: `${dayWidth}px 100%`,
               }}
             >
               {days.map((day) => (
@@ -169,8 +195,8 @@ export default function TimelineGroup({
                   style={{
                     height: row.totalHeight,
                     backgroundImage:
-                      "linear-gradient(to right, rgba(148,163,184,0.2) 1px, transparent 1px), linear-gradient(to right, rgba(148,163,184,0.45) 1px, transparent 1px)",
-                    backgroundSize: `${dayWidth}px 100%, ${dayWidth * 7}px 100%`,
+                      "linear-gradient(to right, rgba(148,163,184,0.2) 1px, transparent 1px)",
+                    backgroundSize: `${dayWidth}px 100%`,
                   }}
                 >
                   {row.ordered.map((issue, idx) => {
@@ -181,6 +207,8 @@ export default function TimelineGroup({
                     const startDate = parseTimelineDate(startRaw, false);
                     const endDate = parseTimelineDate(endRaw, true);
                     if (!startDate || !endDate) return null;
+                    if (endDate.getTime() < timelineStart.getTime()) return null;
+                    if (startDate.getTime() > timelineEnd.getTime()) return null;
                     const startIndex = Math.max(0, diffDays(startDate, timelineStart));
                     const endIndex = Math.min(days.length - 1, diffDays(endDate, timelineStart));
                     const leftPx = startIndex * dayWidth;
@@ -204,8 +232,8 @@ export default function TimelineGroup({
                         key={issue.id}
                         className={[
                           "group absolute flex items-center overflow-hidden rounded-xl px-3 text-xs font-semibold text-white shadow-sm leading-none",
-                          isSubtask ? "h-7 py-0.5 opacity-95 text-[11px]" : "h-10 py-1",
-                          isDeepSubtask ? "h-6 opacity-85 text-[10px]" : "",
+                          isSubtask ? "h-6 py-0.5 text-[10px] opacity-95 md:h-7 md:text-[11px]" : "h-9 py-1 md:h-10",
+                          isDeepSubtask ? "h-5 text-[9px] opacity-85 md:h-6 md:text-[10px]" : "",
                         ].join(" ")}
                         style={{
                           top: idx * rowHeight + rowHeight / 2,
@@ -247,6 +275,7 @@ export default function TimelineGroup({
                 </div>
               );
             })}
+            <div style={{ height: scrollSpacer }} />
           </div>
         </div>
       </div>

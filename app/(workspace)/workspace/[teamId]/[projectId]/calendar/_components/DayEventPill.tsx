@@ -67,7 +67,7 @@ export function DayEventPill({
 
   return (
     <div
-      className="group relative w-full cursor-pointer text-[11px] font-medium leading-tight transition"
+      className="group relative w-full cursor-pointer text-[12px] font-medium leading-tight transition sm:text-[11px]"
       style={{
         marginLeft: DAY_EVENT_LEFT_MARGIN[variant],
         marginRight: DAY_EVENT_RIGHT_MARGIN[variant],
@@ -80,25 +80,25 @@ export function DayEventPill({
       {showLabel ? (
         <div className="flex min-w-0 flex-col gap-0.5">
           <div
-            className="flex min-w-0 items-center gap-1.5 px-2 py-[5px] text-white shadow-sm"
+            className="flex min-w-0 items-center gap-2 px-2.5 py-[6px] text-white shadow-sm sm:gap-1.5 sm:px-2 sm:py-[5px]"
             style={{
               backgroundColor: baseColor,
               borderRadius: DAY_EVENT_RADIUS[variant],
             }}
           >
             {isIssue && (
-              <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+              <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-[9px]">
                 이슈
               </span>
             )}
-            <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[10px] font-semibold text-slate-700">
+            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[11px] font-semibold text-slate-700 sm:h-6 sm:w-6 sm:text-[10px]">
               {avatarUrl ? (
                 <img src={avatarUrl} alt={event.createdBy?.name ?? "User"} className="h-full w-full object-cover" />
               ) : (
                 <span>{avatarLabel}</span>
               )}
             </div>
-            <span className="truncate">{event.title}</span>
+            <span className="truncate text-[12px] font-semibold sm:text-[11px] sm:font-medium">{event.title}</span>
           </div>
           {showMemo && (
             <div className="ml-4 hidden min-w-0 items-start gap-1 text-[10px] text-muted md:flex">
@@ -109,7 +109,7 @@ export function DayEventPill({
         </div>
       ) : (
         <div
-          className="h-[26px] w-full shadow-sm"
+          className="h-[28px] w-full shadow-sm sm:h-[26px]"
           style={{
             backgroundColor: baseColor,
             borderRadius: DAY_EVENT_RADIUS[variant],

@@ -287,7 +287,7 @@ export default function IssuesBoardView() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-background text-foreground">
+    <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden bg-background text-foreground">
       <header className="border-b border-border bg-panel/70">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-10">
           <div className="flex items-center gap-3">
@@ -322,8 +322,8 @@ export default function IssuesBoardView() {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <section className="flex min-h-0 flex-1 flex-col px-4 py-6 sm:px-10">
+      <div className="flex min-h-0 min-w-0 flex-1">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-6 sm:px-10">
           {loading ? (
             <div className="rounded-xl border border-border bg-panel/60 p-6 text-sm text-muted">이슈를 불러오는 중입니다…</div>
           ) : (

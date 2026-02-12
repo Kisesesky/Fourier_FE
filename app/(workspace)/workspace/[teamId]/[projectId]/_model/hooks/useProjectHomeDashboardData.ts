@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchProjectMembers, getProjectMemberAnalytics } from "@/lib/projects";
-import { getCalendarAnalytics, getCalendarEvents } from "@/workspace/calendar/_service/api";
+import { getCalendarAnalytics, getCalendarEvents, getProjectCalendars } from "@/workspace/calendar/_service/api";
 import { useChat } from "@/workspace/chat/_model/store";
 import { getMessageAnalytics, listMessages } from "@/workspace/chat/_service/api";
 import { getDocsAnalytics, listDocuments } from "@/workspace/docs/_service/api";
@@ -12,6 +12,7 @@ import type { CalendarEvent } from "@/workspace/calendar/_model/types";
 import type { Issue } from "@/workspace/issues/_model/types";
 import { createEmptyAnalyticsCounts, createEmptyIssueStats } from "../dashboard-page.constants";
 import { parseProjectMembers, parseRecentDocs, parseRecentFiles } from "../schemas/home-dashboard.schemas";
+import type { ProjectCalendar } from "@/workspace/calendar/_model/types";
 
 type UseProjectHomeDashboardDataParams = {
   teamId: string;
@@ -52,10 +53,10 @@ export function useProjectHomeDashboardData({
   calendarDailyMonth,
   calendarMonthlyYear,
 }: UseProjectHomeDashboardDataParams) {
-  const { channels, channelActivity, loadChannels, setContext } = useChat();
+  const { channels, channelActivity, loadChannels, setContext, users, me } = useChat();
 
   const [memberCount, setMemberCount] = useState(0);
-  const [members, setMembers] = useState<Array<{ id: string; name: string; avatarUrl?: string | null; role?: string; joinedAt?: number }>>([]);
+  const [members, setMembers] = useState<Array<{ id: string; name: string; displayName?: string; avatarUrl?: string | null; role?: string; joinedAt?: number }>>([]);
   const [issueCount, setIssueCount] = useState(0);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [issueStats, setIssueStats] = useState(createEmptyIssueStats);
@@ -63,10 +64,11 @@ export function useProjectHomeDashboardData({
   const [docSnapshots, setDocSnapshots] = useState<number[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [calendarSources, setCalendarSources] = useState<ProjectCalendar[]>([]);
   const [fileCount, setFileCount] = useState(0);
   const [fileTotalBytes, setFileTotalBytes] = useState(0);
   const [recentFiles, setRecentFiles] = useState<Array<{ id: string; name: string; createdAt: string; size: number }>>([]);
-  const [recentDocs, setRecentDocs] = useState<Array<{ id: string; title: string; updatedAt: string; folderId?: string | null }>>([]);
+  const [recentDocs, setRecentDocs] = useState<Array<{ id: string; title: string; createdAt: string; updatedAt: string; folderId?: string | null; authorName?: string | null; authorAvatarUrl?: string | null }>>([]);
   const [chatStats, setChatStats] = useState({
     messageCount: 0,
     channelCount: 0,
@@ -96,13 +98,35 @@ export function useProjectHomeDashboardData({
   );
 
   const calendarBuckets = useMemo(() => {
-    const map = new Map<string, { key: string; name: string; count: number }>();
+    const calendarMap = new Map(calendarSources.map((calendar) => [calendar.id, calendar]));
+    const map = new Map<string, { key: string; name: string; count: number; color: string }>();
     calendarEvents.forEach((event) => {
-      const key = event.categoryId || event.calendarId || "unknown";
-      const name = event.categoryName || "기본";
+      const key = event.calendarId || event.categoryId || "unknown";
+      const source = key ? calendarMap.get(key) : undefined;
+      const name = source?.name || event.categoryName || "기본 캘린더";
+      const color = source?.color || event.categoryColor || "#3b82f6";
       const prev = map.get(key);
       if (prev) prev.count += 1;
-      else map.set(key, { key, name, count: 1 });
+      else map.set(key, { key, name, color, count: 1 });
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [calendarEvents, calendarSources]);
+
+  const calendarCategoryBuckets = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; count: number; color: string }>();
+    calendarEvents.forEach((event) => {
+      const key = event.categoryId || "default";
+      const prev = map.get(key);
+      if (prev) {
+        prev.count += 1;
+        return;
+      }
+      map.set(key, {
+        key,
+        name: event.categoryName || "기본",
+        color: event.categoryColor || "#3b82f6",
+        count: 1,
+      });
     });
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
   }, [calendarEvents]);
@@ -208,6 +232,23 @@ export function useProjectHomeDashboardData({
       .catch(() => {
         if (!active) return;
         setRecentDocs([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    getProjectCalendars(projectId)
+      .then((list) => {
+        if (!active) return;
+        setCalendarSources(list ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCalendarSources([]);
       });
     return () => {
       active = false;
@@ -557,6 +598,8 @@ export function useProjectHomeDashboardData({
   return {
     channels,
     channelActivity,
+    chatUsers: users,
+    currentUserId: me.id,
     memberCount,
     members,
     issueCount,
@@ -580,5 +623,7 @@ export function useProjectHomeDashboardData({
     calendarCounts,
     issuesByStatus,
     calendarBuckets,
+    calendarCategoryBuckets,
+    calendarSources,
   };
 }

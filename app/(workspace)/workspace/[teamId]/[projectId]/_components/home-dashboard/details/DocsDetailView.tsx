@@ -5,7 +5,7 @@ import { ArrowUpRight, BookText, Clock4, FileText, FolderOpen, LineChart } from 
 import { buildSeriesFromDates, filterDates } from '../../../_model/dashboard-page.utils';
 import type { DetailViewBaseProps } from './detail-view.types';
 
-export default function DocsDetailView({ pathname, onNavigate, renderHeader, renderDetailTabs, renderGraphFilter, renderGraphTabs, renderBars, model }: DetailViewBaseProps) {
+export default function DocsDetailView({ pathname, onNavigate, renderHeader, renderDetailTabs, renderGraphFilter, renderGraphTabs, renderBars, renderRangeLabels, model }: DetailViewBaseProps) {
   const {
     docsTab,
     setDocsTab,
@@ -25,23 +25,21 @@ export default function DocsDetailView({ pathname, onNavigate, renderHeader, ren
         return (
           <>
             {renderHeader(
-              "Docs Dashboard",
+              "문서 Dashboard",
               <button
                 type="button"
                 className="inline-flex items-center gap-1 rounded-full border border-border bg-panel px-3 py-1.5 text-[11px] font-semibold text-foreground hover:bg-accent"
                 onClick={() => onNavigate(`${pathname}/docs`)}
               >
-                Docs로 이동 <ArrowUpRight size={12} />
-              </button>
-            )}
-            <section className="rounded-2xl border border-border bg-panel/70 p-4">
-              {renderDetailTabs(docsTab, setDocsTab, [
+                문서로 이동 <ArrowUpRight size={12} />
+              </button>,
+              renderDetailTabs(docsTab, setDocsTab, [
                 { key: "all", label: "전체", icon: BookText },
                 { key: "documents", label: "문서", icon: FileText },
                 { key: "activity", label: "활동", icon: FolderOpen },
                 { key: "analytics", label: "분석", icon: LineChart },
-              ])}
-            </section>
+              ])
+            )}
             <section className="grid gap-5 md:grid-cols-3">
               <div className="rounded-2xl border border-border bg-panel/70 p-6">
                 <div className="flex items-center justify-between text-sm text-muted">
@@ -77,11 +75,38 @@ export default function DocsDetailView({ pathname, onNavigate, renderHeader, ren
                     <button
                       key={doc.id}
                       type="button"
-                      className="flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel px-3 py-2 text-left text-xs hover:bg-accent"
+                      className="grid w-full grid-cols-1 items-center gap-2 rounded-lg border border-border/60 bg-panel px-3 py-2 text-left text-xs hover:bg-accent md:grid-cols-[1.3fr_1fr] md:gap-3"
                       onClick={() => onNavigate(`${pathname}/docs/${doc.id}`)}
                     >
-                      <span className="truncate font-semibold text-foreground">{doc.title}</span>
-                      <span className="text-[11px] text-muted">{new Date(doc.updatedAt).toLocaleDateString("ko-KR")}</span>
+                      <span className="inline-flex min-w-0 items-center gap-2">
+                        <span className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted/40">
+                          {doc.authorAvatarUrl ? (
+                            <img src={doc.authorAvatarUrl} alt={doc.authorName ?? "작성자"} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-[11px]">
+                              {(doc.authorName ?? "U").slice(0, 1)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[11px] text-muted">{doc.authorName ?? "알 수 없음"}</span>
+                          <span className="block truncate font-semibold text-foreground">{doc.title}</span>
+                        </span>
+                      </span>
+                      <span className="flex flex-col items-start gap-1 md:items-end">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold" style={{ borderColor: "#3b82f666", backgroundColor: "#3b82f622", color: "#1d4ed8" }}>
+                            생성
+                          </span>
+                          <span className="text-[10px] text-muted">{new Date(doc.createdAt).toLocaleDateString("ko-KR")}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold" style={{ borderColor: "#10b98166", backgroundColor: "#10b98122", color: "#047857" }}>
+                            수정
+                          </span>
+                          <span className="text-[10px] text-muted">{new Date(doc.updatedAt).toLocaleDateString("ko-KR")}</span>
+                        </span>
+                      </span>
                     </button>
                   ))}
                   {recentDocs.length === 0 && (
@@ -111,6 +136,9 @@ export default function DocsDetailView({ pathname, onNavigate, renderHeader, ren
                   {docGraphMode === "hourly" && renderBars(docCounts.hourly.length ? docCounts.hourly : buildSeriesFromDates(filterDates(docSnapshots, "hourly", { day: docHourlyDate, month: docDailyMonth, year: docMonthlyYear })).hourly, 72)}
                   {docGraphMode === "daily" && renderBars(docCounts.daily.length ? docCounts.daily : buildSeriesFromDates(filterDates(docSnapshots, "daily", { day: docHourlyDate, month: docDailyMonth, year: docMonthlyYear })).daily, 72)}
                   {docGraphMode === "monthly" && renderBars(docCounts.monthly.length ? docCounts.monthly : buildSeriesFromDates(filterDates(docSnapshots, "monthly", { day: docHourlyDate, month: docDailyMonth, year: docMonthlyYear })).monthly, 72)}
+                  {docGraphMode === "hourly" && renderRangeLabels("hourly", 24)}
+                  {docGraphMode === "daily" && renderRangeLabels("daily", docCounts.daily.length || 31)}
+                  {docGraphMode === "monthly" && renderRangeLabels("monthly", 12)}
                 </div>
               </section>
             )}

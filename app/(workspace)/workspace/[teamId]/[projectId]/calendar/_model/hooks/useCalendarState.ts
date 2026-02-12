@@ -134,8 +134,12 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
     let mounted = true;
     const loadEvents = async () => {
       try {
+        const rangeStart = startOfMonth(subMonths(current, 2)).toISOString();
+        const rangeEnd = endOfMonth(addMonths(current, 2)).toISOString();
         const res = await getCalendarEvents({
           projectId,
+          start: rangeStart,
+          end: rangeEnd,
           calendarId: focusCalendarId ? selectedCalendarId || focusCalendarId : null,
         });
         if (!mounted) return;
@@ -149,7 +153,7 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
     return () => {
       mounted = false;
     };
-  }, [projectId, focusCalendarId, selectedCalendarId]);
+  }, [projectId, focusCalendarId, selectedCalendarId, current]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -166,11 +170,9 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
             categoriesRes = [];
           }
           if (categoriesRes.length === 0) {
-            const nonPersonalIds = (projectCalendars ?? [])
-              .filter((calendar) => calendar.type !== "PERSONAL")
-              .map((calendar) => calendar.id);
+            const calendarIds = (projectCalendars ?? []).map((calendar) => calendar.id);
             const fallbackResults = await Promise.allSettled(
-              nonPersonalIds.map((id) => getCalendarCategories(projectId, id)),
+              calendarIds.map((id) => getCalendarCategories(projectId, id)),
             );
             categoriesRes = fallbackResults
               .filter((res) => res.status === "fulfilled")
@@ -221,7 +223,10 @@ export function useCalendarState(initialDate: Date, initialView: ViewMode, focus
   const filteredEvents = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return events
-      .filter((event) => calendarMap.get(event.categoryId)?.visible)
+      .filter((event) => {
+        const category = calendarMap.get(event.categoryId);
+        return category ? category.visible : true;
+      })
       .filter((event) => {
         if (!keyword) return true;
         const haystack = `${event.title} ${event.location ?? ""} ${event.description ?? ""}`.toLowerCase();

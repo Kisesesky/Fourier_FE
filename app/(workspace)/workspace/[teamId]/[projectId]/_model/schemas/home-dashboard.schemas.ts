@@ -7,6 +7,7 @@ const MemberApiSchema = z
     userId: z.string().optional(),
     id: z.string().optional(),
     name: z.string(),
+    displayName: z.string().optional(),
     avatarUrl: z.string().nullable().optional(),
     role: z.string().optional(),
     joinedAt: z.string().optional(),
@@ -18,8 +19,11 @@ const DocumentApiSchema = z
   .object({
     id: z.string(),
     title: z.string(),
+    createdAt: z.string().optional(),
     updatedAt: z.string(),
     folderId: z.string().nullable().optional(),
+    authorName: z.string().nullable().optional(),
+    authorAvatarUrl: z.string().nullable().optional(),
   })
   .passthrough();
 
@@ -35,6 +39,7 @@ const FileApiSchema = z
 export type ProjectMemberRow = {
   id: string;
   name: string;
+  displayName?: string;
   avatarUrl?: string | null;
   role?: string;
   joinedAt?: number;
@@ -43,8 +48,11 @@ export type ProjectMemberRow = {
 export type RecentDocRow = {
   id: string;
   title: string;
+  createdAt: string;
   updatedAt: string;
   folderId?: string | null;
+  authorName?: string | null;
+  authorAvatarUrl?: string | null;
 };
 
 export type RecentFileRow = {
@@ -60,6 +68,7 @@ export const parseProjectMembers = (input: unknown): ProjectMemberRow[] => {
   return parsed.data.map((member) => ({
     id: member.userId ?? member.id ?? member.name,
     name: member.name,
+    displayName: member.displayName ?? member.name,
     avatarUrl: member.avatarUrl ?? null,
     role: member.role,
     joinedAt: member.joinedAt
@@ -76,8 +85,11 @@ export const parseRecentDocs = (input: unknown): RecentDocRow[] => {
   return parsed.data.map((doc) => ({
     id: doc.id,
     title: doc.title,
+    createdAt: doc.createdAt ?? doc.updatedAt,
     updatedAt: doc.updatedAt,
     folderId: doc.folderId ?? null,
+    authorName: doc.authorName ?? null,
+    authorAvatarUrl: doc.authorAvatarUrl ?? null,
   }));
 };
 

@@ -22,16 +22,14 @@ export default function FileDetailView({ pathname, onNavigate, renderHeader, ren
                 onClick={() => onNavigate(`${pathname}/file`)}
               >
                 파일로 이동 <ArrowUpRight size={12} />
-              </button>
-            )}
-            <section className="rounded-2xl border border-border bg-panel/70 p-4">
-              {renderDetailTabs(fileTab, setFileTab, [
+              </button>,
+              renderDetailTabs(fileTab, setFileTab, [
                 { key: "all", label: "전체", icon: Archive },
                 { key: "files", label: "파일", icon: FileText },
                 { key: "storage", label: "용량", icon: BarChart3 },
                 { key: "recent", label: "최근", icon: Clock4 },
-              ])}
-            </section>
+              ])
+            )}
             <section className="grid gap-5 md:grid-cols-3">
               <div className="rounded-2xl border border-border bg-panel/70 p-6">
                 <div className="flex items-center justify-between text-sm text-muted">

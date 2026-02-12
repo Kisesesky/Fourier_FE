@@ -124,18 +124,18 @@ export function TimelineTaskBar({
       >
         <div className="flex items-center gap-2 px-3 text-left">
           {isIssue && (
-            <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+            <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-[9px]">
               이슈
             </span>
           )}
-          <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[10px] font-semibold text-slate-700">
+          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[11px] font-semibold text-slate-700 sm:h-5 sm:w-5 sm:text-[10px]">
             {createdBy?.avatarUrl ? (
               <img src={createdBy.avatarUrl} alt={createdBy?.name ?? "User"} className="h-full w-full object-cover" />
             ) : (
               <span>{createdBy?.name?.slice(0, 1) ?? "?"}</span>
             )}
           </div>
-          <span className="text-sm font-medium text-white mix-blend-normal line-clamp-1">{title}</span>
+          <span className="line-clamp-1 text-[12px] font-semibold text-white mix-blend-normal sm:text-sm sm:font-medium">{title}</span>
         </div>
       </button>
       {showTooltip &&

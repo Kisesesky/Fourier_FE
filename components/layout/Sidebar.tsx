@@ -12,9 +12,16 @@ import {
   Settings,
   Home,
   ChevronLeft,
+  MessageSquare,
+  FolderKanban,
+  CalendarDays,
+  Users,
+  BookText,
+  Archive,
 } from "lucide-react";
 
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { fetchProjects } from "@/lib/projects";
 import { useChat } from "@/workspace/chat/_model/store";
 import ChatPanel from "@/components/layout/sidebar/ChatPanel";
 import CalendarPanel from "@/components/layout/sidebar/CalendarPanel";
@@ -28,9 +35,10 @@ import type { SurfaceSlug } from "@/components/layout/sidebar/sidebar.types";
 
 export default function Sidebar() {
   const router = useRouter();
-  const { pathname, buildHref, isActive } = useWorkspacePath();
+  const { pathname, workspace, buildHref, isActive } = useWorkspacePath();
   const { channels, channelId, setChannel, loadChannels, channelActivity, refreshChannel, lastReadAt, me, users } = useChat();
   const [panelOpen, setPanelOpen] = useState(true);
+  const [projectCard, setProjectCard] = useState<{ name: string; iconValue?: string | null } | null>(null);
 
   const activeSurface: SurfaceSlug | null = useMemo(() => {
     return NAV_LINKS.find(item => isActive(item.slug))?.slug ?? null;
@@ -55,6 +63,47 @@ export default function Sidebar() {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent("sidebar:context", { detail: { open: panelOpen } }));
   }, [panelOpen]);
+
+  useEffect(() => {
+    const rawTeamId = workspace?.teamId;
+    const rawProjectId = workspace?.projectId;
+    if (!rawTeamId || !rawProjectId) {
+      setProjectCard(null);
+      return;
+    }
+    let cancelled = false;
+    const decodedTeamId = (() => {
+      try {
+        return decodeURIComponent(rawTeamId);
+      } catch {
+        return rawTeamId;
+      }
+    })();
+    const decodedProjectId = (() => {
+      try {
+        return decodeURIComponent(rawProjectId);
+      } catch {
+        return rawProjectId;
+      }
+    })();
+    fetchProjects(decodedTeamId)
+      .then((projects) => {
+        if (cancelled) return;
+        const found = projects.find((project: { id: string }) => project.id === decodedProjectId);
+        if (!found) {
+          setProjectCard({ name: decodedProjectId, iconValue: null });
+          return;
+        }
+        setProjectCard({ name: found.name, iconValue: found.iconValue ?? null });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setProjectCard({ name: decodedProjectId, iconValue: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [workspace?.teamId, workspace?.projectId]);
 
   const renderPanel = () => {
     switch (activeSurface) {
@@ -108,17 +157,26 @@ export default function Sidebar() {
       default:
         return (
           <div className="space-y-3">
-            <div className="rounded-xl border border-border/60 bg-panel px-3 py-2 text-xs text-muted">
-              프로젝트 대시보드 상세 항목을 선택하세요.
+            <div className="rounded-xl border border-border/60 bg-panel px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/60 bg-muted/40 text-[10px] font-semibold text-foreground">
+                  {projectCard?.iconValue ? (
+                    <img src={projectCard.iconValue} alt={projectCard.name} className="h-full w-full object-cover" />
+                  ) : (
+                    (projectCard?.name ?? "Project").slice(0, 2).toUpperCase()
+                  )}
+                </span>
+                <span className="truncate text-xs font-semibold text-foreground">{projectCard?.name ?? "Project"}</span>
+              </div>
             </div>
             <div className="grid gap-2">
               <button
                 type="button"
-                className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-panel px-3 py-2 text-left text-xs font-semibold hover:bg-accent"
+                className="group flex w-full items-center justify-between rounded-xl border border-border/60 bg-panel px-3 py-2 text-left text-xs font-semibold hover:bg-accent"
                 onClick={() => router.push(buildHref(null))}
               >
-                <span>전체보기</span>
-                <span className="text-muted">요약 대시보드</span>
+                <span className="inline-flex items-center gap-2"><Home size={13} /> 전체보기</span>
+                <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">요약 대시보드</span>
               </button>
               <div className="ml-1 grid gap-1 border-l-2 border-border/80 pl-4">
                 <button
@@ -126,66 +184,66 @@ export default function Sidebar() {
                   className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
                   onClick={() => router.push(`${buildHref(null)}?view=chat`)}
                 >
-                    <span className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
+                    <span className="flex items-center gap-2 text-foreground">
+                      <MessageSquare size={12} />
                     채팅
                     </span>
-                  <span className="text-muted">상세 보기</span>
+                  <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">상세 보기</span>
                 </button>
                 <button
                   type="button"
                   className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
                   onClick={() => router.push(`${buildHref(null)}?view=issues`)}
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
+                  <span className="flex items-center gap-2 text-foreground">
+                    <FolderKanban size={12} />
                     이슈
                   </span>
-                  <span className="text-muted">상세 보기</span>
-                </button>
-                <button
-                  type="button"
-                  className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
-                  onClick={() => router.push(`${buildHref(null)}?view=members`)}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
-                    멤버
-                  </span>
-                  <span className="text-muted">상세 보기</span>
-                </button>
-                <button
-                  type="button"
-                  className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
-                  onClick={() => router.push(`${buildHref(null)}?view=docs`)}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
-                    Docs
-                  </span>
-                  <span className="text-muted">상세 보기</span>
+                  <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">상세 보기</span>
                 </button>
                 <button
                   type="button"
                   className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
                   onClick={() => router.push(`${buildHref(null)}?view=calendar`)}
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
+                  <span className="flex items-center gap-2 text-foreground">
+                    <CalendarDays size={12} />
                     일정
                   </span>
-                  <span className="text-muted">상세 보기</span>
+                  <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">상세 보기</span>
+                </button>
+                <button
+                  type="button"
+                  className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
+                  onClick={() => router.push(`${buildHref(null)}?view=members`)}
+                >
+                  <span className="flex items-center gap-2 text-foreground">
+                    <Users size={12} />
+                    멤버
+                  </span>
+                  <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">상세 보기</span>
+                </button>
+                <button
+                  type="button"
+                  className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
+                  onClick={() => router.push(`${buildHref(null)}?view=docs`)}
+                >
+                  <span className="flex items-center gap-2 text-foreground">
+                    <BookText size={12} />
+                    문서
+                  </span>
+                  <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">상세 보기</span>
                 </button>
                 <button
                   type="button"
                   className="group flex w-full items-center justify-between rounded-lg border border-border/60 bg-panel/70 px-3 py-2 text-left text-[11px] hover:bg-accent"
                   onClick={() => router.push(`${buildHref(null)}?view=file`)}
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-muted group-hover:bg-foreground" />
+                  <span className="flex items-center gap-2 text-foreground">
+                    <Archive size={12} />
                     파일
                   </span>
-                  <span className="text-muted">상세 보기</span>
+                  <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">상세 보기</span>
                 </button>
               </div>
             </div>

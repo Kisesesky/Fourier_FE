@@ -20,8 +20,17 @@ type FileTab = "all" | "files" | "storage" | "recent";
 
 type ChannelRow = { id: string; name: string };
 type ChannelActivityRow = { lastMessageTs?: number; lastPreview?: string };
-type MemberRow = { id: string; name: string; avatarUrl?: string | null; role?: string; joinedAt?: number };
-type DocRow = { id: string; title: string; updatedAt: string; folderId?: string | null };
+type ChatUserRow = { id: string; name: string; avatarUrl?: string | null };
+type MemberRow = { id: string; name: string; displayName?: string; avatarUrl?: string | null; role?: string; joinedAt?: number };
+type DocRow = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  folderId?: string | null;
+  authorName?: string | null;
+  authorAvatarUrl?: string | null;
+};
 type FileRow = { id: string; name: string; createdAt: string; size: number };
 type IssueStatusMap = {
   backlog: Issue[];
@@ -36,6 +45,8 @@ type DetailModel = {
   setChatTab: Dispatch<SetStateAction<ChatTab>>;
   channels: ChannelRow[];
   channelActivity: Record<string, ChannelActivityRow>;
+  chatUsers: Record<string, ChatUserRow>;
+  currentUserId: string;
   chatStats: {
     messageCount: number;
     channelCount: number;
@@ -99,7 +110,9 @@ type DetailModel = {
   calendarTab: CalendarTab;
   setCalendarTab: Dispatch<SetStateAction<CalendarTab>>;
   upcomingEvents: CalendarEvent[];
-  calendarBuckets: Array<{ key: string; name: string; count: number }>;
+  calendarBuckets: Array<{ key: string; name: string; count: number; color: string }>;
+  calendarCategoryBuckets: Array<{ key: string; name: string; count: number; color: string }>;
+  calendarSources: Array<{ id: string; name: string; color: string; type?: string }>;
   calendarGraphMode: GraphMode;
   setCalendarGraphMode: Dispatch<SetStateAction<GraphMode>>;
   calendarHourlyDate: string;
@@ -120,7 +133,7 @@ type DetailModel = {
 export type DetailViewBaseProps = {
   pathname: string;
   onNavigate: (href: string) => void;
-  renderHeader: (title: string, actions?: ReactNode) => ReactNode;
+  renderHeader: (title: string, actions?: ReactNode, tabs?: ReactNode) => ReactNode;
   renderIssueSummary: () => ReactNode;
   renderDetailTabs: DetailTabsRenderer;
   renderGraphTabs: (mode: GraphMode, setMode: (value: GraphMode) => void) => ReactNode;

@@ -1,7 +1,9 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/IssuesTimelineView.tsx
 'use client';
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { addDays, addMonths, format, subMonths } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { Issue, IssueGroup } from "@/workspace/issues/_model/types";
 import TimelineGroup from "@/workspace/issues/_components/views/timeline/TimelineGroup";
@@ -24,6 +26,16 @@ export default function IssuesTimelineView({
     x: number;
     y: number;
   } | null>(null);
+  const [dayWidth, setDayWidth] = useState(56);
+  const [rowHeight, setRowHeight] = useState(48);
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedWeek, setSelectedWeek] = useState<number | "all">("all");
+  const [isMobile, setIsMobile] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const timelineViewportRef = useRef<HTMLDivElement | null>(null);
 
   const parseTimelineDate = (value: string, isEnd: boolean) => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -52,23 +64,54 @@ export default function IssuesTimelineView({
   };
 
   const groupPalette = ["#f87171", "#60a5fa", "#fbbf24", "#a78bfa", "#34d399"];
+  const monthStart = useMemo(
+    () => new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1),
+    [selectedMonth],
+  );
+  const monthEnd = useMemo(
+    () => new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0, 23, 59, 59, 999),
+    [selectedMonth],
+  );
+  const monthTotalDays = useMemo(
+    () => Math.ceil((monthEnd.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    [monthEnd, monthStart],
+  );
+  const monthWeekCount = useMemo(() => Math.ceil(monthTotalDays / 7), [monthTotalDays]);
+
+  useEffect(() => {
+    if (selectedWeek === "all") return;
+    if (selectedWeek > monthWeekCount) setSelectedWeek("all");
+  }, [monthWeekCount, selectedWeek]);
+
   const timelineStart = useMemo(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  }, []);
+    if (selectedWeek === "all") return monthStart;
+    return addDays(monthStart, (selectedWeek - 1) * 7);
+  }, [monthStart, selectedWeek]);
   const timelineEnd = useMemo(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  }, []);
+    if (selectedWeek === "all") return monthEnd;
+    const rangeEnd = addDays(timelineStart, 6);
+    return rangeEnd > monthEnd ? monthEnd : rangeEnd;
+  }, [monthEnd, selectedWeek, timelineStart]);
+
   const days = useMemo(() => {
     const total = Math.ceil((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    return Array.from({ length: total }, (_, idx) => idx + 1);
+    return Array.from({ length: total }, (_, idx) => addDays(timelineStart, idx).getDate());
   }, [timelineEnd, timelineStart]);
 
-  const weeks = useMemo(() => {
-    const totalDays = days.length;
-    return Array.from({ length: Math.ceil(totalDays / 7) }, (_, idx) => idx);
-  }, [days.length]);
+  const weekSegments = useMemo(() => {
+    if (selectedWeek !== "all") {
+      return [{ key: `w-${selectedWeek}`, label: `${selectedWeek}주차`, span: days.length }];
+    }
+    return Array.from({ length: monthWeekCount }, (_, idx) => {
+      const start = idx * 7;
+      const span = Math.min(7, Math.max(0, monthTotalDays - start));
+      return {
+        key: `w-${idx + 1}`,
+        label: `${idx + 1}주차`,
+        span,
+      };
+    }).filter((segment) => segment.span > 0);
+  }, [days.length, monthTotalDays, monthWeekCount, selectedWeek]);
 
   const issuesByGroup = useMemo(() => {
     const map = new Map<string, { name: string; color: string; items: Issue[] }>();
@@ -125,16 +168,95 @@ export default function IssuesTimelineView({
     return issuesByGroup.filter(([groupId]) => groupFilter[groupId] !== false);
   }, [groupFilter, issuesByGroup]);
 
-  const dayWidth = 56;
-  const rowHeight = 48;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateSize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setRowHeight(mobile ? 42 : 48);
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const target = timelineViewportRef.current;
+    if (!target) return;
+    const observer = new ResizeObserver((entries) => {
+      const next = entries[0]?.contentRect?.width ?? 0;
+      setContainerWidth(next);
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
+
   const dayMs = 24 * 60 * 60 * 1000;
   const toLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = (date: Date, start: Date) =>
     Math.floor((toLocalDay(date).getTime() - toLocalDay(start).getTime()) / dayMs);
 
+  useEffect(() => {
+    const base = isMobile ? 44 : 56;
+    if (selectedWeek === "all" || !containerWidth) {
+      setDayWidth(base);
+      return;
+    }
+    const leftPanelWidth = isMobile ? 128 : 160;
+    const available = Math.max(0, containerWidth - leftPanelWidth - 2);
+    const fit = Math.floor(available / Math.max(days.length, 1));
+    const min = isMobile ? 36 : 44;
+    setDayWidth(Math.max(min, fit));
+  }, [containerWidth, days.length, isMobile, selectedWeek]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-auto space-y-4 pb-2">
+      <div className="mb-3 rounded-xl border border-border bg-panel/60 px-3 py-2">
+        <div className="mb-2 flex items-center justify-center gap-2 text-sm font-semibold text-foreground">
+          <button
+            type="button"
+            onClick={() => setSelectedMonth((prev) => subMonths(prev, 1))}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-panel text-muted hover:bg-accent"
+            aria-label="이전 달"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span>{format(selectedMonth, "yyyy.MM")}</span>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth((prev) => addMonths(prev, 1))}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-panel text-muted hover:bg-accent"
+            aria-label="다음 달"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedWeek("all")}
+            className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+              selectedWeek === "all" ? "border-brand/60 bg-brand/15 text-brand" : "border-border/70 bg-panel text-muted"
+            }`}
+          >
+            전체
+          </button>
+          {Array.from({ length: monthWeekCount }, (_, idx) => idx + 1).map((weekNo) => (
+            <button
+              key={weekNo}
+              type="button"
+              onClick={() => setSelectedWeek(weekNo)}
+              className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                selectedWeek === weekNo ? "border-brand/60 bg-brand/15 text-brand" : "border-border/70 bg-panel text-muted"
+              }`}
+            >
+              {weekNo}주차
+            </button>
+          ))}
+        </div>
+      </div>
+      <div ref={timelineViewportRef} className="flex-1 min-h-0 overflow-auto space-y-4 pb-2">
         {filteredGroups.map(([groupId, group]) => (
           <TimelineGroup
             key={groupId}
@@ -142,10 +264,11 @@ export default function IssuesTimelineView({
             group={group}
             memberMap={memberMap}
             days={days}
-            weeks={weeks}
+            weekSegments={weekSegments}
             dayWidth={dayWidth}
             rowHeight={rowHeight}
             timelineStart={timelineStart}
+            timelineEnd={timelineEnd}
             parseTimelineDate={parseTimelineDate}
             diffDays={diffDays}
             setHoveredIssue={setHoveredIssue}

@@ -55,7 +55,15 @@ export async function getProjectMemberAnalytics(
   if (params.month) query.set("month", params.month);
   if (params.year) query.set("year", params.year);
   const res = await api.get(`/team/${teamId}/project/${projectId}/members/analytics?${query.toString()}`);
-  return res.data ?? { counts: [] };
+  const payload = res.data;
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const bag = payload as Record<string, any>;
+    if (Array.isArray(bag.counts)) return { counts: bag.counts, granularity: bag.granularity };
+    if (bag.data && typeof bag.data === "object" && Array.isArray((bag.data as any).counts)) {
+      return { counts: (bag.data as any).counts, granularity: (bag.data as any).granularity };
+    }
+  }
+  return { counts: [] };
 }
 
 export async function removeProjectMember(teamId: string, projectId: string, userId: string) {

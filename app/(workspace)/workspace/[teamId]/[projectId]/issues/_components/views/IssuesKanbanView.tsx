@@ -1,7 +1,8 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/views/IssuesKanbanView.tsx
 'use client';
 
-import { CornerDownRight, Sparkles, BadgeCheck, Flame, Eye, CircleDot } from "lucide-react";
+import { CornerDownRight, Sparkles, BadgeCheck, Flame, Eye, CircleDot, LayoutGrid } from "lucide-react";
+import { useMemo, useState } from "react";
 import type React from "react";
 import type { Issue, IssueComment } from "@/workspace/issues/_model/types";
 import IssueActions from "@/workspace/issues/_components/views/table/IssueActions";
@@ -82,6 +83,13 @@ export default function IssuesKanbanView({
   profile: { id?: string | null; name?: string | null; displayName?: string | null; email?: string | null; avatarUrl?: string | null } | null;
   projectId?: string;
 }) {
+  const [activeStatus, setActiveStatus] = useState<"all" | Issue["status"]>("all");
+
+  const visibleColumns = useMemo(
+    () => (activeStatus === "all" ? columns : columns.filter((col) => col.key === activeStatus)),
+    [activeStatus, columns],
+  );
+
   const getColumnTone = (key: Issue["status"]) => {
     switch (key) {
       case "done":
@@ -120,6 +128,16 @@ export default function IssuesKanbanView({
           icon: Flame,
         };
     }
+  };
+
+  const getFilterIcon = (key: "all" | Issue["status"]) => {
+    if (key === "all") return LayoutGrid;
+    return getColumnTone(key).icon;
+  };
+
+  const getFilterIconClass = (key: "all" | Issue["status"]) => {
+    if (key === "all") return "text-muted";
+    return getColumnTone(key).accent;
   };
 
   const statusMeta = (status: Issue["status"]) => {
@@ -301,8 +319,58 @@ export default function IssuesKanbanView({
   };
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-hidden sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {columns.map((col) => {
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        <button
+          type="button"
+          onClick={() => setActiveStatus("all")}
+          className={[
+            "shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold transition sm:px-3 sm:py-1.5 sm:text-xs",
+            activeStatus === "all"
+              ? "border-brand bg-brand/10 text-brand"
+              : "border-border bg-panel/70 text-muted hover:bg-subtle/70",
+          ].join(" ")}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            {(() => {
+              const Icon = getFilterIcon("all");
+              return <Icon size={13} className={getFilterIconClass("all")} />;
+            })()}
+            전체
+          </span>
+        </button>
+        {columns.map((col) => {
+          const count = (grouped.get(col.key) ?? []).filter((issue) => !issue.parentId).length;
+          return (
+            <button
+              key={`kanban-filter-${col.key}`}
+              type="button"
+              onClick={() => setActiveStatus(col.key)}
+              className={[
+                "shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold transition sm:px-3 sm:py-1.5 sm:text-xs",
+                activeStatus === col.key
+                  ? "border-brand bg-brand/10 text-brand"
+                  : "border-border bg-panel/70 text-muted hover:bg-subtle/70",
+              ].join(" ")}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                {(() => {
+                  const Icon = getFilterIcon(col.key);
+                  return <Icon size={13} className={getFilterIconClass(col.key)} />;
+                })()}
+                {col.label} {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div
+        className={[
+          "grid min-h-0 flex-1 items-start gap-5 overflow-hidden",
+          activeStatus === "all" ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4" : "grid-cols-1",
+        ].join(" ")}
+      >
+      {visibleColumns.map((col) => {
         const items = (grouped.get(col.key) ?? []).filter((issue) => !issue.parentId);
         const tone = getColumnTone(col.key);
         const ColumnIcon = tone.icon;
@@ -310,9 +378,10 @@ export default function IssuesKanbanView({
           <div
             key={col.key}
             className={[
-              "flex h-full min-h-0 min-w-0 flex-col rounded-2xl border border-border p-3 shadow-sm backdrop-blur overflow-hidden max-h-[calc(100vh-240px)]",
+              "flex min-w-0 self-start flex-col rounded-2xl border border-border p-3 shadow-sm backdrop-blur overflow-hidden",
               tone.card,
             ].join(" ")}
+            style={{ maxHeight: "min(760px, calc(100vh - 240px))" }}
           >
             <div className="flex items-center justify-between pb-3">
               <div className="flex items-center gap-2">
@@ -353,7 +422,7 @@ export default function IssuesKanbanView({
                           <ColumnIcon size={14} className={tone.accent} />
                           <span className="line-clamp-2">{issue.title || "제목 없음"}</span>
                         </div>
-                        <div className="flex items-center gap-2 whitespace-nowrap text-[11px] text-muted">
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
                           <span className={`rounded-full px-2 py-0.5 ${priorityBadge(issue.priority)}`}>
                             {issue.priority === "urgent"
                               ? "매우 높음"
@@ -448,6 +517,7 @@ export default function IssuesKanbanView({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

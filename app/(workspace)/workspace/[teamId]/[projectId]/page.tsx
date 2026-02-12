@@ -10,6 +10,7 @@ import ProjectModuleDetailView from "./_components/home-dashboard/ProjectModuleD
 import { formatBytes, renderBars, renderDetailTabs, renderGraphFilter, renderGraphTabs, renderRangeLabels } from "./_components/home-dashboard/graph-ui";
 import { useProjectHomeDashboardData } from "./_model/hooks/useProjectHomeDashboardData";
 import { useProjectDashboardUiStore } from "./_model/store/useProjectDashboardUiStore";
+import { ISSUE_STATUS_LABELS } from "./_model/dashboard-page.constants";
 
 export default function WorkspaceProjectPage({ params }: WorkspaceProjectPageProps) {
   const teamId = decodeURIComponent(params.teamId);
@@ -83,6 +84,8 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
   const {
     channels,
     channelActivity,
+    chatUsers,
+    currentUserId,
     memberCount,
     members,
     issueCount,
@@ -106,6 +109,8 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
     calendarCounts,
     issuesByStatus,
     calendarBuckets,
+    calendarCategoryBuckets,
+    calendarSources,
   } = useProjectHomeDashboardData({
     teamId,
     projectId,
@@ -167,24 +172,25 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
     );
   }
 
-  const renderHeader = (label?: string, action?: React.ReactNode) => (
+  const renderHeader = (label?: string, action?: React.ReactNode, tabs?: React.ReactNode) => (
     <section className="rounded-3xl border border-border bg-panel/80 p-6 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs uppercase tracking-[0.4em] text-muted">{label ?? "Project Dashboard"}</p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="h-12 w-12 overflow-hidden rounded-2xl border border-border bg-muted/30">
+            {iconIsImage ? (
+              <img src={project.iconValue} alt={project.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-foreground">
+                {project.name.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{project.name}</h1>
+        </div>
         {action}
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-4">
-        <div className="h-12 w-12 overflow-hidden rounded-2xl border border-border bg-muted/30">
-          {iconIsImage ? (
-            <img src={project.iconValue} alt={project.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-foreground">
-              {project.name.slice(0, 1).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <h1 className="text-3xl font-semibold tracking-tight">{project.name}</h1>
-      </div>
+      <p className="mt-3 text-xs uppercase tracking-[0.25em] text-muted md:tracking-[0.4em]">{label ?? "Project Dashboard"}</p>
+      {tabs ? <div className="mt-3">{tabs}</div> : null}
     </section>
   );
 
@@ -195,11 +201,11 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
       </div>
       <div className="mt-4 space-y-3">
         {([
-          { key: "backlog", label: "Backlog", color: "bg-zinc-500", value: issueStats.backlog },
-          { key: "todo", label: "Todo", color: "bg-sky-500", value: issueStats.todo },
-          { key: "in_progress", label: "In Progress", color: "bg-amber-500", value: issueStats.in_progress },
-          { key: "review", label: "Review", color: "bg-purple-500", value: issueStats.review },
-          { key: "done", label: "Done", color: "bg-emerald-500", value: issueStats.done },
+          { key: "backlog", label: ISSUE_STATUS_LABELS.backlog, color: "bg-slate-500", value: issueStats.backlog },
+          { key: "todo", label: ISSUE_STATUS_LABELS.todo, color: "bg-rose-500", value: issueStats.todo },
+          { key: "in_progress", label: ISSUE_STATUS_LABELS.in_progress, color: "bg-amber-500", value: issueStats.in_progress },
+          { key: "review", label: ISSUE_STATUS_LABELS.review, color: "bg-violet-500", value: issueStats.review },
+          { key: "done", label: ISSUE_STATUS_LABELS.done, color: "bg-emerald-500", value: issueStats.done },
         ] as const).map((row) => {
           const total = issueCount || 1;
           const pct = Math.round((row.value / total) * 100);
@@ -280,7 +286,7 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
             onClick={() => router.push(`${pathname}/chat`)}
           >
             <span className="flex items-center gap-2 text-foreground"><MessageSquare size={14} /> 채팅</span>
-            <span className="text-[11px] text-muted">상세 보기</span>
+            <span className="hidden text-[11px] text-muted sm:inline">상세 보기</span>
           </button>
           <button
             type="button"
@@ -288,23 +294,7 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
             onClick={() => router.push(`${pathname}/issues`)}
           >
             <span className="flex items-center gap-2 text-foreground"><FolderKanban size={14} /> 이슈</span>
-            <span className="text-[11px] text-muted">상세 보기</span>
-          </button>
-          <button
-            type="button"
-            className="flex items-center justify-between rounded-xl border border-border/60 bg-panel px-3 py-2 text-left text-xs hover:bg-accent"
-            onClick={() => router.push(`${pathname}/members`)}
-          >
-            <span className="flex items-center gap-2 text-foreground"><Users size={14} /> 멤버</span>
-            <span className="text-[11px] text-muted">상세 보기</span>
-          </button>
-          <button
-            type="button"
-            className="flex items-center justify-between rounded-xl border border-border/60 bg-panel px-3 py-2 text-left text-xs hover:bg-accent"
-            onClick={() => router.push(`${pathname}/docs`)}
-          >
-            <span className="flex items-center gap-2 text-foreground"><BookText size={14} /> Docs</span>
-            <span className="text-[11px] text-muted">상세 보기</span>
+            <span className="hidden text-[11px] text-muted sm:inline">상세 보기</span>
           </button>
           <button
             type="button"
@@ -312,7 +302,23 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
             onClick={() => router.push(`${pathname}/calendar`)}
           >
             <span className="flex items-center gap-2 text-foreground"><CalendarDays size={14} /> 일정</span>
-            <span className="text-[11px] text-muted">상세 보기</span>
+            <span className="hidden text-[11px] text-muted sm:inline">상세 보기</span>
+          </button>
+          <button
+            type="button"
+            className="flex items-center justify-between rounded-xl border border-border/60 bg-panel px-3 py-2 text-left text-xs hover:bg-accent"
+            onClick={() => router.push(`${pathname}/members`)}
+          >
+            <span className="flex items-center gap-2 text-foreground"><Users size={14} /> 멤버</span>
+            <span className="hidden text-[11px] text-muted sm:inline">상세 보기</span>
+          </button>
+          <button
+            type="button"
+            className="flex items-center justify-between rounded-xl border border-border/60 bg-panel px-3 py-2 text-left text-xs hover:bg-accent"
+            onClick={() => router.push(`${pathname}/docs`)}
+          >
+            <span className="flex items-center gap-2 text-foreground"><BookText size={14} /> 문서</span>
+            <span className="hidden text-[11px] text-muted sm:inline">상세 보기</span>
           </button>
           <button
             type="button"
@@ -320,7 +326,7 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
             onClick={() => router.push(`${pathname}/file`)}
           >
             <span className="flex items-center gap-2 text-foreground"><Archive size={14} /> 파일</span>
-            <span className="text-[11px] text-muted">상세 보기</span>
+            <span className="hidden text-[11px] text-muted sm:inline">상세 보기</span>
           </button>
         </div>
       </section>
@@ -337,6 +343,13 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
                 name: ch.name,
                 lastTs: channelActivity[ch.id]?.lastMessageTs ?? 0,
                 preview: channelActivity[ch.id]?.lastPreview ?? "최근 메시지 없음",
+                isDm: ch.id.startsWith("dm:"),
+                dmUser: (() => {
+                  if (!ch.id.startsWith("dm:")) return null;
+                  const ids = ch.id.replace(/^dm:/, "").split("+").filter(Boolean);
+                  const partnerId = ids.find((id) => id !== currentUserId) ?? ids[0];
+                  return partnerId ? chatUsers[partnerId] : null;
+                })(),
               }))
               .sort((a, b) => b.lastTs - a.lastTs)
               .slice(0, 4)
@@ -345,7 +358,20 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
                   <span className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-brand/80" />
                   <div className="rounded-xl border border-border/60 bg-panel px-3 py-2">
                     <div className="flex items-center justify-between text-[11px] text-muted">
-                      <span className="font-semibold text-foreground">#{entry.name}</span>
+                      <span className="flex items-center gap-2 font-semibold text-foreground">
+                        {entry.isDm ? (
+                          <span className="h-5 w-5 overflow-hidden rounded-full bg-muted/40">
+                            {entry.dmUser?.avatarUrl ? (
+                              <img src={entry.dmUser.avatarUrl} alt={entry.dmUser.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center text-[9px]">
+                                {(entry.dmUser?.name ?? entry.name).slice(0, 1)}
+                              </span>
+                            )}
+                          </span>
+                        ) : null}
+                        {entry.isDm ? (entry.dmUser?.name ?? entry.name) : `#${entry.name}`}
+                      </span>
                       <span>
                         {entry.lastTs ? new Date(entry.lastTs).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) : ""}
                       </span>
@@ -419,6 +445,8 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
     setChatTab,
     channels,
     channelActivity,
+    chatUsers,
+    currentUserId,
     chatStats,
     chatThreadRows,
     messageGraphMode,
@@ -477,6 +505,8 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
     setCalendarTab,
     upcomingEvents,
     calendarBuckets,
+    calendarCategoryBuckets,
+    calendarSources,
     calendarGraphMode,
     setCalendarGraphMode,
     calendarHourlyDate,
@@ -495,7 +525,7 @@ export default function WorkspaceProjectPage({ params }: WorkspaceProjectPagePro
   };
 
   return (
-    <div className="flex min-h-full flex-col gap-6 px-4 py-6 md:px-8">
+    <div className="flex min-h-full flex-col gap-6 px-4 pb-16 pt-6 md:px-8 md:pb-20">
       {view === "overview" ? (
         renderOverview()
       ) : (

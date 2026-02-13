@@ -53,14 +53,14 @@ export default function ChatPanel({
                 key={channel.id}
                 type="button"
                 className={clsx(
-                  "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
+                  "group flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-xs transition",
                   channel.id === activeChannelId
-                    ? "border-border bg-accent text-foreground"
-                    : "border-border/60 bg-panel hover:bg-accent"
+                    ? "border-brand/50 bg-brand/10 text-foreground shadow-sm"
+                    : "border-border/60 bg-panel/70 hover:border-border hover:bg-accent/70"
                 )}
                 onClick={() => onOpenChannel(channel.id)}
               >
-                <span className="text-muted">#</span>
+                <span className="inline-flex rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-500">#</span>
                 <span className="truncate">{channel.name?.replace(/^#\s*/, "") || channel.id}</span>
                 {unreadLabel && (
                   <span className="ml-auto rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-500">
@@ -73,7 +73,7 @@ export default function ChatPanel({
         )}
         <button
           type="button"
-          className="mt-1 flex w-full items-center gap-2 rounded-lg border border-border/60 bg-panel px-3 py-2 text-left text-xs transition hover:bg-accent"
+          className="mt-1 flex w-full items-center gap-2 rounded-xl border border-border/60 bg-panel/70 px-3 py-2 text-left text-xs transition hover:border-border hover:bg-accent/70"
           onClick={onCreateChannel}
         >
           <Plus size={12} className="text-muted" />
@@ -97,14 +97,14 @@ export default function ChatPanel({
                 key={channel.id}
                 type="button"
                 className={clsx(
-                  "flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition",
+                  "group flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-xs transition",
                   channel.id === activeChannelId
-                    ? "border-border bg-accent text-foreground"
-                    : "border-border/60 bg-panel hover:bg-accent"
+                    ? "border-brand/50 bg-brand/10 text-foreground shadow-sm"
+                    : "border-border/60 bg-panel/70 hover:border-border hover:bg-accent/70"
                 )}
                 onClick={() => onOpenChannel(channel.id)}
               >
-                <span className="h-5 w-5 overflow-hidden rounded-full border border-border/60 bg-muted/20">
+                <span className="h-6 w-6 overflow-hidden rounded-full bg-muted/20">
                   {dmUser?.avatarUrl ? (
                     <img src={dmUser.avatarUrl} alt={dmName} className="h-full w-full object-cover" />
                   ) : (
@@ -113,6 +113,7 @@ export default function ChatPanel({
                     </span>
                   )}
                 </span>
+                <span className="inline-flex rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-sky-500">DM</span>
                 <span className="truncate">{dmName}</span>
               </button>
             );
@@ -140,11 +141,11 @@ export default function ChatPanel({
               <button
                 key={`${item.channelId}:${item.rootId}`}
                 type="button"
-                className="flex w-full flex-col gap-1 rounded-lg border border-border/60 bg-panel px-3 py-2 text-left text-xs transition hover:bg-accent"
+                className="flex w-full flex-col gap-1 rounded-xl border border-border/60 bg-panel/70 px-3 py-2.5 text-left text-xs transition hover:border-border hover:bg-accent/70"
                 onClick={() => onOpenThreadItem(item.rootId)}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-muted">#</span>
+                  <span className="inline-flex rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-500">#</span>
                   <span className="truncate font-semibold text-foreground">{item.channelName}</span>
                   {unreadLabel && (
                     <span className="ml-auto rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-500">
@@ -162,7 +163,7 @@ export default function ChatPanel({
         {threadItems.length > 5 && (
           <button
             type="button"
-            className="w-full rounded-lg border border-border/60 bg-panel px-3 py-2 text-left text-xs text-muted hover:bg-accent"
+            className="w-full rounded-xl border border-border/60 bg-panel/70 px-3 py-2 text-left text-xs text-muted hover:border-border hover:bg-accent/70"
             onClick={onOpenThreads}
           >
             전체 스레드 보기

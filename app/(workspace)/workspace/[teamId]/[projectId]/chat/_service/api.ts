@@ -9,6 +9,7 @@ type ChannelResponse = {
   projectId?: string;
   isDefault?: boolean;
   memberIds?: string[];
+  createdAt?: string;
 };
 
 type MessageResponse = {
@@ -28,6 +29,7 @@ const ChannelResponseSchema = z.object({
   projectId: z.string().optional(),
   isDefault: z.boolean().optional(),
   memberIds: z.array(z.string()).optional(),
+  createdAt: z.string().optional(),
 });
 
 const MessageResponseSchema = z.object({
@@ -54,6 +56,7 @@ export async function listChannels(projectId: string): Promise<Channel[]> {
     id: item.id,
     name: item.name,
     workspaceId: item.projectId ?? projectId,
+    createdAt: item.createdAt,
   }));
 }
 
@@ -120,22 +123,46 @@ export async function sendThreadMessage(threadParentId: string, content: string,
   return res.data;
 }
 
-export async function listProjectMembers(teamId: string, projectId: string): Promise<Array<{ userId: string; name: string; avatarUrl?: string | null }>> {
+export async function listProjectMembers(
+  teamId: string,
+  projectId: string,
+): Promise<Array<{
+  userId: string;
+  name: string;
+  displayName?: string;
+  role?: "owner" | "manager" | "member" | "guest";
+  avatarUrl?: string | null;
+  backgroundImageUrl?: string | null;
+}>> {
   const res = await api.get(`/team/${teamId}/project/${projectId}/members`);
   const schema = z.array(
     z.object({
       userId: z.string().optional(),
       id: z.string().optional(),
       name: z.string(),
+      displayName: z.string().optional(),
+      role: z.string().optional(),
       avatarUrl: z.string().nullable().optional(),
+      backgroundImageUrl: z.string().nullable().optional(),
     }).passthrough(),
   );
   const parsed = schema.safeParse(res.data ?? []);
-  return parsed.success ? parsed.data.map((item) => ({
-    userId: item.userId ?? item.id ?? "",
-    name: item.name,
-    avatarUrl: item.avatarUrl ?? null,
-  })) : [];
+  return parsed.success
+    ? parsed.data.map((item) => ({
+        userId: item.userId ?? item.id ?? "",
+        name: item.name,
+        displayName: item.displayName,
+        role:
+          item.role?.toLowerCase() === "owner" ||
+          item.role?.toLowerCase() === "manager" ||
+          item.role?.toLowerCase() === "member" ||
+          item.role?.toLowerCase() === "guest"
+            ? (item.role.toLowerCase() as "owner" | "manager" | "member" | "guest")
+            : undefined,
+        avatarUrl: item.avatarUrl ?? null,
+        backgroundImageUrl: item.backgroundImageUrl ?? null,
+      }))
+    : [];
 }
 
 export async function getChannelPreferences(projectId: string): Promise<{ pinnedChannelIds: string[]; archivedChannelIds: string[] }> {

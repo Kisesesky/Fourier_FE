@@ -3,20 +3,20 @@
 import type { AnalyticsCounts } from "./dashboard-page.types";
 
 export const ISSUE_STATUS_STYLES: Record<string, string> = {
-  backlog: "bg-slate-500/15 text-slate-700 border-slate-500/40",
-  todo: "bg-rose-500/15 text-rose-700 border-rose-500/40",
-  in_progress: "bg-amber-500/15 text-amber-700 border-amber-500/40",
-  review: "bg-violet-500/15 text-violet-700 border-violet-500/40",
-  done: "bg-emerald-500/15 text-emerald-700 border-emerald-500/40",
+  backlog: "bg-slate-500 text-slate-100",
+  todo: "bg-rose-500 text-rose-100",
+  in_progress: "bg-amber-500 text-amber-100",
+  review: "bg-violet-500 text-violet-100",
+  done: "bg-emerald-500 text-emerald-100",
 };
 
 export const ISSUE_PRIORITY_STYLES: Record<string, string> = {
-  very_low: "bg-slate-500/15 text-slate-700 border-slate-500/40",
-  low: "bg-sky-500/15 text-sky-700 border-sky-500/40",
-  medium: "bg-amber-500/15 text-amber-700 border-amber-500/40",
-  normal: "bg-amber-500/15 text-amber-700 border-amber-500/40",
-  high: "bg-orange-500/15 text-orange-700 border-orange-500/40",
-  urgent: "bg-rose-500/15 text-rose-700 border-rose-500/40",
+  very_low: "bg-slate-500 text-slate-100",
+  low: "bg-sky-500 text-sky-100",
+  medium: "bg-amber-500 text-amber-100",
+  normal: "bg-amber-500 text-amber-100",
+  high: "bg-orange-500 text-orange-100",
+  urgent: "bg-rose-500 text-rose-100",
 };
 
 export const ISSUE_STATUS_LABELS: Record<string, string> = {

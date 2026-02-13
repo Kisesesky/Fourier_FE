@@ -6,6 +6,13 @@ import { MEMBER_ROLE_LABELS } from '../../../_model/dashboard-page.constants';
 import { buildSeriesFromDates, filterDates } from '../../../_model/dashboard-page.utils';
 import type { DetailViewBaseProps } from './detail-view.types';
 
+const MEMBER_ROLE_BADGE_CLASS: Record<string, string> = {
+  OWNER: "bg-rose-500 text-rose-100 border-rose-500/80",
+  MANAGER: "bg-emerald-500 text-emerald-100 border-emerald-500/80",
+  MEMBER: "bg-sky-500 text-sky-100 border-sky-500/80",
+  GUEST: "bg-slate-500 text-slate-100 border-slate-500/80",
+};
+
 export default function MembersDetailView({ pathname, onNavigate, renderHeader, renderDetailTabs, renderGraphFilter, renderGraphTabs, renderBars, renderRangeLabels, model }: DetailViewBaseProps) {
   const {
     memberTab,
@@ -107,16 +114,9 @@ export default function MembersDetailView({ pathname, onNavigate, renderHeader, 
                           <span className="min-w-0">
                             <span className="block truncate font-semibold text-foreground">{member.displayName ?? member.name}</span>
                           <span
-                            className="mt-0.5 inline-flex rounded-full border px-1.5 py-0.5 text-[10px] font-semibold"
-                            style={
-                              (member.role ?? "").toUpperCase() === "OWNER"
-                                ? { borderColor: "#f59e0b66", backgroundColor: "#f59e0b22", color: "#b45309" }
-                                : (member.role ?? "").toUpperCase() === "MANAGER"
-                                ? { borderColor: "#3b82f666", backgroundColor: "#3b82f622", color: "#1d4ed8" }
-                                : (member.role ?? "").toUpperCase() === "GUEST"
-                                ? { borderColor: "#a855f766", backgroundColor: "#a855f722", color: "#7e22ce" }
-                                : { borderColor: "#10b98166", backgroundColor: "#10b98122", color: "#047857" }
-                            }
+                            className={`mt-0.5 inline-flex rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${
+                              MEMBER_ROLE_BADGE_CLASS[(member.role ?? "MEMBER").toUpperCase()] ?? MEMBER_ROLE_BADGE_CLASS.MEMBER
+                            }`}
                           >
                             {MEMBER_ROLE_LABELS[(member.role ?? "MEMBER").toUpperCase() as keyof typeof MEMBER_ROLE_LABELS] ?? (member.role ?? "MEMBER")}
                           </span>
@@ -142,7 +142,9 @@ export default function MembersDetailView({ pathname, onNavigate, renderHeader, 
                     return (
                       <div key={role} className="rounded-lg border border-border/60 bg-panel px-3 py-3">
                         <div className="flex items-center justify-between">
-                          <div className="text-muted">{MEMBER_ROLE_LABELS[role]}</div>
+                          <div className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${MEMBER_ROLE_BADGE_CLASS[role] ?? MEMBER_ROLE_BADGE_CLASS.MEMBER}`}>
+                            {MEMBER_ROLE_LABELS[role]}
+                          </div>
                           <div className="text-sm font-semibold text-foreground">{count}</div>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">

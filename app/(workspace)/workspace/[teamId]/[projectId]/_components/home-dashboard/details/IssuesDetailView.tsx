@@ -266,15 +266,15 @@ export default function IssuesDetailView({ pathname, onNavigate, renderHeader, r
   const getKanbanTone = (status: "backlog" | "todo" | "in_progress" | "review" | "done") => {
     switch (status) {
       case "done":
-        return { badge: "bg-emerald-500/15 text-emerald-700 border-emerald-500/40", card: "bg-emerald-500/8", icon: BadgeCheck };
+        return { badge: "bg-emerald-500 text-emerald-100", card: "bg-emerald-500/8", icon: BadgeCheck };
       case "in_progress":
-        return { badge: "bg-amber-500/15 text-amber-700 border-amber-500/40", card: "bg-amber-500/8", icon: Sparkles };
+        return { badge: "bg-amber-500 text-amber-100", card: "bg-amber-500/8", icon: Sparkles };
       case "review":
-        return { badge: "bg-violet-500/15 text-violet-700 border-violet-500/40", card: "bg-violet-500/8", icon: Eye };
+        return { badge: "bg-violet-500 text-violet-100", card: "bg-violet-500/8", icon: Eye };
       case "backlog":
-        return { badge: "bg-slate-500/15 text-slate-700 border-slate-500/40", card: "bg-slate-500/8", icon: CircleDot };
+        return { badge: "bg-slate-500 text-slate-100", card: "bg-slate-500/8", icon: CircleDot };
       default:
-        return { badge: "bg-rose-500/15 text-rose-700 border-rose-500/40", card: "bg-rose-500/8", icon: Flame };
+        return { badge: "bg-rose-500 text-rose-100", card: "bg-rose-500/8", icon: Flame };
     }
   };
         return (
@@ -431,8 +431,8 @@ export default function IssuesDetailView({ pathname, onNavigate, renderHeader, r
                               </span>
                             );
                           })()}
-                          <span className={`w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ISSUE_STATUS_STYLES[issue.status] ?? "border-border/60 bg-panel text-muted"}`}>{ISSUE_STATUS_LABELS[issue.status] ?? issue.status}</span>
-                          <span className={`w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ISSUE_PRIORITY_STYLES[issue.priority ?? "normal"] ?? "border-border/60 bg-panel text-muted"}`}>{ISSUE_PRIORITY_LABELS[issue.priority ?? "normal"] ?? (issue.priority ?? "보통")}</span>
+                          <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${ISSUE_STATUS_STYLES[issue.status] ?? "border-border/60 bg-panel text-muted"}`}>{ISSUE_STATUS_LABELS[issue.status] ?? issue.status}</span>
+                          <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${ISSUE_PRIORITY_STYLES[issue.priority ?? "normal"] ?? "border-border/60 bg-panel text-muted"}`}>{ISSUE_PRIORITY_LABELS[issue.priority ?? "normal"] ?? (issue.priority ?? "보통")}</span>
                           <span className="text-[11px] text-muted">{new Date(issue.updatedAt).toLocaleDateString("ko-KR")}</span>
                         </button>
                       ))}
@@ -449,7 +449,7 @@ export default function IssuesDetailView({ pathname, onNavigate, renderHeader, r
                         const tone = getKanbanTone(status);
                         const Icon = tone.icon;
                         return (
-                          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tone.badge}`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${tone.badge}`}>
                             <Icon size={11} />
                             {ISSUE_STATUS_LABELS[status] ?? status}
                           </span>
@@ -485,7 +485,7 @@ export default function IssuesDetailView({ pathname, onNavigate, renderHeader, r
                               </span>
                               <span className="truncate text-[10px] text-muted">{assignee.name}</span>
                             </span>
-                            <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold ${ISSUE_PRIORITY_STYLES[issue.priority ?? "normal"] ?? "border-border/60 bg-panel text-muted"}`}>
+                            <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${ISSUE_PRIORITY_STYLES[issue.priority ?? "normal"] ?? "border-border/60 bg-panel text-muted"}`}>
                               {ISSUE_PRIORITY_LABELS[issue.priority ?? "normal"] ?? (issue.priority ?? "보통")}
                             </span>
                           </div>
@@ -547,8 +547,8 @@ export default function IssuesDetailView({ pathname, onNavigate, renderHeader, r
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-1 self-end sm:self-auto">
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ISSUE_STATUS_STYLES[issue.status] ?? "border-border/60 bg-panel text-muted"}`}>{ISSUE_STATUS_LABELS[issue.status] ?? issue.status}</span>
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ISSUE_PRIORITY_STYLES[issue.priority ?? "normal"] ?? "border-border/60 bg-panel text-muted"}`}>{ISSUE_PRIORITY_LABELS[issue.priority ?? "normal"] ?? (issue.priority ?? "보통")}</span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${ISSUE_STATUS_STYLES[issue.status] ?? "border-border/60 bg-panel text-muted"}`}>{ISSUE_STATUS_LABELS[issue.status] ?? issue.status}</span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${ISSUE_PRIORITY_STYLES[issue.priority ?? "normal"] ?? "border-border/60 bg-panel text-muted"}`}>{ISSUE_PRIORITY_LABELS[issue.priority ?? "normal"] ?? (issue.priority ?? "보통")}</span>
                         </div>
                       </div>
                     );

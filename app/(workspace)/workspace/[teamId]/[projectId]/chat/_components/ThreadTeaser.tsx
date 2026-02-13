@@ -18,7 +18,7 @@ type ThreadTeaserProps = {
 export function ChatThreadTeaser({ teaser, onClose, onOpenThread }: ThreadTeaserProps) {
   if (!teaser) return null;
   return (
-    <div className="flex items-center gap-2 border-b border-border bg-subtle/20 px-4 py-2 text-xs">
+    <div className="flex items-center gap-2 border-b border-border bg-subtle/20 px-4 py-3 text-xs">
       <Quote size={14} className="opacity-70" />
       <div className="truncate">
         <span className="font-semibold">{teaser.author}</span> · {teaser.excerpt}

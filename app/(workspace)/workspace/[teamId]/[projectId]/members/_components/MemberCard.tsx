@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
-import { Ban, ChevronDown, MessageCircle, Moon, Trash2 } from "lucide-react";
+import { Ban, ChevronDown, Moon, Trash2, Send } from "lucide-react";
 import type { Member, MemberPresence, PresenceStatus } from "@/workspace/members/_model/types";
 import MemberAvatar from "./MemberAvatar";
 
@@ -13,10 +13,19 @@ const roleLabel: Record<Member["role"], string> = {
   guest: "게스트",
 };
 
+const roleBadgeClass: Record<Member["role"], string> = {
+  owner: "bg-rose-500 text-rose-100 border-rose-500/80",
+  manager: "bg-emerald-500 text-emerald-100 border-emerald-500/80",
+  member: "bg-sky-500 text-sky-100 border-sky-500/80",
+  guest: "bg-slate-500 text-slate-100 border-slate-500/80",
+};
+
 type MemberCardProps = {
   member: Member;
   presence?: MemberPresence;
   canEditStatus?: boolean;
+  canSendDm?: boolean;
+  canRemoveAction?: boolean;
   selected?: boolean;
   onSelect?: () => void;
   onStatusChange?: (status: PresenceStatus) => void;
@@ -28,6 +37,8 @@ export default function MemberCard({
   member,
   presence,
   canEditStatus = false,
+  canSendDm = true,
+  canRemoveAction = true,
   selected = false,
   onSelect,
   onStatusChange,
@@ -35,6 +46,7 @@ export default function MemberCard({
   onRemove,
 }: MemberCardProps) {
   const status: PresenceStatus = presence?.status ?? "offline";
+  const statusSubLabel = getStatusSubLabel(status, presence?.lastSeenAt);
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement | null>(null);
 
@@ -77,23 +89,26 @@ export default function MemberCard({
           </div>
         </div>
         <div className="relative w-fit" ref={statusRef}>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              if (!canEditStatus) return;
-              setStatusOpen((prev) => !prev);
-            }}
-            className={clsx(
-              "inline-flex w-fit items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted",
-              canEditStatus && "cursor-pointer hover:bg-accent",
-            )}
-            aria-label={canEditStatus ? "상태 변경" : "상태"}
-          >
-            <StatusIcon status={status} />
-            {statusLabel(status)}
-            {canEditStatus && <ChevronDown size={12} className="text-muted" />}
-          </button>
+          <div className="flex flex-col items-start gap-1">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!canEditStatus) return;
+                setStatusOpen((prev) => !prev);
+              }}
+              className={clsx(
+                "inline-flex w-fit items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted",
+                canEditStatus && "cursor-pointer hover:bg-accent",
+              )}
+              aria-label={canEditStatus ? "상태 변경" : "상태"}
+            >
+              <StatusIcon status={status} />
+              {statusLabel(status)}
+              {canEditStatus && <ChevronDown size={12} className="text-muted" />}
+            </button>
+            {statusSubLabel ? <span className="text-[11px] text-muted">{statusSubLabel}</span> : null}
+          </div>
           {canEditStatus && statusOpen && (
             <div className="absolute left-0 top-8 z-20 w-32 rounded-md border border-border bg-panel py-1 shadow-md">
               {(["online", "offline", "away", "dnd"] as PresenceStatus[]).map((option) => (
@@ -114,35 +129,43 @@ export default function MemberCard({
             </div>
           )}
         </div>
-        <div className="inline-flex w-fit items-center rounded-md border border-border bg-background/70 px-2 py-1 text-xs font-medium text-foreground">
+        <div
+          className={clsx(
+            "inline-flex w-fit items-center rounded-md border px-2 py-1 text-xs font-medium",
+            roleBadgeClass[member.role] ?? roleBadgeClass.member,
+          )}
+        >
           {roleLabel[member.role] ?? "멤버"}
         </div>
         <div className="truncate text-sm text-muted">{member.description?.trim() || "-"}</div>
         <div className="flex items-center justify-end gap-1">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onSendDm?.();
-            }}
-            className="inline-flex h-8 items-center justify-center rounded-md bg-sky-500 px-3 text-xs font-semibold text-white transition hover:bg-sky-600"
-            aria-label="DM 보내기"
-          >
-            <MessageCircle size={16} />
-            <span className="ml-1">DM</span>
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onRemove?.();
-            }}
-            className="inline-flex h-8 items-center justify-center rounded-md bg-rose-500 px-3 text-xs font-semibold text-white transition hover:bg-rose-600"
-            aria-label="멤버 삭제"
-          >
-            <Trash2 size={16} />
-            <span className="ml-1">삭제</span>
-          </button>
+          {canSendDm && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onSendDm?.();
+              }}
+              className="inline-flex h-8 items-center justify-center rounded-md bg-sky-500 px-3 text-xs font-semibold text-white transition hover:bg-sky-600"
+              aria-label="DM 보내기"
+            >
+              <Send size={16} />
+            </button>
+          )}
+          {canRemoveAction && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onRemove?.();
+              }}
+              className="inline-flex h-8 items-center justify-center rounded-md bg-rose-500 px-3 text-xs font-semibold text-white transition hover:bg-rose-600"
+              aria-label="멤버 삭제"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+          {!canSendDm && !canRemoveAction && <span className="text-xs text-muted">-</span>}
         </div>
       </div>
     </button>
@@ -167,4 +190,26 @@ function StatusIcon({ status }: { status: PresenceStatus }) {
   if (status === "offline") return <span className="h-2.5 w-2.5 rounded-full bg-zinc-400" aria-hidden />;
   if (status === "away") return <Moon size={12} className="text-amber-400" aria-hidden />;
   return <Ban size={12} className="text-rose-500" aria-hidden />;
+}
+
+function getStatusSubLabel(status: PresenceStatus, lastSeenAt?: number) {
+  if (!lastSeenAt || Number.isNaN(lastSeenAt)) return "";
+  const diffMs = Math.max(0, Date.now() - lastSeenAt);
+  const minutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (status === "online") return "";
+  if (status === "away" || status === "dnd") {
+    if (minutes < 60) return `${Math.max(minutes, 1)}분째`;
+    return `${Math.max(hours, 1)}시간째`;
+  }
+
+  if (minutes <= 10) return "방금 전";
+  if (minutes < 60) return `${minutes}분 전`;
+  if (hours < 24) return `${hours}시간 전`;
+  if (days <= 30) return `${days}일 전`;
+  if (days < 60) return "한달 전";
+  if (days < 365) return `${Math.floor(days / 30)}개월 전`;
+  return "1년 이상";
 }

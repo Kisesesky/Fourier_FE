@@ -1,8 +1,9 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ChatView.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
+import { CornerDownRight } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
 import type { Msg, ViewMode } from "@/workspace/chat/_model/types";
 import { useToast } from "@/components/ui/Toast";
@@ -20,7 +21,9 @@ import { MessageGroup } from "./MessageGroup";
 import { ChatHeader } from "./ChatHeader";
 import { ChatSelectionBar } from "./SelectionBar";
 import ChatRightPanel from "./ChatRightPanel";
+import UserProfileModal from "./UserProfileModal";
 import Drawer from "@/components/ui/Drawer";
+import { useParams, useRouter } from "next/navigation";
 import { useMessageSections } from "@/workspace/chat/_model/hooks/useMessageSections";
 import { useChatLifecycle } from "@/workspace/chat/_model/hooks/useChatLifecycle";
 import { rtbroadcast, rtlisten } from "@/lib/realtime";
@@ -32,14 +35,55 @@ type ChatViewProps = {
   initialChannelId?: string;
 };
 
+function ChannelIntro({
+  channelName,
+  createdAt,
+}: {
+  channelName: string;
+  createdAt: number;
+}) {
+  const d = new Date(createdAt);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return (
+    <div className="mb-4 rounded-xl border-b-2 px-4 py-4">
+      <h1 className="text-4xl font-semibold text-foreground"># {channelName}에 오신 걸 환영합니다!</h1>
+      <h3 className="mt-1 text-xl text-muted"># {channelName} 채널의 맨 첫 부분입니다.</h3>
+      <h4 className="mt-1 text-sm text-muted"> - 생성한 날짜는 {yyyy}년 {mm}월 {dd}일입니다.</h4>
+    </div>
+  );
+}
+
 function DayDivider({ ts }: { ts:number }) {
   const d = new Date(ts);
-  const label = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.floor((startOfToday.getTime() - startOfTarget.getTime()) / (1000 * 60 * 60 * 24));
+  const relativeLabel =
+    diffDays === 0
+      ? "오늘"
+      : diffDays === 1
+        ? "어제"
+        : diffDays < 7
+          ? `${diffDays}일 전`
+          : diffDays < 30
+            ? `${Math.floor(diffDays / 7)}주 전`
+            : diffDays < 365
+              ? `${Math.floor(diffDays / 30)}달 전`
+              : "1년 이상";
+  const absoluteLabel = `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, "0")}. ${String(d.getDate()).padStart(2, "0")}`;
   return (
-    <div className="relative my-4 flex items-center">
-      <div className="h-px flex-1 bg-border/80" />
-      <span className="mx-3 rounded-full border border-border bg-panel/90 px-4 py-1 text-xs font-semibold text-muted">{label}</span>
-      <div className="h-px flex-1 bg-border/80" />
+    <div className="my-4 flex items-center gap-3 py-1">
+      <div className="h-0 flex-1 border-t border-border/80" />
+      <div className="flex items-center gap-2">
+        <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-blue-200">
+          {relativeLabel}
+        </span>
+        <span className="text-[9px] uppercase tracking-[0.2em] text-muted/70">{absoluteLabel}</span>
+      </div>
+      <div className="h-0 flex-1 border-t border-border/80" />
     </div>
   );
 }
@@ -47,9 +91,9 @@ function DayDivider({ ts }: { ts:number }) {
 function NewDivider() {
   return (
     <div className="relative my-4 flex items-center gap-2">
-      <div className="flex-1 h-px bg-border" />
-      <span className="px-2 py-0.5 text-xs border border-rose-400/40 bg-rose-400/10 rounded">NEW</span>
-      <div className="flex-1 h-px bg-border" />
+      <div className="h-px flex-1 bg-slate-300/30" />
+      <span className="px-1 text-xs font-semibold text-muted">NEW</span>
+      <div className="h-px flex-1 bg-slate-300/30" />
     </div>
   );
 }
@@ -59,11 +103,15 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     me, users, channelId, channels, messages, lastReadAt, typingUsers, pinnedByChannel, savedByUser, channelMembers,
     send, setChannel, loadChannels, initRealtime, refreshChannel, updateMessage, deleteMessage, restoreMessage,
     toggleReaction, openThread, markChannelRead, setTyping,
-    markUnreadAt, markSeenUpTo, togglePin, startHuddle, toggleSave,
+    markUnreadAt, markSeenUpTo, togglePin, startHuddle, toggleSave, startGroupDM,
     channelTopics
   } = useChat();
+  const router = useRouter();
+  const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
   const { show } = useToast();
   const listRef = useRef<HTMLDivElement>(null);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [profileAnchorRect, setProfileAnchorRect] = useState<{ top: number; left: number; right: number; bottom: number } | null>(null);
   const handleMention = useCallback(
     (author: string, text: string | undefined) => {
       show({
@@ -221,7 +269,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     users,
   });
 
-  const onMenuAction = async (id: any) => {
+  const onMenuAction = async (id: any, payload?: { emoji?: string }) => {
     const m = menu.msg!;
     const isMine = m.authorId === me.id;
 
@@ -236,7 +284,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
         window.dispatchEvent(new Event('chat:open-right'));
         break;
       case 'react':
-        toggleReaction(m.id, "👍");
+        toggleReaction(m.id, payload?.emoji || "👍");
         break;
       case 'copy':
         await navigator.clipboard.writeText(m.text || "");
@@ -333,9 +381,18 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   );
   const topic = channelTopics[channelId]?.topic || "";
   const channelDisplayName = isDM ? channelLabel : channelLabel.replace(/^#\s*/, "#");
-  const quoteInline = (m: Msg) => {
-    setReplyTarget(m);
-  };
+  const normalizedChannelName = channelDisplayName.replace(/^[@#]\s*/, "");
+  const fallbackCreatedAt = useMemo(() => {
+    const values = messages.map((m) => m.ts).filter((v) => Number.isFinite(v));
+    if (values.length === 0) return Date.now();
+    return Math.min(...values);
+  }, [messages]);
+  const channelCreatedAtMs = useMemo(() => {
+    const raw = currentChannel?.createdAt;
+    if (!raw) return fallbackCreatedAt;
+    const parsed = Date.parse(raw);
+    return Number.isNaN(parsed) ? fallbackCreatedAt : parsed;
+  }, [currentChannel?.createdAt, fallbackCreatedAt]);
   const pinnedIds = useMemo(() => new Set(pinnedByChannel[channelId] || []), [pinnedByChannel, channelId]);
   const savedIds = useMemo(() => new Set(savedByUser[me.id] || []), [savedByUser, me.id]);
   const replyMetaMap = useMemo(() => {
@@ -402,10 +459,52 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     broadcastRead: broadcastReadCursor,
   });
 
+  useEffect(() => {
+    const onOpenProfile = (event: Event) => {
+      const customEvent = event as CustomEvent<{ userId?: string; anchorRect?: { top: number; left: number; right: number; bottom: number } }>;
+      const userId = customEvent.detail?.userId;
+      if (!userId) return;
+      setProfileAnchorRect(customEvent.detail?.anchorRect ?? null);
+      setProfileUserId(userId);
+    };
+    window.addEventListener("chat:open-user-profile", onOpenProfile as EventListener);
+    return () => {
+      window.removeEventListener("chat:open-user-profile", onOpenProfile as EventListener);
+    };
+  }, []);
+
+  const profileUser = profileUserId ? users[profileUserId] : undefined;
+  const handleSendProfileDm = useCallback(
+    async ({ userId, text }: { userId: string; text: string }) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      if (userId === me.id) {
+        show({ variant: "error", title: "전송 실패", description: "본인에게는 DM을 보낼 수 없습니다." });
+        return;
+      }
+      const dmChannelId = startGroupDM([userId]);
+      if (!dmChannelId) {
+        show({ variant: "error", title: "DM 생성 실패", description: "DM 채널을 만들지 못했습니다." });
+        return;
+      }
+      await setChannel(dmChannelId);
+      await send(trimmed);
+      setProfileUserId(null);
+    },
+    [me.id, send, setChannel, show, startGroupDM],
+  );
+  const handleOpenFullProfile = useCallback(
+    (userId: string) => {
+      if (!teamId || !projectId) return;
+      router.push(`/workspace/${teamId}/${projectId}/members?memberId=${encodeURIComponent(userId)}&profile=open`);
+    },
+    [projectId, router, teamId],
+  );
+
   return (
     <div className={`grid min-h-0 flex-1 ${rightOpen ? "lg:grid-cols-[minmax(0,1fr)_390px]" : ""} gap-0`}>
-      <div className="flex min-h-0 flex-1 flex-col border border-border border-r-0 bg-panel/80 overflow-hidden">
-        <div className="sticky top-0 z-10 bg-panel/90 backdrop-blur">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-l-2xl border border-border/70 border-r-0 bg-panel/85">
+        <div className="sticky top-0 z-10 bg-panel/95 backdrop-blur">
           <HuddleBar channelId={channelId} />
           <LiveReadersBar meId={me.id} channelId={channelId} />
           <ChatHeader
@@ -440,12 +539,13 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
 
         <div
           ref={listRef}
-          className={`scroll-smooth overflow-y-auto bg-panel/80 px-2 py-1.5 space-y-1.5 scrollbar-thin ${view === 'compact' ? 'text-[13px]' : 'text-[14px]'}`}
+          className={`scroll-smooth overflow-y-auto bg-background/40 px-4 py-3 pb-28 space-y-2 scrollbar-thin ${view === 'compact' ? 'text-[13px]' : 'text-[14px]'}`}
           onClick={(e)=> {
             if ((e.target as HTMLElement).closest('[data-mid]')) return;
             if (selectMode) clearSelection();
           }}
         >
+          <ChannelIntro channelName={normalizedChannelName} createdAt={channelCreatedAtMs} />
           {sections.map((section) => {
             const { head, items, showDayDivider, showNewDivider } = section;
             return (
@@ -468,11 +568,10 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
                     }
                     updateMessage(id, { text });
                   }}
-                  onDelete={onDelete}
                   onReact={(id, emoji) => toggleReaction(id, emoji)}
                 onReply={handleOpenThread}
+                  onQuote={(msg) => setReplyTarget(msg)}
                   openMenu={openMenu}
-                onQuoteInline={quoteInline}
                 selectable={selectMode}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
@@ -480,6 +579,11 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
                 savedIds={savedIds}
                 onPin={togglePin}
                 onSave={toggleSave}
+                onDelete={onDelete}
+                onOpenProfile={(userId, anchorRect) => {
+                  setProfileAnchorRect(anchorRect ?? null);
+                  setProfileUserId(userId);
+                }}
               />
             </div>
           );
@@ -487,20 +591,20 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
         </div>
 
         {typingText && (
-          <div className="px-4 py-2 text-xs text-muted border-t border-border bg-panel/80">{typingText}</div>
+          <div className="border-t border-border/70 bg-panel/80 px-4 py-2 text-xs text-muted">{typingText}</div>
         )}
 
         <div
-          className="border-t border-border bg-panel/80"
+          className="sticky bottom-0 z-10 border-t border-border/70 bg-panel/90 backdrop-blur"
           onFocus={()=> onTyping(true)}
           onBlur={()=> onTyping(false)}
           onKeyDown={()=> onTyping(true)}
           onKeyUp={()=> onTyping(true)}
         >
           {replyTarget ? (
-            <div className="mx-4 mt-2 rounded-xl border border-border bg-panel/90 overflow-hidden">
+            <div className="mx-4 mt-2 overflow-hidden rounded-xl border border-border bg-panel/90">
               <div
-                className="flex w-full items-center gap-3 border-b border-border bg-panel/90 px-3 py-2.5 text-left text-[11px] text-muted transition hover:bg-panel cursor-pointer border-l-4 border-l-indigo-500"
+                className="flex w-full cursor-pointer items-center gap-2.5 border-b border-border bg-panel/90 px-3 py-2 text-left text-[11px] text-muted transition hover:bg-panel"
                 role="button"
                 tabIndex={0}
                 onClick={() => {
@@ -515,7 +619,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
                   }
                 }}
               >
-                <span className="h-9 w-9 overflow-hidden rounded-full bg-muted/20 text-[12px] font-semibold text-foreground">
+                <span className="h-8 w-8 overflow-hidden rounded-full bg-muted/20 text-[11px] font-semibold text-foreground">
                   {users[replyTarget.authorId]?.avatarUrl ? (
                     <img
                       src={users[replyTarget.authorId].avatarUrl}
@@ -530,7 +634,8 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2 text-[10px] text-muted">
-                    <div className="flex items-center gap-2 uppercase tracking-[0.18em] text-indigo-500">
+                    <div className="flex items-center gap-1.5 uppercase tracking-[0.16em] text-indigo-500">
+                      <CornerDownRight size={11} />
                       Replying to <span className="font-semibold text-foreground normal-case">{replyTarget.author}</span>
                     </div>
                     <button
@@ -544,7 +649,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
                       ✕
                     </button>
                   </div>
-                  <div className="truncate text-[11px] text-muted">{replyTarget.text || ""}</div>
+                  <div className="truncate text-[10.5px] text-muted">{replyTarget.text || ""}</div>
                 </div>
               </div>
               <Composer
@@ -588,9 +693,30 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
 
         <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
         <LightboxHost />
+        <UserProfileModal
+          open={!!profileUser}
+          user={profileUser}
+          anchorRect={profileAnchorRect ?? undefined}
+          currentUserId={me.id}
+          onClose={() => {
+            setProfileUserId(null);
+            setProfileAnchorRect(null);
+          }}
+          onSendDm={handleSendProfileDm}
+          onEditProfile={handleOpenFullProfile}
+          onOpenFullProfile={handleOpenFullProfile}
+          onIgnore={(userId) => {
+            const userName = users[userId]?.displayName || users[userId]?.name || "사용자";
+            show({ title: "무시하기", description: `${userName} 사용자 무시하기는 준비중입니다.` });
+          }}
+          onBlock={(userId) => {
+            const userName = users[userId]?.displayName || users[userId]?.name || "사용자";
+            show({ title: "차단하기", description: `${userName} 사용자 차단하기는 준비중입니다.` });
+          }}
+        />
       </div>
       {rightOpen && (
-        <aside className="hidden h-full min-h-0 overflow-hidden border border-border border-l bg-panel/80 lg:block">
+        <aside className="hidden h-full min-h-0 overflow-hidden rounded-r-2xl border border-border/70 border-l bg-panel/85 lg:block">
           <ChatRightPanel />
         </aside>
       )}

@@ -1,13 +1,13 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/members/_components/MembersView.tsx
 'use client';
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Search, UserPlus, Users, X } from "lucide-react";
 import MemberCard from "./MemberCard";
 import MemberProfilePanel from "./MemberProfilePanel";
 import InviteForm from "./InviteForm";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { addProjectMember, fetchProjectMembers, fetchProjects, removeProjectMember, updateProjectMemberRole } from "@/lib/projects";
 import { fetchTeamMembers } from "@/lib/team";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -47,6 +47,7 @@ const mapMemberRoleToProjectRole = (role: Member["role"]) => {
 export default function MembersView() {
   const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { buildHref } = useWorkspacePath();
   const { startGroupDM } = useChat();
   const { show } = useToast();
@@ -77,6 +78,7 @@ export default function MembersView() {
     setProfileOpen,
     resetMembersViewState,
   } = useMembersViewStore();
+  const queryProfileAppliedRef = useRef<string | null>(null);
 
   useEffect(() => {
     resetMembersViewState();
@@ -192,6 +194,17 @@ export default function MembersView() {
       setSelectedMemberId(orderedMembers[0].id);
     }
   }, [orderedMembers, selectedMemberId]);
+
+  useEffect(() => {
+    const memberIdFromQuery = searchParams.get("memberId");
+    const shouldOpenProfile = searchParams.get("profile") === "open";
+    if (!memberIdFromQuery || !shouldOpenProfile) return;
+    if (!members[memberIdFromQuery]) return;
+    if (queryProfileAppliedRef.current === memberIdFromQuery) return;
+    setSelectedMemberId(memberIdFromQuery);
+    setProfileOpen(true);
+    queryProfileAppliedRef.current = memberIdFromQuery;
+  }, [members, searchParams, setProfileOpen, setSelectedMemberId]);
 
   useEffect(() => {
     setMyPresence(loadUserPresence());
@@ -366,6 +379,8 @@ export default function MembersView() {
                   member={member}
                   presence={presence[member.id]}
                   canEditStatus={member.id === profile?.id}
+                  canSendDm={member.id !== profile?.id}
+                  canRemoveAction={member.id !== profile?.id}
                   selected={selectedMember?.id === member.id}
                   onSelect={() => {
                     setSelectedMemberId(member.id);

@@ -10,13 +10,6 @@ type Props = {
   ring?: boolean;
 };
 
-const presenceColor: Record<PresenceStatus, string> = {
-  online: "bg-emerald-500",
-  away: "bg-amber-400",
-  dnd: "bg-rose-500",
-  offline: "bg-slate-400",
-};
-
 const FALLBACK_COLORS = [
   "bg-rose-100 text-rose-600",
   "bg-amber-100 text-amber-600",
@@ -48,8 +41,7 @@ export default function MemberAvatar({ member, size = 48, presence = "offline", 
     >
       <div
         className={clsx(
-          "flex items-center justify-center rounded-full border border-white/40 bg-background p-0.5 shadow-inner",
-          ring && "border-transparent",
+          "flex items-center justify-center rounded-full bg-background p-0.5",
         )}
         style={{ width: size, height: size }}
       >
@@ -70,14 +62,6 @@ export default function MemberAvatar({ member, size = 48, presence = "offline", 
           </div>
         )}
       </div>
-      {!ring && (
-        <span
-          className={clsx(
-            "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-panel",
-            presenceColor[presence],
-          )}
-        />
-      )}
     </div>
   );
 }

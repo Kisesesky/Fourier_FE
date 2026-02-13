@@ -384,7 +384,10 @@ export const useChat = create<State>((set, get) => ({
         acc[member.userId] = {
           id: member.userId,
           name: member.name,
+          displayName: member.displayName ?? member.name,
+          role: member.role,
           avatarUrl: member.avatarUrl ?? undefined,
+          backgroundImageUrl: member.backgroundImageUrl ?? undefined,
         };
         return acc;
       }, {});
@@ -434,6 +437,7 @@ export const useChat = create<State>((set, get) => ({
       id: generalChannelId,
       name: "# general",
       workspaceId: id,
+      createdAt: new Date().toISOString(),
     };
     const workspaces = [...state.workspaces, newWorkspace];
     const allChannels = [...state.allChannels, generalChannel];
@@ -576,7 +580,7 @@ export const useChat = create<State>((set, get) => ({
 
       const existing = allChannels.find(c => c.id === id);
       if (!existing) {
-        const dmChannel: Channel = { id, name: displayName, isDM: true, workspaceId };
+        const dmChannel: Channel = { id, name: displayName, isDM: true, workspaceId, createdAt: new Date().toISOString() };
         allChannels = [...allChannels, dmChannel];
         if (!channels.some(c => c.id === id) && workspaceId === dmChannel.workspaceId) {
           channels = [...channels, dmChannel];
@@ -1044,7 +1048,7 @@ export const useChat = create<State>((set, get) => ({
       const created = await createChannelApi(projectId, name, uniqueMembers);
       const workspaceId = created.projectId ?? projectId;
       const id = created.id;
-      const channel: Channel = { id, name: created.name, workspaceId };
+      const channel: Channel = { id, name: created.name, workspaceId, createdAt: (created as any).createdAt ?? new Date().toISOString() };
 
       let allChannels = [...get().allChannels, channel];
       lsSet(CHANNELS_KEY, allChannels);
@@ -1117,7 +1121,7 @@ export const useChat = create<State>((set, get) => ({
       id = `ch-${Date.now()}`;
     }
     const display = name.startsWith("#") ? name : `# ${name}`;
-    const channel: Channel = { id, name: display, workspaceId };
+    const channel: Channel = { id, name: display, workspaceId, createdAt: new Date().toISOString() };
 
     let allChannels = [...get().allChannels, channel];
     lsSet(CHANNELS_KEY, allChannels);

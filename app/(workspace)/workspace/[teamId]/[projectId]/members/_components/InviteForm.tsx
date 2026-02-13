@@ -10,10 +10,10 @@ type Props = {
 
 const projectRoles: MemberRole[] = ["manager", "member", "guest"];
 const roleLabel: Record<MemberRole, string> = {
-  owner: "Owner",
-  manager: "Admin",
-  member: "Editor",
-  guest: "Viewer",
+  owner: "소유자",
+  manager: "관리자",
+  member: "멤버",
+  guest: "게스트",
 };
 
 export default function InviteForm({ members, onSubmit, onCancel }: Props) {
@@ -82,7 +82,7 @@ export default function InviteForm({ members, onSubmit, onCancel }: Props) {
           >
             {projectRoles.map((item) => (
               <option key={item} value={item}>
-                {roleLabel[item] ?? "Editor"}
+                {roleLabel[item] ?? "멤버"}
               </option>
             ))}
           </select>

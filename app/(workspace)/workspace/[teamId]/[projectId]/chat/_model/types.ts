@@ -37,6 +37,7 @@ export type Channel = {
   name: string;
   workspaceId: string;
   isDM?: boolean;
+  createdAt?: string;
 };
 
 export type WorkspaceSectionType = "starred" | "channels" | "dms" | "custom";
@@ -81,7 +82,10 @@ export type PresenceState = "online" | "away" | "busy" | "offline";
 export type ChatUser = {
   id: string;
   name: string;
+  displayName?: string;
+  role?: "owner" | "manager" | "member" | "guest";
   avatarUrl?: string;
+  backgroundImageUrl?: string;
 };
 
 export type ViewMode = "compact" | "cozy";

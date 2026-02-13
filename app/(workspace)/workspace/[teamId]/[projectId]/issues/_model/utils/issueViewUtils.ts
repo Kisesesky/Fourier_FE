@@ -2,19 +2,19 @@
 import type { Issue } from "@/workspace/issues/_model/types";
 
 export const STATUS_STYLE: Record<Issue["status"], string> = {
-  todo: "bg-amber-100 text-amber-700",
-  in_progress: "bg-rose-100 text-rose-700",
-  review: "bg-violet-100 text-violet-700",
-  done: "bg-emerald-100 text-emerald-700",
-  backlog: "bg-slate-200 text-slate-700",
+  todo: "bg-rose-500 text-rose-100",
+  in_progress: "bg-amber-500 text-amber-100",
+  review: "bg-violet-500 text-violet-100",
+  done: "bg-emerald-500 text-emerald-100",
+  backlog: "bg-slate-500 text-slate-100",
 };
 
 export const PRIORITY_STYLE: Record<Issue["priority"], string> = {
-  very_low: "bg-slate-100 text-slate-700",
-  low: "bg-sky-100 text-sky-700",
-  medium: "bg-amber-100 text-amber-700",
-  high: "bg-orange-100 text-orange-700",
-  urgent: "bg-rose-100 text-rose-700",
+  very_low: "bg-slate-500 text-slate-100",
+  low: "bg-sky-500 text-sky-100",
+  medium: "bg-amber-500 text-amber-100",
+  high: "bg-orange-500 text-orange-100",
+  urgent: "bg-rose-500 text-rose-100",
 };
 
 export function formatIssueDate(value: string) {

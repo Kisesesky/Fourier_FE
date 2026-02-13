@@ -324,9 +324,9 @@ export default function ChatDashboard() {
   );
 
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-background">
-      <header className="border-b border-border bg-background">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex h-full w-full flex-col overflow-y-auto bg-gradient-to-b from-panel/70 via-background to-background">
+      <header className="border-b border-border/70 bg-panel/70 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
               <h1 className="inline-flex items-center gap-2 text-xl font-semibold text-foreground sm:text-2xl">
                 <MessageSquare size={20} className="text-brand" />
@@ -341,13 +341,13 @@ export default function ChatDashboard() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="채널 또는 DM 검색"
-                  className="h-8 w-52 rounded-md border border-border bg-background pl-9 pr-3 text-xs outline-none focus:border-foreground/60"
+                  className="h-9 w-56 rounded-xl border border-border/70 bg-background/90 pl-9 pr-3 text-xs outline-none focus:border-brand/60"
                 />
               </div>
               <button
                 type="button"
                 onClick={handleCreateChannel}
-                className="inline-flex items-center gap-2 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background"
+                className="inline-flex items-center gap-2 rounded-xl bg-foreground px-3 py-2 text-xs font-medium text-background"
               >
                 <PlusCircle size={14} />
                 새 채널
@@ -355,14 +355,14 @@ export default function ChatDashboard() {
               <button
                 type="button"
                 onClick={handleOpenRightPanel}
-                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground/80 hover:bg-zinc-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-border/70 px-3 py-2 text-xs text-foreground/80 hover:bg-subtle/70"
               >
                 <Users size={14} />
                 빠른 DM
               </button>
             </div>
           </div>
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-4 pb-4 sm:px-6">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-2 px-4 pb-4 sm:px-6">
             <div className="flex flex-wrap gap-2">
               {FILTERS.map(({ key, label }) => (
                 <button
@@ -370,7 +370,7 @@ export default function ChatDashboard() {
                   type="button"
                   onClick={() => setFilter(key)}
                   className={clsx(
-                    "inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold",
+                    "inline-flex items-center rounded-xl border px-2.5 py-1.5 text-[11px] font-semibold",
                     filter === key
                       ? "border-foreground/80 bg-foreground text-background"
                       : "border-border/70 text-muted hover:border-foreground/30 hover:text-foreground"
@@ -381,7 +381,7 @@ export default function ChatDashboard() {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="rounded-lg border border-border bg-white p-1">
+              <div className="rounded-xl border border-border/70 bg-panel p-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -414,7 +414,7 @@ export default function ChatDashboard() {
                   type="button"
                   onClick={handleToggleMenu}
                   className={clsx(
-                    "inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold",
+                    "inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-[11px] font-semibold",
                     menuOpen
                       ? "border-foreground/80 bg-foreground text-background"
                       : "border-border/70 text-muted hover:border-foreground/30 hover:text-foreground"
@@ -426,7 +426,7 @@ export default function ChatDashboard() {
                   보기 옵션
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-9 z-20 w-52 rounded-lg border border-border bg-white p-2 shadow-sm">
+                  <div className="absolute right-0 top-10 z-20 w-52 rounded-xl border border-border bg-panel p-2 shadow-sm">
                     <button
                       type="button"
                       onClick={() => {
@@ -473,8 +473,8 @@ export default function ChatDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-4 sm:px-6">
-        <section className="border-t border-border bg-background">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-4 sm:px-6">
+        <section className="rounded-2xl border border-border/60 bg-panel/40 p-3">
           {entries.length === 0 && (
             <div className="py-6">
               <EmptyState label="조건에 맞는 채널이 없습니다." />
@@ -648,14 +648,14 @@ function ChannelSection({
   archivedSet: Set<string>;
 }) {
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between border-b border-border/70 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between border-b border-border/50 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
         <span>{title}</span>
         <span className="text-[10px]">{entries.length}</span>
       </div>
       <div>
         {entries.length === 0 ? (
-          <div className="border border-dashed border-border/70 px-3 py-2 text-xs text-muted">
+          <div className="rounded-xl border border-dashed border-border/70 px-3 py-2 text-xs text-muted">
             {emptyLabel}
           </div>
         ) : (
@@ -716,7 +716,7 @@ function ChannelListRow({
           onOpen();
         }
       }}
-      className="group flex items-start gap-3 border-b border-border/70 px-2 py-2 transition hover:bg-subtle/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
+      className="group mb-1 flex items-start gap-3 rounded-xl border border-border/60 bg-background/70 px-3 py-2.5 transition hover:border-border hover:bg-subtle/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
     >
       <div className="relative mt-0.5">
         {entry.unread > 0 && (
@@ -724,8 +724,8 @@ function ChannelListRow({
         )}
         <div
           className={clsx(
-            "relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg text-xs font-semibold",
-            entry.isDM ? "bg-blue-500/15 text-blue-400" : "bg-purple-500/15 text-purple-400"
+            "relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl text-xs font-semibold",
+            entry.isDM ? "bg-sky-500/15 text-sky-500" : "bg-violet-500/15 text-violet-500"
           )}
         >
           {entry.isDM ? (
@@ -751,6 +751,14 @@ function ChannelListRow({
         <div className="flex items-center gap-2">
           <span
             className={clsx(
+              "inline-flex shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+              entry.isDM ? "bg-sky-500/15 text-sky-500" : "bg-violet-500/15 text-violet-500",
+            )}
+          >
+            {entry.isDM ? "DM" : "채널"}
+          </span>
+          <span
+            className={clsx(
               "truncate text-sm",
               entry.unread > 0 ? "font-semibold text-foreground" : "text-foreground/90"
             )}
@@ -763,7 +771,7 @@ function ChannelListRow({
         </div>
         <p className="truncate text-xs text-muted">{preview}</p>
       </div>
-      <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-col items-end gap-1 pt-0.5">
         <span className="text-[11px] text-muted group-hover:text-foreground/70">
           {relativeTime(entry.lastTs)}
         </span>

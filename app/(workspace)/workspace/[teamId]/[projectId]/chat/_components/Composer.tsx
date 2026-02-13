@@ -6,6 +6,7 @@ import { Paperclip, Send, Bold, Code, Quote, AtSign, X } from "lucide-react";
 import type { FileItem } from "@/workspace/chat/_model/types";
 import MentionPopover, { SuggestItem } from "./MentionPopover";
 import EmojiPicker from "./EmojiPicker";
+import { replaceEmojiShortcuts, shortcutToEmoji } from "@/workspace/chat/_model/emoji.shortcuts";
 
 type UploadItem = FileItem & { progress: number; ready: boolean };
 
@@ -139,6 +140,32 @@ export default function Composer({
     insertTextAtCursor(replacement);
   };
 
+  const replaceCurrentEmojiShortcutToken = () => {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+    const range = sel.getRangeAt(0);
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE) return false;
+    const textNode = node as Text;
+    const text = textNode.textContent || "";
+    const caret = range.startOffset;
+    let i = caret - 1;
+    while (i >= 0 && !/\s/.test(text[i])) i--;
+    const token = text.slice(i + 1, caret);
+    const emoji = shortcutToEmoji[token];
+    if (!emoji) return false;
+    const before = text.slice(0, i + 1);
+    const after = text.slice(caret);
+    textNode.textContent = `${before}${emoji}${after}`;
+    const nextOffset = (before + emoji).length;
+    const nextRange = document.createRange();
+    nextRange.setStart(textNode, Math.min(nextOffset, textNode.textContent.length));
+    nextRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(nextRange);
+    return true;
+  };
+
   const pickMention = (u: SuggestItem) => {
     replaceCurrentMentionToken(`@${u.name} `);
     setMentionOpen(false);
@@ -154,6 +181,10 @@ export default function Composer({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       doSend();
+      return;
+    }
+    if (e.key === " ") {
+      replaceCurrentEmojiShortcutToken();
     }
   };
 
@@ -176,7 +207,8 @@ export default function Composer({
   };
 
   const doSend = () => {
-    const text = (ref.current?.innerText || '').trim();
+    const rawText = (ref.current?.innerText || '').trim();
+    const text = replaceEmojiShortcuts(rawText);
     const allReady = uploads.every(u => u.ready);
     if (!text && uploads.length === 0) return;
     if (!allReady) return;
@@ -247,11 +279,15 @@ export default function Composer({
 
   const allReady = uploads.every(u => u.ready);
 
-  const outerClass = variant === "merged" ? "px-0 py-0" : "px-3 py-2";
+  const outerClass = variant === "merged" ? "px-0 py-0" : "px-2 py-2";
   const boxClass =
     variant === "merged"
       ? "rounded-none border-0 bg-panel/90"
       : "rounded-md border border-border bg-panel/90";
+  const frameClass =
+    variant === "merged"
+      ? boxClass
+      : "rounded-xl border border-border/70 bg-background shadow-sm";
 
   return (
     <div
@@ -260,10 +296,22 @@ export default function Composer({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div className={boxClass}>
+      <div className={frameClass}>
+        <div className="flex items-center gap-1 border-b border-border/70 bg-subtle/30 px-2 py-1.5 text-[11px] text-muted">
+          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="Bold (Ctrl+B)" onClick={()=> surroundSelection('**') }><Bold size={13}/></button>
+          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="Inline code `code`" onClick={()=> surroundSelection('`') }><Code size={13}/></button>
+          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="Quote" onClick={()=> insertTextAtCursor('\n> ') }><Quote size={13}/></button>
+          <EmojiPicker onPick={onPickEmoji} panelSide="top" />
+          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="@mention" onClick={()=> { insertTextAtCursor('@'); const r = getCaretCoordinates(); setMentionXY({x:r.left,y:r.bottom+6}); setMentionOpen(true);} }><AtSign size={13}/></button>
+          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="Attach file" onClick={()=> fileRef.current?.click()}>
+            <Paperclip size={13}/>
+          </button>
+          <input ref={fileRef} type="file" hidden onChange={onPickFile} />
+        </div>
+
         <div
           ref={ref}
-          className="min-h-[56px] max-h-56 overflow-y-auto px-3 py-3 text-sm outline-none"
+          className="min-h-[52px] max-h-44 overflow-y-auto px-3 py-2.5 text-sm outline-none empty:before:pointer-events-none empty:before:text-muted/70 empty:before:content-[attr(data-placeholder)]"
           contentEditable
           onKeyDown={onKeyDown}
           onInput={onInput}
@@ -272,9 +320,9 @@ export default function Composer({
         />
 
         {uploads.length > 0 && (
-          <div className="border-t border-border px-3 py-2 space-y-2">
+          <div className="space-y-1.5 border-t border-border/70 px-3 py-1.5">
             {uploads.map(u => (
-              <div key={u.id} className="rounded-md border border-border bg-subtle/30 px-3 py-2 text-xs">
+              <div key={u.id} className="rounded-md border border-border bg-subtle/30 px-2.5 py-1.5 text-xs">
                 <div className="flex items-center justify-between">
                   <div className="truncate">{u.name}</div>
                   <button className="ml-2 p-1 rounded hover:bg-subtle/60" onClick={()=> removeUpload(u.id)} title="제거">
@@ -290,26 +338,18 @@ export default function Composer({
           </div>
         )}
 
-        <div className="border-t border-border px-2 py-2 text-[11px] text-muted flex items-center gap-1">
-          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="Bold (Ctrl+B)" onClick={()=> surroundSelection('**') }><Bold size={14}/></button>
-          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="Inline code `code`" onClick={()=> surroundSelection('`') }><Code size={14}/></button>
-          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="Quote" onClick={()=> insertTextAtCursor('\n> ') }><Quote size={14}/></button>
-          <EmojiPicker onPick={onPickEmoji} />
-          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="@mention" onClick={()=> { insertTextAtCursor('@'); const r = getCaretCoordinates(); setMentionXY({x:r.left,y:r.bottom+6}); setMentionOpen(true);} }><AtSign size={14}/></button>
-          <button className="p-1.5 rounded-md hover:bg-subtle/60" title="Attach file" onClick={()=> fileRef.current?.click()}>
-            <Paperclip size={14}/>
+        <div className="flex items-center justify-between border-t border-border/70 bg-background/60 px-3 py-1.5">
+          <span className="text-[10px] text-muted/80">Enter 전송 · Shift+Enter 줄바꿈</span>
+          <button
+            className={`inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-[11px] font-semibold ${(!uploads.length || allReady) ? 'bg-brand text-white hover:bg-brand/90' : 'bg-subtle/60 text-muted/60'}`}
+            onClick={doSend}
+            disabled={uploads.length > 0 && !allReady}
+            title={uploads.length > 0 && !allReady ? "업로드 중..." : "Send (Enter)"}
+            aria-label="메시지 전송"
+          >
+            <Send size={14}/>
+            전송
           </button>
-          <input ref={fileRef} type="file" hidden onChange={onPickFile} />
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs ${(!uploads.length || allReady) ? 'bg-brand/20 text-foreground hover:bg-brand/30' : 'text-muted/60'}`}
-              onClick={doSend}
-              disabled={uploads.length > 0 && !allReady}
-              title={uploads.length > 0 && !allReady ? "업로드 중..." : "Send (Enter)"}
-            >
-              <Send size={14}/> 보내기
-            </button>
-          </div>
         </div>
       </div>
 

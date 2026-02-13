@@ -3,7 +3,7 @@
 import type { SlashCommand } from "./view.types";
 
 export const CHAT_HEADER_ICON_BUTTON_CLASS =
-  "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition hover:bg-subtle/60 hover:text-foreground";
+  "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-muted transition hover:border-border/70 hover:bg-subtle/60 hover:text-foreground";
 
 export const CHAT_DEFAULT_EMOJIS = [
   "👍",

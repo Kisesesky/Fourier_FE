@@ -96,13 +96,13 @@ export function ChatHeader({
   }, [membersOpen]);
 
   return (
-    <div className={`px-4 border-b border-border bg-panel/80 ${pad}`}>
+    <div className={`border-b border-border/70 bg-panel/85 px-4 ${pad}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex items-center gap-3">
           <button className="inline-flex items-center gap-2 text-[15px] font-semibold leading-none text-foreground">
             {isDM ? (
               dmAvatarUrl ? (
-                <span className="h-6 w-6 overflow-hidden rounded-full border border-border/60 bg-muted/20">
+                <span className="h-6 w-6 overflow-hidden rounded-full bg-muted/20">
                   <img src={dmAvatarUrl} alt={channelName} className="h-full w-full object-cover" />
                 </span>
               ) : (
@@ -119,7 +119,7 @@ export function ChatHeader({
                 {avatarMembers.slice(0, 6).map((member) => (
                   <div
                     key={member.id}
-                    className="h-7 w-7 overflow-hidden rounded-full border border-border bg-muted/20 text-[10px] font-semibold text-foreground"
+                    className="h-7 w-7 overflow-hidden rounded-full bg-muted/20 text-[10px] font-semibold text-foreground"
                     title={member.name}
                   >
                     {member.avatarUrl ? (
@@ -152,7 +152,7 @@ export function ChatHeader({
               <Users size={16} />
             </button>
             {membersOpen && (
-              <div className="absolute left-0 top-9 z-20 min-w-[220px] rounded-md border border-border bg-panel p-2 text-xs text-muted shadow-panel">
+              <div className="absolute left-0 top-9 z-20 min-w-[220px] rounded-xl border border-border bg-panel p-2 text-xs text-muted shadow-panel">
                 <div className="mb-2 text-[11px] font-semibold text-foreground">Members</div>
                 <div className="max-h-40 space-y-1 overflow-auto">
                   {memberNames.length === 0 ? (
@@ -184,7 +184,7 @@ export function ChatHeader({
               <MoreHorizontal size={16} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 rounded-md border border-border bg-panel p-1 text-xs shadow-panel">
+              <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-panel p-1 text-xs shadow-panel">
                 <button className="w-full rounded px-2 py-1 text-left hover:bg-subtle/60" onClick={onLeaveChannel}>채팅방 나가기</button>
                 <button className="w-full rounded px-2 py-1 text-left hover:bg-subtle/60" onClick={onKickMember}>특정 멤버 강퇴</button>
                 <button className="w-full rounded px-2 py-1 text-left hover:bg-subtle/60" onClick={onBlockMember}>차단하기</button>

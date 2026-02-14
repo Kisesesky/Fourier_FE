@@ -209,10 +209,14 @@ function MessageRow({
   users,
   onOpenProfile,
 }: MessageRowProps) {
+  const stripFences = (text: string) => text.replace(/```[\s\S]*?```/g, "").trim();
+  const stripUrls = (text: string) => text.replace(/https?:\/\/[^\s]+/gi, "").trim();
   const padClass = showHeader ? (view === 'compact' ? 'py-0.5' : 'py-1') : 'py-0';
   const headerTextClass = view === "compact" ? "text-[13px]" : "text-[13.5px]";
   const bodyTextClass = view === "compact" ? "text-[13.5px] leading-[1.55]" : "text-[14.5px] leading-[1.65]";
-  const urls = extractUrls(m.text);
+  const plainText = stripFences(m.text || "");
+  const urls = extractUrls(plainText);
+  const displayText = urls.length > 0 ? stripUrls(plainText) : plainText;
   const fences = extractFences(m.text);
   const [editing, setEditing] = useState(false);
   const [quickEmojiOpen, setQuickEmojiOpen] = useState(false);
@@ -231,8 +235,8 @@ function MessageRow({
   const lastReplyUser = effectiveThread?.lastAuthorId ? users[effectiveThread.lastAuthorId] : undefined;
   return (
     <div
-      className={`group/message relative mx-1 rounded-lg px-3 ${padClass} transition-all duration-150 ease-out ${
-        selected ? 'bg-brand/10 ring-1 ring-brand/40' : 'hover:bg-gray-200/20'
+      className={`group/message relative mx-1 rounded-xl px-3 ${padClass} transition-all duration-150 ease-out ${
+        selected ? 'bg-brand/12 ring-1 ring-brand/40' : 'hover:bg-subtle/55'
       }`}
       onMouseLeave={() => setQuickEmojiOpen(false)}
       onContextMenu={(e) => {
@@ -286,7 +290,7 @@ function MessageRow({
           <div className={`col-start-2 row-start-2 min-w-0 -mt-0.5 ${contentSpacing}`}>
             {m.reply && (
               <div
-                className="mb-1 cursor-pointer rounded-lg bg-panel/60 px-2.5 py-1.5 text-left text-[11px] text-muted transition hover:bg-panel/80"
+                className="mb-1 cursor-pointer rounded-lg bg-panel/55 px-2.5 py-1.5 text-left text-[11px] text-muted transition hover:bg-panel/80"
                 role="button"
                 tabIndex={0}
                 onClick={() => {
@@ -331,7 +335,7 @@ function MessageRow({
             )}
             {!m.reply && (
               <div className={`${bodyTextClass} text-foreground`}>
-                <MarkdownText text={m.text} />
+                {displayText ? <MarkdownText text={displayText} /> : null}
                 {m.editedAt && <span className="ml-2 text-[11px] text-muted">(edited)</span>}
               </div>
             )}
@@ -376,7 +380,7 @@ function MessageRow({
         </div>
       )}
 
-      <div className="absolute right-2 top-1 z-10 flex items-center gap-0.5 rounded-lg border border-border/70 bg-panel/95 px-1 py-0.5 opacity-0 shadow-sm transition group-hover/message:opacity-100 group-focus-within/message:opacity-100">
+      <div className="absolute right-2 top-1 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-background px-1 py-0.5 opacity-0 shadow-lg transition group-hover/message:opacity-100 group-focus-within/message:opacity-100">
         <div className="relative">
           <button
             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
@@ -386,7 +390,7 @@ function MessageRow({
             <SmilePlus size={16} />
           </button>
           {quickEmojiOpen && (
-            <div className="absolute bottom-full right-0 mb-1 flex items-center gap-1 rounded-md border border-border bg-panel px-1.5 py-1 shadow-lg">
+            <div className="absolute bottom-full right-0 mb-1 flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 shadow-lg">
               {["😁", "😥", "👌", "👋", "🙏", "❤️", "✅"].map((emoji) => (
                 <button
                   key={emoji}

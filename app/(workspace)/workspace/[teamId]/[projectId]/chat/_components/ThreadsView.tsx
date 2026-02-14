@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo } from "react";
-import { Check, Filter, Search } from "lucide-react";
+import { Check, Filter, Search, SmilePlus, Reply, Pin, Bookmark, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
 import MarkdownText from "./MarkdownText";
 import Composer from "./Composer";
@@ -68,6 +68,11 @@ function ThreadRow({
   onCancelEdit,
   onDelete,
   onReact,
+  onQuote,
+  pinned,
+  saved,
+  onPin,
+  onSave,
   meId,
 }: {
   msg: Msg;
@@ -82,10 +87,15 @@ function ThreadRow({
   onCancelEdit: () => void;
   onDelete: () => void;
   onReact: (emoji: string) => void;
+  onQuote: () => void;
+  pinned: boolean;
+  saved: boolean;
+  onPin: () => void;
+  onSave: () => void;
   meId: string;
 }) {
   return (
-    <div className="group flex gap-3">
+    <div className="group relative flex gap-3 rounded-xl px-2 py-1 transition hover:bg-subtle/55">
       <div className="pt-0.5">
         <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted/20 text-[11px] font-semibold text-foreground">
           {avatarUrl ? (
@@ -122,28 +132,62 @@ function ThreadRow({
           </div>
         )}
         <ReactionPills msg={msg} meId={meId} onToggle={onReact} />
-        {!editing && (
-          <div className="mt-2 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
-            <EmojiPicker onPick={onReact} />
-            {isMine && (
-              <button className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground" onClick={onStartEdit}>
-                Edit
-              </button>
-            )}
-            {isMine && (
-              <button className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground" onClick={onDelete}>
-                Delete
-              </button>
-            )}
-          </div>
-        )}
+        {!editing && null}
       </div>
+      {!editing && (
+        <div className="absolute right-2 top-1 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-background px-1 py-0.5 opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100">
+          <button className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-subtle/60" aria-label="퀵 이모지">
+            <SmilePlus size={16} />
+          </button>
+          <EmojiPicker
+            onPick={onReact}
+            panelSide="top"
+            panelAlign="right"
+            anchorClass="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+            triggerContent={<span className="text-base">😊</span>}
+          />
+          <button
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+            onClick={onQuote}
+            aria-label="답장"
+          >
+            <Reply size={14} />
+          </button>
+          <button
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${pinned ? 'text-amber-500' : 'text-muted'} hover:bg-subtle/60`}
+            onClick={onPin}
+            aria-label="고정"
+          >
+            <Pin size={14} />
+          </button>
+          <button
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${saved ? 'text-emerald-500' : 'text-muted'} hover:bg-subtle/60`}
+            onClick={onSave}
+            aria-label="저장"
+          >
+            <Bookmark size={14} />
+          </button>
+          {isMine && (
+            <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60" onClick={onStartEdit} aria-label="편집">
+              <Pencil size={14} />
+            </button>
+          )}
+          {isMine && (
+            <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-rose-500 hover:bg-subtle/60" onClick={onDelete} aria-label="삭제">
+              <Trash2 size={14} />
+            </button>
+          )}
+          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60" aria-label="추가 메뉴">
+            <MoreHorizontal size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function ThreadsView() {
-  const { channels, users, me, lastReadAt, send, setChannel, channelActivity, updateMessage, deleteMessage, restoreMessage, toggleReaction, channelId: activeChannelId } = useChat();
+  const { channels, users, me, lastReadAt, send, setChannel, channelActivity, updateMessage, deleteMessage, restoreMessage, toggleReaction, togglePin, toggleSave, pinnedByChannel, savedByUser, channelId: activeChannelId } = useChat();
   const threadItems = useThreadItems({ channels, lastReadAt, meId: me.id, activityKey: channelActivity });
   const {
     sortMode,
@@ -257,6 +301,7 @@ export default function ThreadsView() {
     if (activeChannelId === channelId) return;
     await setChannel(channelId);
   };
+  const savedIds = new Set(savedByUser[me.id] || []);
 
   const renderThreadCard = (item: typeof visibleItems[number]) => {
     const root = item.root;
@@ -328,6 +373,25 @@ export default function ThreadsView() {
                   toggleReaction(root.id, emoji);
                 })();
               }}
+              onQuote={() => {
+                window.dispatchEvent(
+                  new CustomEvent("chat:insert-text", { detail: { text: `> ${root.text || ""}\n`, scopeId: item.rootId } }),
+                );
+              }}
+              pinned={(pinnedByChannel[item.channelId] || []).includes(root.id)}
+              saved={savedIds.has(root.id)}
+              onPin={() => {
+                void (async () => {
+                  await ensureChannel(item.channelId);
+                  togglePin(root.id);
+                })();
+              }}
+              onSave={() => {
+                void (async () => {
+                  await ensureChannel(item.channelId);
+                  toggleSave(root.id);
+                })();
+              }}
               meId={me.id}
             />
           </div>
@@ -387,6 +451,25 @@ export default function ThreadsView() {
                       toggleReaction(reply.id, emoji);
                     })();
                   }}
+                  onQuote={() => {
+                    window.dispatchEvent(
+                      new CustomEvent("chat:insert-text", { detail: { text: `> ${reply.text || ""}\n`, scopeId: item.rootId } }),
+                    );
+                  }}
+                  pinned={(pinnedByChannel[item.channelId] || []).includes(reply.id)}
+                  saved={savedIds.has(reply.id)}
+                  onPin={() => {
+                    void (async () => {
+                      await ensureChannel(item.channelId);
+                      togglePin(reply.id);
+                    })();
+                  }}
+                  onSave={() => {
+                    void (async () => {
+                      await ensureChannel(item.channelId);
+                      toggleSave(reply.id);
+                    })();
+                  }}
                   meId={me.id}
                 />
               );
@@ -420,8 +503,11 @@ export default function ThreadsView() {
           </button>
         )}
 
-        <div className="mt-4 rounded-xl border border-border bg-panel/70 px-3 py-2">
+        <div className="mt-3">
           <Composer
+            mentionChannelId={item.channelId}
+            quoteScopeId={item.rootId}
+            placeholder="스레드에 답장 보내기"
             onSend={async (text, files, extra) => {
               await setChannel(item.channelId);
               await send(text, files, { ...extra, parentId: item.rootId });

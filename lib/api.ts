@@ -12,7 +12,10 @@ const api = axios.create({
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    console.error("API Error:", err.response?.data || err.message);
+    const status = err?.response?.status;
+    if (status !== 401) {
+      console.error("API Error:", err.response?.data || err.message);
+    }
     return Promise.reject(err);
   }
 );

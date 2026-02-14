@@ -237,6 +237,7 @@ type ChannelMessageResponse = {
   threadParentId?: string;
   thread?: { count: number };
   reactions?: Array<{ emoji: string; count: number; reactedByMe?: boolean }>;
+  mentions?: string[];
 };
 
 const mapReactions = (
@@ -282,6 +283,7 @@ const mapChannelMessage = (message: ChannelMessageResponse, channelId: string, m
   parentId: message.threadParentId ?? undefined,
   threadCount: message.thread?.count ?? undefined,
   reactions: mapReactions(message.reactions, meId),
+  mentions: message.mentions ?? undefined,
 });
 
 /** ---------------- Store ---------------- */
@@ -341,11 +343,30 @@ export const useChat = create<State>((set, get) => ({
   loadChannels: async () => {
     const { projectId, teamId } = get();
     if (!projectId) return;
-    const [channelList, members, preferences] = await Promise.all([
-      listChannels(projectId),
-      teamId ? listProjectMembers(teamId, projectId) : Promise.resolve([]),
-      getChannelPreferences(projectId).catch(() => ({ pinnedChannelIds: [], archivedChannelIds: [] })),
-    ]);
+    let channelList: Channel[] = [];
+    let members: Array<{
+      userId: string;
+      name: string;
+      displayName?: string;
+      role?: "owner" | "manager" | "member" | "guest";
+      avatarUrl?: string | null;
+      backgroundImageUrl?: string | null;
+    }> = [];
+    let preferences: { pinnedChannelIds: string[]; archivedChannelIds: string[] } = {
+      pinnedChannelIds: [],
+      archivedChannelIds: [],
+    };
+    try {
+      [channelList, members, preferences] = await Promise.all([
+        listChannels(projectId),
+        teamId ? listProjectMembers(teamId, projectId).catch(() => []) : Promise.resolve([]),
+        getChannelPreferences(projectId).catch(() => ({ pinnedChannelIds: [], archivedChannelIds: [] })),
+      ]);
+    } catch {
+      channelList = [];
+      members = [];
+      preferences = { pinnedChannelIds: [], archivedChannelIds: [] };
+    }
     const workspaceId = projectId;
     const serverChannels = channelList.map((ch) => ({ ...ch, workspaceId }));
     const persistedChannels = lsGet<Channel[]>(CHANNELS_KEY, []);
@@ -626,8 +647,13 @@ export const useChat = create<State>((set, get) => ({
       return;
     }
 
-    const list = await listMessages(id);
-    const mapped = sortMessages(list.map((message) => mapChannelMessage(message, id, get().me.id)));
+    let mapped: Msg[] = [];
+    try {
+      const list = await listMessages(id);
+      mapped = sortMessages(list.map((message) => mapChannelMessage(message, id, get().me.id)));
+    } catch {
+      mapped = [];
+    }
     getPinnedMessages(id)
       .then((ids) => {
         const pins = { ...(get().pinnedByChannel || {}) };
@@ -644,8 +670,13 @@ export const useChat = create<State>((set, get) => ({
 
   refreshChannel: async (id) => {
     if (!id || id.startsWith("dm:")) return;
-    const list = await listMessages(id);
-    const mapped = sortMessages(list.map((message) => mapChannelMessage(message, id, get().me.id)));
+    let mapped: Msg[] = [];
+    try {
+      const list = await listMessages(id);
+      mapped = sortMessages(list.map((message) => mapChannelMessage(message, id, get().me.id)));
+    } catch {
+      mapped = [];
+    }
     const currentId = get().channelId;
     if (currentId === id) {
       const cur = get().messages;
@@ -763,26 +794,32 @@ export const useChat = create<State>((set, get) => ({
     const { channelId } = get();
     if (!channelId) return;
     void files;
-    const response = opts?.parentId
-      ? await sendThreadMessage(
-          opts.parentId,
-          text,
-        )
-      : channelId.startsWith("dm:")
-        ? await (async () => {
-            const roomId = await resolveDmRoomId(channelId, get().channelMembers, get().me.id);
-            if (!roomId) {
-              throw new Error("Failed to resolve DM room");
-            }
-            return sendDmMessage(roomId, text, {
+    let response: ChannelMessageResponse;
+    try {
+      response = opts?.parentId
+        ? await sendThreadMessage(
+            opts.parentId,
+            text,
+          )
+        : channelId.startsWith("dm:")
+          ? await (async () => {
+              const roomId = await resolveDmRoomId(channelId, get().channelMembers, get().me.id);
+              if (!roomId) {
+                throw new Error("Failed to resolve DM room");
+              }
+              return sendDmMessage(roomId, text, {
+                replyToMessageId: opts?.replyToId ?? undefined,
+                fileIds: [],
+              });
+            })()
+          : await sendChannelMessage(channelId, text, {
               replyToMessageId: opts?.replyToId ?? undefined,
-              fileIds: [],
+              threadParentId: undefined,
             });
-          })()
-        : await sendChannelMessage(channelId, text, {
-            replyToMessageId: opts?.replyToId ?? undefined,
-            threadParentId: undefined,
-          });
+    } catch (error) {
+      console.error("send message failed:", error);
+      return;
+    }
     const msg = mapChannelMessage(response, channelId, get().me.id);
     localEchoIds.add(msg.id);
     setTimeout(() => localEchoIds.delete(msg.id), 3000);
@@ -1225,10 +1262,22 @@ export const useChat = create<State>((set, get) => ({
     const since = get().lastReadAt[channelId] || 0;
     let unread = 0;
     let mention = 0;
+    const normalize = (value: string) => value.trim().toLowerCase();
+    const meNames = [get().me.name, get().me.displayName].filter(Boolean).map((v) => normalize(v as string));
+    const extractMentionTokens = (text: string) =>
+      Array.from(text.matchAll(/@([^\s@]+)/g))
+        .map((m) => normalize(m[1] || ""))
+        .filter(Boolean);
     for (const item of list) {
       if (item.ts > since) {
         unread += 1;
-        if ((item.mentions || []).includes(meId)) {
+        const mentionMeta = (item.mentions || []).map((x) => normalize(x));
+        const mentionByMeta = mentionMeta.some((meta) => {
+          if (meta === `id:${normalize(meId)}` || meta === normalize(meId)) return true;
+          return meNames.some((name) => meta === `name:${name}` || meta === name);
+        });
+        const mentionByText = meNames.some((name) => extractMentionTokens(item.text || "").includes(name));
+        if (mentionByMeta || mentionByText) {
           mention += 1;
         }
       }

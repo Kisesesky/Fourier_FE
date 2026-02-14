@@ -9,11 +9,13 @@ export default function EmojiPicker({
   anchorClass = "px-1.5 py-0.5 text-[11px] rounded border border-border hover:bg-subtle/60",
   triggerContent,
   panelSide = "top",
+  panelAlign = "left",
 }: {
   onPick: (emoji: string)=> void;
   anchorClass?: string;
   triggerContent?: React.ReactNode;
   panelSide?: "top" | "bottom" | "right";
+  panelAlign?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -60,12 +62,15 @@ export default function EmojiPicker({
     );
   }, [allEntries, category, q]);
 
-  const panelPositionClass =
+  const sideBase =
     panelSide === "bottom"
-      ? "top-full left-0 mt-1"
+      ? "top-full mt-1"
       : panelSide === "right"
         ? "left-full top-0 ml-1"
-        : "bottom-full left-0 mb-1";
+        : "bottom-full mb-1";
+  const alignClass =
+    panelSide === "right" ? "" : panelAlign === "right" ? "right-0" : "left-0";
+  const panelPositionClass = `${sideBase} ${alignClass}`.trim();
 
   return (
     <details open={open} onToggle={(e)=> setOpen((e.target as HTMLDetailsElement).open)} className="relative">
@@ -116,8 +121,8 @@ export default function EmojiPicker({
                   onPick(emoji);
                   setOpen(false);
                 }}
-                title={`${emoji} ${shortcut}`}
                 type="button"
+                aria-label={shortcut}
               >
                 <span className="leading-none">{emoji}</span>
               </button>

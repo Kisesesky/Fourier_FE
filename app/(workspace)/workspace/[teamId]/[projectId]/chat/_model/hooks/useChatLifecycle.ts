@@ -15,7 +15,7 @@ type UseChatLifecycleParams = {
   refreshChannel: (id: string) => Promise<void>;
   markChannelRead: (id?: string, ts?: number) => void;
   markSeenUpTo: (ts: number) => void;
-  me: { id: string; name: string };
+  me: { id: string; name: string; displayName?: string };
   onMention: (author: string, text: string | undefined) => void;
   broadcastRead: (userId: string, userName: string, channelId: string, ts: number) => void;
 };
@@ -34,6 +34,11 @@ export function useChatLifecycle({
   onMention,
   broadcastRead,
 }: UseChatLifecycleParams) {
+  const normalize = (value: string) => value.trim().toLowerCase();
+  const extractMentionTokens = (text: string) =>
+    Array.from(text.matchAll(/@([^\s@]+)/g))
+      .map((m) => normalize(m[1] || ""))
+      .filter(Boolean);
   const lastMessageCount = useRef(0);
   const lastSynced = useRef<{ channelId?: string; messageId?: string }>({});
 
@@ -90,16 +95,22 @@ export function useChatLifecycle({
   useEffect(() => {
     if (messages.length > lastMessageCount.current) {
       const added = messages.slice(lastMessageCount.current);
+      const meNames = [me.name, me.displayName].filter(Boolean).map((v) => normalize(v as string));
       for (const m of added) {
         if (m.authorId === me.id) continue;
-        const mentioned =
-          (m.mentions || []).some((x) => x === `name:${me.name}`) ||
-          (m.text || '').includes(`@${me.name}`);
+        const mentionTokens = extractMentionTokens(m.text || "");
+        const mentionMeta = (m.mentions || []).map((x) => normalize(x));
+        const mentionedByText = meNames.some((name) => mentionTokens.includes(name));
+        const mentionedByMeta = mentionMeta.some((meta) => {
+          if (meta === `id:${normalize(me.id)}` || meta === normalize(me.id)) return true;
+          return meNames.some((name) => meta === `name:${name}` || meta === name);
+        });
+        const mentioned = mentionedByText || mentionedByMeta;
         if (mentioned) {
           onMention(m.author, m.text);
         }
       }
     }
     lastMessageCount.current = messages.length;
-  }, [messages, me.id, me.name, onMention]);
+  }, [messages, me.id, me.name, me.displayName, onMention]);
 }

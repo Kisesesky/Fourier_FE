@@ -2,6 +2,7 @@
 import api from "@/lib/api";
 import type { Channel } from "@/workspace/chat/_model/types";
 import { z } from "zod";
+import type { AxiosError } from "axios";
 
 type ChannelResponse = {
   id: string;
@@ -49,15 +50,21 @@ const AnalyticsSchema = z.object({
 });
 
 export async function listChannels(projectId: string): Promise<Channel[]> {
-  const res = await api.get<ChannelResponse[]>("/chat/channels", { params: { projectId } });
-  const parsed = z.array(ChannelResponseSchema).safeParse(res.data ?? []);
-  const data = parsed.success ? parsed.data : [];
-  return data.map((item) => ({
-    id: item.id,
-    name: item.name,
-    workspaceId: item.projectId ?? projectId,
-    createdAt: item.createdAt,
-  }));
+  try {
+    const res = await api.get<ChannelResponse[]>("/chat/channels", { params: { projectId } });
+    const parsed = z.array(ChannelResponseSchema).safeParse(res.data ?? []);
+    const data = parsed.success ? parsed.data : [];
+    return data.map((item) => ({
+      id: item.id,
+      name: item.name,
+      workspaceId: item.projectId ?? projectId,
+      createdAt: item.createdAt,
+    }));
+  } catch (error) {
+    const status = (error as AxiosError)?.response?.status;
+    if (status === 401) return [];
+    throw error;
+  }
 }
 
 export async function createChannel(
@@ -74,9 +81,15 @@ export async function createChannel(
 }
 
 export async function listMessages(channelId: string): Promise<MessageResponse[]> {
-  const res = await api.get<MessageResponse[]>("/chat/channel/messages", { params: { channelId, limit: 100 } });
-  const parsed = z.array(MessageResponseSchema).safeParse(res.data ?? []);
-  return parsed.success ? parsed.data : [];
+  try {
+    const res = await api.get<MessageResponse[]>("/chat/channel/messages", { params: { channelId, limit: 100 } });
+    const parsed = z.array(MessageResponseSchema).safeParse(res.data ?? []);
+    return parsed.success ? parsed.data : [];
+  } catch (error) {
+    const status = (error as AxiosError)?.response?.status;
+    if (status === 401) return [];
+    throw error;
+  }
 }
 
 export async function getPinnedMessages(channelId: string): Promise<string[]> {

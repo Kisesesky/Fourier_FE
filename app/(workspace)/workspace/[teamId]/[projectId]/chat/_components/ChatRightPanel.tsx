@@ -192,8 +192,8 @@ export default function ChatRightPanel() {
   };
 
   return (
-      <div className="flex h-full min-h-0 flex-1 flex-col bg-panel/85">
-        <div className="flex items-center gap-2 border-b border-border/70 bg-panel/85 px-3 py-2.5">
+      <div className="flex h-full min-h-0 flex-1 flex-col bg-background/90">
+        <div className="flex items-center gap-2 border-b border-border/70 bg-panel/80 px-3 py-2.5">
           <div className="flex py-1 items-center gap-2 text-sm font-semibold text-foreground">
             <Info size={14} className="text-muted" />
             스레드
@@ -211,7 +211,7 @@ export default function ChatRightPanel() {
             </button>
           </div>
         </div>
-        <div className="border-b border-border/70 px-4 py-2">
+        <div className="border-b border-border/70 bg-background/60 px-4 py-2">
           <div className="relative">
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
@@ -264,7 +264,7 @@ export default function ChatRightPanel() {
                     <ThreadReactionPills reactions={root.reactions} meId={me.id} users={users} onToggle={(emoji) => toggleReaction(root.id, emoji)} />
                     <ReadBy userNames={(root.seenBy || []).filter(uid => uid !== me.id).map(uid => users[uid]?.name || uid)} />
                     <div className="mt-2 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
-                      <div className="flex items-center gap-1 rounded-md border border-border/70 bg-panel/90 px-1.5 py-1">
+                      <div className="flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1">
                         {["😁", "😥", "👌", "🙏"].map((emoji) => (
                           <button
                             key={emoji}
@@ -323,7 +323,7 @@ export default function ChatRightPanel() {
                   return (
                     <div key={r.id}>
                       {showDivider && <ThreadDayDivider ts={r.ts} />}
-                      <div className="group flex gap-3 rounded-xl bg-background/50 px-3 py-2 transition-colors hover:bg-subtle/45">
+                      <div className="group flex gap-3 rounded-xl bg-background/45 px-3 py-2 transition-colors hover:bg-subtle/55">
                         <div className="pt-0.5">
                           <button
                             type="button"
@@ -358,7 +358,7 @@ export default function ChatRightPanel() {
                           <ThreadReactionPills reactions={r.reactions} meId={me.id} users={users} onToggle={(emoji) => toggleReaction(r.id, emoji)} />
                           <ReadBy userNames={(r.seenBy || []).filter(uid => uid !== me.id).map(uid => users[uid]?.name || uid)} />
                           <div className="mt-2 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
-                            <div className="flex items-center gap-1 rounded-md border border-border/70 bg-panel/90 px-1.5 py-1">
+                            <div className="flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1">
                               {["😁", "😥", "👌", "🙏"].map((emoji) => (
                                 <button
                                   key={emoji}
@@ -400,9 +400,10 @@ export default function ChatRightPanel() {
           </div>
         )}
         {root && (
-          <div className="border-t border-border/70 bg-panel/85 px-3">
-            <div className="border border-border bg-panel/70 p-2 rounded-md">
+          <div className="border-t border-border/70 bg-gradient-to-t from-background via-background/95 to-background/75 px-3 py-2">
+            <div className="rounded-xl bg-transparent">
               <Composer
+                placeholder="스레드에 답장 보내기"
                 onSend={(text, files)=> {
                   void send(text, files, { parentId: root.id }).catch(() => {
                     show({ variant: "error", title: "스레드 전송 실패", description: "잠시 후 다시 시도해주세요." });

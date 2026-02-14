@@ -539,7 +539,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
 
         <div
           ref={listRef}
-          className={`scroll-smooth overflow-y-auto bg-background/40 px-4 py-3 pb-28 space-y-2 scrollbar-thin ${view === 'compact' ? 'text-[13px]' : 'text-[14px]'}`}
+          className={`scroll-smooth overflow-y-auto bg-background/35 px-4 py-3 pb-8 space-y-2 scrollbar-thin ${view === 'compact' ? 'text-[13px]' : 'text-[14px]'}`}
           onClick={(e)=> {
             if ((e.target as HTMLElement).closest('[data-mid]')) return;
             if (selectMode) clearSelection();
@@ -595,7 +595,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
         )}
 
         <div
-          className="sticky bottom-0 z-10 border-t border-border/70 bg-panel/90 backdrop-blur"
+          className="sticky bottom-0 z-10 border-t border-border/70 bg-gradient-to-t from-background via-background/95 to-background/75 backdrop-blur"
           onFocus={()=> onTyping(true)}
           onBlur={()=> onTyping(false)}
           onKeyDown={()=> onTyping(true)}
@@ -654,6 +654,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
               </div>
               <Composer
                 variant="merged"
+                placeholder={`#${normalizedChannelName}에 답장 보내기`}
                 onSend={async (text, files, extra) => {
                   await send(text, files, { ...extra, replyToId });
                   setReplyTarget(null);
@@ -662,6 +663,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
             </div>
           ) : (
             <Composer
+              placeholder={`#${normalizedChannelName}에 메시지 보내기`}
               onSend={async (text, files, extra) => {
                 await send(text, files, { ...extra, replyToId });
                 setReplyTarget(null);

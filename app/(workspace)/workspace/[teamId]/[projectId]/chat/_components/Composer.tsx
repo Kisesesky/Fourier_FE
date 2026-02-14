@@ -2,13 +2,13 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Paperclip, Send, Bold, Code, Quote, AtSign, X } from "lucide-react";
+import { Plus, Smile, Send, Play, X } from "lucide-react";
 import type { FileItem } from "@/workspace/chat/_model/types";
-import MentionPopover, { SuggestItem } from "./MentionPopover";
 import EmojiPicker from "./EmojiPicker";
 import { replaceEmojiShortcuts, shortcutToEmoji } from "@/workspace/chat/_model/emoji.shortcuts";
+import { useChat } from "@/workspace/chat/_model/store";
 
-type UploadItem = FileItem & { progress: number; ready: boolean };
+type UploadItem = FileItem;
 
 function toFileItem(file: File): UploadItem {
   return {
@@ -17,352 +17,495 @@ function toFileItem(file: File): UploadItem {
     size: file.size,
     type: file.type,
     blob: file,
-    progress: 0,
-    ready: false,
+    previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
   };
+}
+
+function replaceShortcutAtCaret(value: string, caret: number): { text: string; caret: number } {
+  let i = caret - 1;
+  while (i >= 0 && !/\s/.test(value[i])) i -= 1;
+  const token = value.slice(i + 1, caret);
+  const emoji = shortcutToEmoji[token];
+  if (!emoji) return { text: value, caret };
+  const next = `${value.slice(0, i + 1)}${emoji}${value.slice(caret)}`;
+  const nextCaret = i + 1 + emoji.length;
+  return { text: next, caret: nextCaret };
+}
+
+function isImageUrl(url: string) {
+  return /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|svg)(\?\S*)?$/i.test(url);
+}
+
+function parseYouTubeVideoId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") {
+      const id = u.pathname.replace("/", "").trim();
+      return id || null;
+    }
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      if (u.pathname === "/watch") return u.searchParams.get("v");
+      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/")[2] || null;
+      if (u.pathname.startsWith("/embed/")) return u.pathname.split("/")[2] || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export default function Composer({
   onSend,
   variant = "default",
+  placeholder = "메시지 입력…",
+  mentionChannelId,
+  quoteScopeId,
 }: {
-  onSend: (text: string, files?: FileItem[], extra?: { parentId?: string|null; mentions?: string[] }) => void;
+  onSend: (text: string, files?: FileItem[], extra?: { parentId?: string | null; mentions?: string[] }) => void;
   parentId?: string | null;
   variant?: "default" | "merged";
+  placeholder?: string;
+  mentionChannelId?: string;
+  quoteScopeId?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const [value, setValue] = useState("");
+  const [caret, setCaret] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewKind, setPreviewKind] = useState<"image" | "youtube" | null>(null);
+  const [previewVideoId, setPreviewVideoId] = useState<string | null>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
-  const [mentionXY, setMentionXY] = useState<{x:number;y:number}>({x:0,y:0});
   const [mentionQuery, setMentionQuery] = useState("");
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const { users, channelMembers, channelId, userStatus } = useChat((state) => ({
+    users: state.users,
+    channelMembers: state.channelMembers,
+    channelId: state.channelId,
+    userStatus: state.userStatus,
+  }));
 
-  const allUsers: SuggestItem[] = useMemo(() => {
-    if (typeof window === "undefined") return [];
-    const globalUsers = (window as any).__FLOW_USERS__ as {id:string; name:string}[] | undefined;
-    return (globalUsers || []).map(u => ({ id: u.id, name: u.name }));
-  }, []);
-  const filteredUsers = useMemo(() => {
+  const canSend = value.trim().length > 0 || uploads.length > 0 || !!previewUrl;
+  const allUsers = useMemo(() => {
+    const scopeId = mentionChannelId ?? channelId;
+    const members = scopeId ? (channelMembers[scopeId] || []) : [];
+    const memberUsers = members
+      .map((id) => users[id])
+      .filter((u): u is NonNullable<typeof u> => !!u)
+      .map((u) => ({
+        id: u.id,
+        name: u.displayName || u.name,
+        avatarUrl: u.avatarUrl,
+        status: userStatus[u.id],
+      }));
+    if (memberUsers.length > 0) return memberUsers;
+    return Object.values(users).map((u) => ({
+      id: u.id,
+      name: u.displayName || u.name,
+      avatarUrl: u.avatarUrl,
+      status: userStatus[u.id],
+    }));
+  }, [mentionChannelId, channelId, channelMembers, users, userStatus]);
+  const mentionUsers = useMemo(() => {
     const q = mentionQuery.trim().toLowerCase();
-    return allUsers.filter(u => u.name.toLowerCase().includes(q)).slice(0,8);
-  }, [mentionQuery, allUsers]);
+    if (!q) return allUsers.slice(0, 8);
+    return allUsers.filter((u) => u.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [allUsers, mentionQuery]);
 
-  /** 업로드 가짜 진행률 시뮬레이터 */
-  const startFakeUpload = (items: UploadItem[]) => {
-    items.forEach(item => {
-      const int = setInterval(() => {
-        setUploads(prev => prev.map(u => {
-          if (u.id !== item.id) return u;
-          const next = Math.min(100, u.progress + Math.round(5 + Math.random()*15));
-          return { ...u, progress: next, ready: next >= 100 };
-        }));
-      }, 200);
-      setTimeout(() => clearInterval(int), 5000);
+  const shellClass = `flex items-start gap-2 rounded-2xl border px-2 py-2 transition ${
+    isFocused ? "border-brand/60 bg-panel shadow-[0_0_0_1px_rgba(59,130,246,0.18)]" : "border-border/70 bg-panel/95"
+  }`;
+  const outerClass = variant === "merged" ? "px-0 py-0" : "px-2 py-2";
+
+  const autoResize = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 192)}px`;
+  };
+
+  useEffect(() => {
+    autoResize();
+  }, [value]);
+
+  const insertAtCaret = (insertText: string) => {
+    const el = inputRef.current;
+    if (!el) {
+      setValue((prev) => prev + insertText);
+      return;
+    }
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? start;
+    const next = `${value.slice(0, start)}${insertText}${value.slice(end)}`;
+    const caret = start + insertText.length;
+    setValue(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.selectionStart = caret;
+      el.selectionEnd = caret;
+      autoResize();
     });
   };
 
-  const insertTextAtCursor = (text: string) => {
-    ref.current?.focus();
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(document.createTextNode(text));
-    range.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(range);
+  const doSend = () => {
+    const rawText = value.trim();
+    const composedText = [rawText, previewUrl].filter(Boolean).join("\n").trim();
+    const text = replaceEmojiShortcuts(composedText);
+    if (!text && uploads.length === 0) return;
+
+    const mentions = Array.from(text.matchAll(/@([A-Za-z0-9_-][A-Za-z0-9 _-]*)/g)).map((m) => `name:${m[1].trim()}`);
+    const files: FileItem[] = uploads.map(({ ...rest }) => rest);
+
+    onSend(text, files, { mentions });
+    uploads.forEach((u) => {
+      if (u.previewUrl) URL.revokeObjectURL(u.previewUrl);
+    });
+    setValue("");
+    setPreviewUrl(null);
+    setPreviewKind(null);
+    setPreviewVideoId(null);
+    setUploads([]);
   };
 
-  const surroundSelection = (left: string, right: string = left) => {
-    ref.current?.focus();
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const text = range.toString();
-    range.deleteContents();
-    const node = document.createTextNode(`${left}${text}${right}`);
-    range.insertNode(node);
-    range.setStartAfter(node);
-    range.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(range);
+  const onPickFile = (file: File | null | undefined) => {
+    if (!file) return;
+    const item = toFileItem(file);
+    setUploads((prev) => [...prev, item]);
   };
 
-  const openMention = () => {
-    const rect = getCaretCoordinates();
-    setMentionXY({ x: rect.left, y: rect.bottom + 6 });
-    setMentionQuery("");
-    setActiveIdx(0);
-    setMentionOpen(true);
-  };
-  const getCaretCoordinates = () => {
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return { left: 0, right: 0, top: 0, bottom: 0 };
-    const range = sel.getRangeAt(0).cloneRange();
-    range.collapse(true);
-    const span = document.createElement('span');
-    span.appendChild(document.createTextNode('\u200b'));
-    range.insertNode(span);
-    const rect = span.getBoundingClientRect();
-    const out = { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
-    span.parentNode?.removeChild(span);
-    return out;
+  const onInputFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onPickFile(e.target.files?.[0]);
+    e.target.value = "";
   };
 
-  const replaceCurrentMentionToken = (replacement: string) => {
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    let node = range.startContainer;
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent || "";
-      const caret = range.startOffset;
-      let i = caret - 1;
-      while (i >= 0 && /[A-Za-z0-9_-]/.test(text[i])) i--;
-      if (text[i] === '@') {
-        const start = i;
-        const end = caret;
-        const before = text.slice(0, start);
-        const after = text.slice(end);
-        node.textContent = before + replacement + after;
-        const newOffset = (before + replacement).length;
-        const r = document.createRange();
-        r.setStart(node, Math.min(newOffset, node.textContent.length));
-        r.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(r);
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const fileItem = items.find((it) => it.kind === "file");
+    if (!fileItem) return;
+    const file = fileItem.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    onPickFile(file);
+  };
+
+  const onInputChange = (nextValue: string) => {
+    const trimmed = nextValue.trim();
+    const image = isImageUrl(trimmed);
+    const youtubeId = parseYouTubeVideoId(trimmed);
+    const isSingleUrl = /^https?:\/\/\S+$/i.test(trimmed);
+
+    if (trimmed && isSingleUrl && (image || youtubeId)) {
+      setPreviewUrl(trimmed);
+      setPreviewKind(image ? "image" : "youtube");
+      setPreviewVideoId(youtubeId);
+      setValue("");
+      return;
+    }
+    setValue(nextValue);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionOpen) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((prev) => Math.min(mentionUsers.length - 1, prev + 1));
         return;
       }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((prev) => Math.max(0, prev - 1));
+        return;
+      }
+      if (e.key === "Escape") {
+        setMentionOpen(false);
+        return;
+      }
+      if (e.key === "Enter") {
+        const picked = mentionUsers[mentionIndex];
+        if (picked) {
+          e.preventDefault();
+          pickMention(picked.name);
+          return;
+        }
+      }
     }
-    insertTextAtCursor(replacement);
-  };
 
-  const replaceCurrentEmojiShortcutToken = () => {
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return false;
-    const range = sel.getRangeAt(0);
-    const node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) return false;
-    const textNode = node as Text;
-    const text = textNode.textContent || "";
-    const caret = range.startOffset;
-    let i = caret - 1;
-    while (i >= 0 && !/\s/.test(text[i])) i--;
-    const token = text.slice(i + 1, caret);
-    const emoji = shortcutToEmoji[token];
-    if (!emoji) return false;
-    const before = text.slice(0, i + 1);
-    const after = text.slice(caret);
-    textNode.textContent = `${before}${emoji}${after}`;
-    const nextOffset = (before + emoji).length;
-    const nextRange = document.createRange();
-    nextRange.setStart(textNode, Math.min(nextOffset, textNode.textContent.length));
-    nextRange.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(nextRange);
-    return true;
-  };
-
-  const pickMention = (u: SuggestItem) => {
-    replaceCurrentMentionToken(`@${u.name} `);
-    setMentionOpen(false);
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (mentionOpen) {
-      if (e.key === 'ArrowDown') { setActiveIdx(i=> Math.min(filteredUsers.length-1, i+1)); e.preventDefault(); }
-      if (e.key === 'ArrowUp')   { setActiveIdx(i=> Math.max(0, i-1)); e.preventDefault(); }
-      if (e.key === 'Enter')     { const u = filteredUsers[activeIdx]; if (u) pickMention(u); e.preventDefault(); return; }
-      if (e.key === 'Escape')    { setMentionOpen(false); return; }
-    }
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       doSend();
       return;
     }
+
     if (e.key === " ") {
-      replaceCurrentEmojiShortcutToken();
+      const el = inputRef.current;
+      const caret = el?.selectionStart ?? value.length;
+      const replaced = replaceShortcutAtCaret(value, caret);
+      if (replaced.text !== value) {
+        setValue(replaced.text);
+        requestAnimationFrame(() => {
+          if (!el) return;
+          el.selectionStart = replaced.caret;
+          el.selectionEnd = replaced.caret;
+          autoResize();
+        });
+      }
     }
   };
 
-  const onInput = () => {
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    let node = range.startContainer;
-    let text = '';
-    if (node.nodeType === Node.TEXT_NODE) text = node.textContent || '';
-    else text = (node.textContent || '');
-    const caret = range.startOffset;
-    const token = (text.slice(0, caret) || '').split(/\s/).pop() || '';
-    if (token.startsWith('@')) {
+  const updateMentionState = (nextValue: string, nextCaret: number) => {
+    const prefix = nextValue.slice(0, Math.max(0, nextCaret));
+    const token = prefix.split(/\s/).pop() || "";
+    if (token.startsWith("@")) {
       setMentionQuery(token.slice(1));
-      openMention();
-    } else {
-      setMentionOpen(false);
+      setMentionIndex(0);
+      setMentionOpen(true);
+      return;
     }
-  };
-
-  const doSend = () => {
-    const rawText = (ref.current?.innerText || '').trim();
-    const text = replaceEmojiShortcuts(rawText);
-    const allReady = uploads.every(u => u.ready);
-    if (!text && uploads.length === 0) return;
-    if (!allReady) return;
-
-    const mentions = Array.from(text.matchAll(/@([A-Za-z0-9_-][A-Za-z0-9 _-]*)/g)).map(m => `name:${m[1].trim()}`);
-    const files: FileItem[] = uploads.map(({ ...rest }) => rest);
-    onSend(text, files, { mentions });
-
-    if (ref.current) {
-      ref.current.innerHTML = '';
-    }
-    setUploads([]);
     setMentionOpen(false);
   };
 
-  const onPickEmoji = (emoji: string) => {
-    insertTextAtCursor(emoji);
+  const pickMention = (name: string) => {
+    const start = Math.max(0, value.lastIndexOf("@", Math.max(0, caret - 1)));
+    const before = value.slice(0, start);
+    const after = value.slice(caret).replace(/^\S*/, "");
+    const inserted = `@${name} `;
+    const next = `${before}${inserted}${after}`;
+    const nextCaret = before.length + inserted.length;
+    setValue(next);
+    setCaret(nextCaret);
+    setMentionOpen(false);
+    requestAnimationFrame(() => {
+      if (!inputRef.current) return;
+      inputRef.current.focus();
+      inputRef.current.selectionStart = nextCaret;
+      inputRef.current.selectionEnd = nextCaret;
+      autoResize();
+    });
   };
 
-  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]; e.target.value = "";
-    if (!f) return;
-    const item = toFileItem(f);
-    setUploads(prev => [...prev, item]);
-    startFakeUpload([item]);
-  };
-
-  /** 드래그&드롭 업로드 */
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(true);
   };
-  const onDragLeave = () => setDragOver(false);
+
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     const files = Array.from(e.dataTransfer.files || []);
     if (!files.length) return;
     const items = files.map(toFileItem);
-    setUploads(prev => prev.concat(items));
-    startFakeUpload(items);
+    setUploads((prev) => prev.concat(items));
   };
 
-  /** 인용/텍스트 삽입 이벤트 수신 */
+  const removeUpload = (id: string) => {
+    setUploads((prev) => {
+      const target = prev.find((u) => u.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((u) => u.id !== id);
+    });
+  };
+
   useEffect(() => {
     const onQuote = (e: Event) => {
       const detail = (e as CustomEvent<{ text: string }>).detail;
-      const quoted = (detail?.text || '').split('\n').map(l => `> ${l}`).join('\n');
-      insertTextAtCursor(quoted + '\n');
+      const quoted = (detail?.text || "")
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n");
+      insertAtCaret(`${quoted}\n`);
     };
+
     const onInsert = (e: Event) => {
       const detail = (e as CustomEvent<{ text: string }>).detail;
-      const txt = detail?.text || '';
-      if (!txt) return;
-      insertTextAtCursor(txt);
+      if (!detail?.text) return;
+      const scope = (e as CustomEvent<{ text: string; scopeId?: string }>).detail?.scopeId;
+      if (scope && quoteScopeId && scope !== quoteScopeId) return;
+      if (scope && !quoteScopeId) return;
+      insertAtCaret(detail.text);
     };
-    window.addEventListener('chat:insert-quote', onQuote as any);
-    window.addEventListener('chat:insert-text', onInsert as any);
+
+    window.addEventListener("chat:insert-quote", onQuote as EventListener);
+    window.addEventListener("chat:insert-text", onInsert as EventListener);
     return () => {
-      window.removeEventListener('chat:insert-quote', onQuote as any);
-      window.removeEventListener('chat:insert-text', onInsert as any);
+      window.removeEventListener("chat:insert-quote", onQuote as EventListener);
+      window.removeEventListener("chat:insert-text", onInsert as EventListener);
     };
-  }, []);
+  }, [value, quoteScopeId]);
 
-  const removeUpload = (id: string) => {
-    setUploads(prev => prev.filter(u => u.id !== id));
-  };
-
-  const allReady = uploads.every(u => u.ready);
-
-  const outerClass = variant === "merged" ? "px-0 py-0" : "px-2 py-2";
-  const boxClass =
-    variant === "merged"
-      ? "rounded-none border-0 bg-panel/90"
-      : "rounded-md border border-border bg-panel/90";
-  const frameClass =
-    variant === "merged"
-      ? boxClass
-      : "rounded-xl border border-border/70 bg-background shadow-sm";
+  const uploadList = useMemo(
+    () =>
+      uploads.map((u) => (
+        <div key={u.id} className="rounded-lg border border-border bg-background/70 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted">
+            <span className="truncate">{u.name}</span>
+            <button type="button" className="rounded px-1 py-0.5 hover:bg-subtle/60 hover:text-foreground" onClick={() => removeUpload(u.id)}>
+              제거
+            </button>
+          </div>
+          {u.previewUrl && u.type.startsWith("image/") ? (
+            <img src={u.previewUrl} alt={u.name} className="max-h-72 w-full rounded object-cover transition-opacity hover:opacity-90" />
+          ) : (
+            <div className="text-xs text-muted">첨부 파일 준비 완료</div>
+          )}
+        </div>
+      )),
+    [uploads],
+  );
 
   return (
     <div
-      className={`${outerClass} ${dragOver ? 'ring-2 ring-brand/60' : ''}`}
+      className={`relative ${outerClass} ${dragOver ? "ring-2 ring-brand/60" : ""}`}
       onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
+      onDragLeave={() => setDragOver(false)}
       onDrop={onDrop}
     >
-      <div className={frameClass}>
-        <div className="flex items-center gap-1 border-b border-border/70 bg-subtle/30 px-2 py-1.5 text-[11px] text-muted">
-          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="Bold (Ctrl+B)" onClick={()=> surroundSelection('**') }><Bold size={13}/></button>
-          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="Inline code `code`" onClick={()=> surroundSelection('`') }><Code size={13}/></button>
-          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="Quote" onClick={()=> insertTextAtCursor('\n> ') }><Quote size={13}/></button>
-          <EmojiPicker onPick={onPickEmoji} panelSide="top" />
-          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="@mention" onClick={()=> { insertTextAtCursor('@'); const r = getCaretCoordinates(); setMentionXY({x:r.left,y:r.bottom+6}); setMentionOpen(true);} }><AtSign size={13}/></button>
-          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-subtle/80" title="Attach file" onClick={()=> fileRef.current?.click()}>
-            <Paperclip size={13}/>
-          </button>
-          <input ref={fileRef} type="file" hidden onChange={onPickFile} />
+      {(previewUrl || uploads.length > 0) && (
+        <div className="mb-2 space-y-2">
+          {previewUrl && (
+            <div className="inline-block w-full max-w-[560px] overflow-hidden rounded-xl border border-border bg-background/80 shadow-sm">
+              <div className="flex items-center justify-between border-b border-border bg-panel/60 px-3 py-2 text-xs text-muted">
+                <span>{previewKind === "youtube" ? "YouTube 미리보기" : "이미지 미리보기"}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewUrl(null);
+                    setPreviewKind(null);
+                    setPreviewVideoId(null);
+                  }}
+                  className="rounded p-1 hover:bg-subtle/60 hover:text-foreground"
+                  aria-label="미리보기 제거"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="relative">
+                {previewKind === "youtube" && previewVideoId ? (
+                  <div className="relative aspect-video w-full bg-black/70">
+                    <img
+                      src={`https://i.ytimg.com/vi/${previewVideoId}/hqdefault.jpg`}
+                      alt="YouTube preview"
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="rounded-full bg-black/50 p-3 text-white">
+                        <Play size={22} fill="currentColor" />
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <img
+                    src={previewUrl}
+                    alt="이미지 미리보기"
+                    className="max-h-80 w-full object-cover transition-opacity hover:opacity-95"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = '<div class="p-4 text-red-400 text-sm">미리보기를 불러올 수 없습니다.</div>';
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+          {uploads.length > 0 && <div className="space-y-1.5">{uploadList}</div>}
         </div>
+      )}
 
-        <div
-          ref={ref}
-          className="min-h-[52px] max-h-44 overflow-y-auto px-3 py-2.5 text-sm outline-none empty:before:pointer-events-none empty:before:text-muted/70 empty:before:content-[attr(data-placeholder)]"
-          contentEditable
+      <div className={shellClass}>
+        <label className="inline-flex h-10 w-10 shrink-0 cursor-pointer select-none items-center justify-center rounded-xl text-foreground/90 transition hover:bg-subtle/80 hover:text-foreground">
+          <Plus size={20} />
+          <input ref={fileRef} type="file" className="hidden" onChange={onInputFile} />
+        </label>
+
+        <textarea
+          ref={inputRef}
+          value={value}
+          onChange={(e) => {
+            const nextValue = e.target.value;
+            const nextCaret = e.target.selectionStart ?? nextValue.length;
+            setCaret(nextCaret);
+            onInputChange(nextValue);
+            updateMentionState(nextValue, nextCaret);
+          }}
           onKeyDown={onKeyDown}
-          onInput={onInput}
-          data-placeholder="메시지 입력…"
-          style={{ whiteSpace: 'pre-wrap' }}
+          onClick={(e) => {
+            const pos = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
+            setCaret(pos);
+            updateMentionState(value, pos);
+          }}
+          onKeyUp={(e) => {
+            const pos = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
+            setCaret(pos);
+            updateMentionState((e.target as HTMLTextAreaElement).value, pos);
+          }}
+          onPaste={onPaste}
+          rows={1}
+          maxLength={3000}
+          placeholder={placeholder}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          className="hide-scrollbar max-h-48 min-h-10 flex-1 resize-none rounded-xl bg-background/70 px-3 py-2.5 text-[15px] leading-snug text-foreground outline-none placeholder:text-muted/75"
         />
 
-        {uploads.length > 0 && (
-          <div className="space-y-1.5 border-t border-border/70 px-3 py-1.5">
-            {uploads.map(u => (
-              <div key={u.id} className="rounded-md border border-border bg-subtle/30 px-2.5 py-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="truncate">{u.name}</div>
-                  <button className="ml-2 p-1 rounded hover:bg-subtle/60" onClick={()=> removeUpload(u.id)} title="제거">
-                    <X size={12}/>
-                  </button>
-                </div>
-                <div className="mt-1 h-2 rounded-full border border-border overflow-hidden">
-                  <div className="h-full bg-current opacity-60" style={{ width: `${u.progress}%` }} />
-                </div>
-                <div className="mt-0.5 text-right opacity-70">{u.progress}%</div>
-              </div>
-            ))}
-          </div>
-        )}
+        <EmojiPicker
+          onPick={(emoji) => insertAtCaret(emoji)}
+          panelSide="top"
+          panelAlign="right"
+          anchorClass="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground/90 hover:bg-subtle/80"
+          triggerContent={<Smile size={22} />}
+        />
 
-        <div className="flex items-center justify-between border-t border-border/70 bg-background/60 px-3 py-1.5">
-          <span className="text-[10px] text-muted/80">Enter 전송 · Shift+Enter 줄바꿈</span>
-          <button
-            className={`inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-[11px] font-semibold ${(!uploads.length || allReady) ? 'bg-brand text-white hover:bg-brand/90' : 'bg-subtle/60 text-muted/60'}`}
-            onClick={doSend}
-            disabled={uploads.length > 0 && !allReady}
-            title={uploads.length > 0 && !allReady ? "업로드 중..." : "Send (Enter)"}
-            aria-label="메시지 전송"
-          >
-            <Send size={14}/>
-            전송
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={doSend}
+          disabled={!canSend}
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-subtle/70 disabled:text-muted"
+          aria-label="메시지 전송"
+        >
+          <Send size={17} />
+        </button>
       </div>
 
-      {/* 멘션 팝오버 */}
-      <MentionPopover
-        open={mentionOpen}
-        x={mentionXY.x}
-        y={mentionXY.y}
-        items={filteredUsers}
-        activeIndex={activeIdx}
-        onPick={pickMention}
-        onClose={()=> setMentionOpen(false)}
-      />
+      {mentionOpen && (
+        <div className="absolute bottom-full left-14 z-30 mb-2 w-64 overflow-hidden rounded-lg border border-border bg-background shadow-lg">
+          {mentionUsers.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-muted">참가자 없음</div>
+          ) : (
+            mentionUsers.map((user, idx) => (
+              <button
+                key={user.id}
+                type="button"
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-subtle/70 ${
+                  idx === mentionIndex ? "bg-subtle/80" : ""
+                }`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pickMention(user.name)}
+              >
+                <span className="relative inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-subtle text-[11px] font-semibold">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+                  ) : (
+                    user.name.slice(0, 2).toUpperCase()
+                  )}
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-background ${
+                      user.status === "online" ? "bg-emerald-500" : user.status === "away" ? "bg-amber-500" : user.status === "busy" ? "bg-rose-500" : "bg-slate-400"
+                    }`}
+                  />
+                </span>
+                <span className="truncate">{user.name}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

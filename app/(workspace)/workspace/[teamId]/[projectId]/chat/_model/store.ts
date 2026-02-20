@@ -154,6 +154,36 @@ const sortMessages = (list: Msg[]) =>
     return a.id.localeCompare(b.id);
   });
 
+const decodeHtmlEntities = (input?: string | null) => {
+  let next = input ?? "";
+  for (let i = 0; i < 5; i += 1) {
+    const decoded = next
+      .replace(/&(amp);?/gi, "&")
+      .replace(/&(quot|quote);?/gi, '"')
+      .replace(/&(apos);?/gi, "'")
+      .replace(/&#x27;?/gi, "'")
+      .replace(/&#39;?/gi, "'")
+      .replace(/&(lt);?/gi, "<")
+      .replace(/&(gt);?/gi, ">");
+    if (decoded === next) break;
+    next = decoded;
+  }
+  return next;
+};
+
+const normalizeMsgEntities = (msg: Msg): Msg => ({
+  ...msg,
+  text: decodeHtmlEntities(msg.text),
+  reply: msg.reply
+    ? {
+        ...msg.reply,
+        content: decodeHtmlEntities(msg.reply.content),
+      }
+    : undefined,
+});
+
+const normalizeMsgListEntities = (list: Msg[]) => list.map(normalizeMsgEntities);
+
 let socketBound = false;
 const localEchoIds = new Set<string>();
 
@@ -264,14 +294,14 @@ const mapChannelMessage = (message: ChannelMessageResponse, channelId: string, m
   id: message.id,
   author: message.sender?.name ?? "Unknown",
   authorId: message.senderId,
-  text: message.content ?? "",
+  text: decodeHtmlEntities(message.content),
   ts: message.createdAt ? Date.parse(message.createdAt) : Date.now(),
   editedAt: message.editedAt ? Date.parse(message.editedAt) : undefined,
   channelId,
   reply: message.reply
     ? {
         id: message.reply.id,
-        content: message.reply.content,
+        content: decodeHtmlEntities(message.reply.content),
         sender: {
           id: message.reply.sender?.id,
           name: message.reply.sender?.name ?? "Unknown",
@@ -637,7 +667,7 @@ export const useChat = create<State>((set, get) => ({
 
       set({ allChannels, channels, workspaces, channelMembers: memberMap });
 
-      const list = lsGet<Msg[]>(MSGS_KEY(id), []);
+      const list = normalizeMsgListEntities(lsGet<Msg[]>(MSGS_KEY(id), []));
       if (list.length === 0) {
         lsSet(MSGS_KEY(id), list);
       }
@@ -1344,7 +1374,9 @@ export const useChat = create<State>((set, get) => ({
           if (!event?.roomId || !event.roomId.startsWith("channel:")) return;
           const channelId = event.roomId.replace("channel:", "");
           const currentId = get().channelId;
-          const list = channelId === currentId ? get().messages : lsGet<Msg[]>(MSGS_KEY(channelId), []);
+          const list = normalizeMsgListEntities(
+            channelId === currentId ? get().messages : lsGet<Msg[]>(MSGS_KEY(channelId), []),
+          );
 
           if (event.type === "created" && event.payload) {
             const msg = mapChannelMessage(event.payload as ChannelMessageResponse, channelId, get().me.id);

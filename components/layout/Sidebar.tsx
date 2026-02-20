@@ -176,7 +176,7 @@ export default function Sidebar() {
                 onClick={() => router.push(buildHref(null))}
               >
                 <span className="inline-flex items-center gap-2"><Home size={13} /> 전체보기</span>
-                <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">요약 대시보드</span>
+                <span className="text-muted opacity-0 transition-opacity group-hover:opacity-100">대시보드</span>
               </button>
               <div className="ml-1 grid gap-1 border-l-2 border-border/80 pl-4">
                 <button

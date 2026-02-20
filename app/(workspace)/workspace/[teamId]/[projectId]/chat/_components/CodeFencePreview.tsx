@@ -9,11 +9,11 @@ export type Fence = { lang?: string; code: string };
 
 export function extractFences(text?: string): Fence[] {
   if (!text) return [];
-  const re = /```([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g;
+  const re = /(^|\n)```([a-zA-Z0-9_-]+)?[ \t]*\r?\n([\s\S]*?)\r?\n```(?=\n|$)/g;
   const out: Fence[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    out.push({ lang: (m[1] || '').trim() || undefined, code: m[2] || '' });
+    out.push({ lang: (m[2] || '').trim() || undefined, code: m[3] || '' });
   }
   return out;
 }

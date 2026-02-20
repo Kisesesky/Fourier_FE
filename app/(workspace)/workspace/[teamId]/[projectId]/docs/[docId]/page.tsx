@@ -61,11 +61,11 @@ export default function DocDetailPage() {
 
   return (
     <DocEditorProvider docId={docId}>
-      <div className="flex h-full flex-col bg-[#f4f7fb] dark:bg-slate-950">
+      <div className="flex h-full min-h-0 flex-col bg-[#f4f7fb] dark:bg-slate-950">
         <DocEditorTabs />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 bg-[#f7f9fb] dark:bg-slate-950">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 bg-[#f7f9fb] dark:bg-slate-950">
             {mode === "edit" ? (
               <DocView />
             ) : (

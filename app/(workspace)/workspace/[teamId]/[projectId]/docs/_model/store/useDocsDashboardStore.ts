@@ -18,6 +18,7 @@ type DocsDashboardState = {
   commentsByDoc: Record<string, DocumentCommentDto[]>;
   commentCountByDoc: Record<string, number>;
   openCommentsByDoc: Record<string, boolean>;
+  expandedDocsByDoc: Record<string, boolean>;
   visibleCommentsByDoc: Record<string, number>;
   loadingCommentsByDoc: Record<string, boolean>;
   draftByDoc: Record<string, string>;
@@ -33,6 +34,7 @@ type DocsDashboardState = {
   setCommentsByDoc: (value: SetStateAction<Record<string, DocumentCommentDto[]>>) => void;
   setCommentCountByDoc: (value: SetStateAction<Record<string, number>>) => void;
   setOpenCommentsByDoc: (value: SetStateAction<Record<string, boolean>>) => void;
+  setExpandedDocsByDoc: (value: SetStateAction<Record<string, boolean>>) => void;
   setVisibleCommentsByDoc: (value: SetStateAction<Record<string, number>>) => void;
   setLoadingCommentsByDoc: (value: SetStateAction<Record<string, boolean>>) => void;
   setDraftByDoc: (value: SetStateAction<Record<string, string>>) => void;
@@ -55,6 +57,7 @@ const initialState = {
   commentsByDoc: {} as Record<string, DocumentCommentDto[]>,
   commentCountByDoc: {} as Record<string, number>,
   openCommentsByDoc: {} as Record<string, boolean>,
+  expandedDocsByDoc: {} as Record<string, boolean>,
   visibleCommentsByDoc: {} as Record<string, number>,
   loadingCommentsByDoc: {} as Record<string, boolean>,
   draftByDoc: {} as Record<string, string>,
@@ -74,10 +77,10 @@ export const useDocsDashboardStore = create<DocsDashboardState>((set) => ({
   setCommentsByDoc: (value) => set((state) => ({ commentsByDoc: resolve(value, state.commentsByDoc) })),
   setCommentCountByDoc: (value) => set((state) => ({ commentCountByDoc: resolve(value, state.commentCountByDoc) })),
   setOpenCommentsByDoc: (value) => set((state) => ({ openCommentsByDoc: resolve(value, state.openCommentsByDoc) })),
+  setExpandedDocsByDoc: (value) => set((state) => ({ expandedDocsByDoc: resolve(value, state.expandedDocsByDoc) })),
   setVisibleCommentsByDoc: (value) => set((state) => ({ visibleCommentsByDoc: resolve(value, state.visibleCommentsByDoc) })),
   setLoadingCommentsByDoc: (value) => set((state) => ({ loadingCommentsByDoc: resolve(value, state.loadingCommentsByDoc) })),
   setDraftByDoc: (value) => set((state) => ({ draftByDoc: resolve(value, state.draftByDoc) })),
   setSavingByDoc: (value) => set((state) => ({ savingByDoc: resolve(value, state.savingByDoc) })),
   resetDocsDashboardState: () => set(initialState),
 }));
-

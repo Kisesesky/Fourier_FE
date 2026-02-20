@@ -36,6 +36,12 @@ function isImageUrl(url: string) {
   return /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|svg)(\?\S*)?$/i.test(url);
 }
 
+function isInsideFencedCodeBlock(text: string, caret: number) {
+  const prefix = text.slice(0, Math.max(0, caret));
+  const fences = prefix.match(/```/g);
+  return Boolean(fences && fences.length % 2 === 1);
+}
+
 function parseYouTubeVideoId(url: string): string | null {
   try {
     const u = new URL(url);
@@ -210,6 +216,8 @@ export default function Composer({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.nativeEvent as KeyboardEvent).isComposing) return;
+
     if (mentionOpen) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -235,7 +243,21 @@ export default function Composer({
       }
     }
 
-    if (e.key === "Enter" && !e.shiftKey) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      doSend();
+      return;
+    }
+
+    if (e.key === "Enter") {
+      const el = inputRef.current;
+      const currentCaret = el?.selectionStart ?? caret;
+      const inFence = isInsideFencedCodeBlock(value, currentCaret);
+      if (e.shiftKey || inFence) {
+        e.preventDefault();
+        insertAtCaret("\n");
+        return;
+      }
       e.preventDefault();
       doSend();
       return;

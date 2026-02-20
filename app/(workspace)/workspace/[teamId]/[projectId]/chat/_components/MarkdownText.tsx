@@ -50,14 +50,13 @@ function linkify(s: string) {
 /** 코드블록 펜스 ```...``` (멀티라인) */
 function fencedCode(s: string) {
   return s.replace(/```([\s\S]*?)```/g, (_m, code) => {
-    const c = esc(code);
-    return `<pre class="rounded border border-border bg-subtle/40 px-3 py-2 overflow-x-auto"><code>${c}</code></pre>`;
+    return `<pre class="rounded border border-border bg-subtle/40 px-3 py-2 overflow-x-auto"><code>${code}</code></pre>`;
   });
 }
 
 /** 인라인 코드 `...` */
 function inlineCode(s: string) {
-  return s.replace(/`([^`]+)`/g, (_m, code) => `<code class="rounded bg-subtle/60 border border-border px-1">${esc(code)}</code>`);
+  return s.replace(/`([^`]+)`/g, (_m, code) => `<code class="rounded bg-subtle/60 border border-border px-1">${code}</code>`);
 }
 
 /** bold, italic */

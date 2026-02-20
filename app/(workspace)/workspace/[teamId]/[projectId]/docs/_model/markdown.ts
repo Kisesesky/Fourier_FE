@@ -64,11 +64,11 @@ export function renderMarkdownToHtml(markdown: string) {
   const escaped = escapeHtml(decodeHtmlEntities(markdown || ""));
   const codeBlocks: string[] = [];
   const withCodePlaceholders = escaped.replace(
-    /```([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g,
-    (_, lang: string, code: string) => {
+    /(^|\n)```([a-zA-Z0-9_-]+)?[ \t]*\r?\n([\s\S]*?)\r?\n```(?=\n|$)/g,
+    (_full: string, prefix: string, lang: string, code: string) => {
       const index = codeBlocks.length;
       const language = (lang || "").trim().toLowerCase();
-      const rawCode = code.replace(/\n$/, "");
+      const rawCode = decodeHtmlEntities(code.replace(/\n$/, ""));
       const highlighted = highlightCode(rawCode, language);
       const label = language
         ? `<span class="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-blue-400">${language}</span>`
@@ -76,7 +76,7 @@ export function renderMarkdownToHtml(markdown: string) {
       codeBlocks.push(
         `<pre><code class="hljs language-${language || "plaintext"}">${label}${highlighted}</code></pre>`,
       );
-      return `@@CODE_BLOCK_${index}@@`;
+      return `${prefix}@@CODE_BLOCK_${index}@@`;
     },
   );
 
@@ -186,19 +186,17 @@ export function renderMarkdownToHtml(markdown: string) {
   }
 
   closeLists();
-  return html
-    .join("\n")
-    .replace(/&(amp;)?quot;?/gi, '"')
-    .replace(/&(amp;)?quote;?/gi, '"');
+  return html.join("\n");
 }
 
 function highlightCode(code: string, language: string) {
-  if (!language) return code;
-  if (!hljs.getLanguage(language)) return code;
+  if (!language || !hljs.getLanguage(language)) {
+    return escapeHtml(code);
+  }
   try {
     return hljs.highlight(code, { language }).value;
   } catch {
-    return code;
+    return escapeHtml(code);
   }
 }
 
@@ -225,13 +223,15 @@ function escapeHtml(text: string) {
 
 function decodeHtmlEntities(text: string) {
   let next = text;
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < 20; i += 1) {
     const decoded = next
+      .replace(/&(amp);?/gi, "&")
       .replace(/&(quot|quote);?/gi, '"')
+      .replace(/&(apos);?/gi, "'")
+      .replace(/&#x27;?/gi, "'")
       .replace(/&#39;?/gi, "'")
       .replace(/&(lt);?/gi, "<")
-      .replace(/&(gt);?/gi, ">")
-      .replace(/&(amp);?/gi, "&");
+      .replace(/&(gt);?/gi, ">");
     if (decoded === next) break;
     next = decoded;
   }

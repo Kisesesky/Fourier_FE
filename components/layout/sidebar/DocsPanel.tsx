@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Folder, LayoutDashboard, Star } from "lucide-react";
+import { FileText, Folder, LayoutDashboard, Star, FolderOpen } from "lucide-react";
 
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { DocsTree } from "@/app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree";
@@ -39,21 +39,21 @@ export default function DocsPanel() {
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center text-xs font-semibold uppercase tracking-[0.08em] text-muted">
           <Folder size={16} className="mr-1 text-yellow-500" />
-          문서 트리
+          문서
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => router.push(buildHref("docs", "/docs"))}
-            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted transition hover:bg-subtle/70 hover:text-foreground"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
-            <LayoutDashboard size={12} />
-            대시보드
+            <FolderOpen size={12} />
+            홈
           </button>
           <button
             type="button"
             onClick={() => router.push(`${buildHref("docs", "/docs")}?read=all`)}
-            className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted transition hover:bg-subtle/70 hover:text-foreground"
+            className="rounded-md px-2 py-1 text-[11px] font-medium text-muted transition hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
             전체보기
           </button>

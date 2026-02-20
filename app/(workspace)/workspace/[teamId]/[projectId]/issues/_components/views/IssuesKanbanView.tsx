@@ -319,7 +319,7 @@ export default function IssuesKanbanView({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
       <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         <button
           type="button"
@@ -366,7 +366,7 @@ export default function IssuesKanbanView({
       </div>
       <div
         className={[
-          "grid min-h-0 flex-1 items-start gap-5 overflow-hidden",
+          "grid min-h-0 flex-1 items-start gap-5",
           activeStatus === "all" ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4" : "grid-cols-1",
         ].join(" ")}
       >
@@ -378,10 +378,10 @@ export default function IssuesKanbanView({
           <div
             key={col.key}
             className={[
-              "flex min-w-0 self-start flex-col rounded-2xl border border-border p-3 shadow-sm backdrop-blur overflow-hidden",
+              "flex min-w-0 self-start flex-col rounded-2xl border border-border p-3 shadow-sm backdrop-blur md:overflow-hidden",
               tone.card,
             ].join(" ")}
-            style={{ maxHeight: "min(760px, calc(100vh - 240px))" }}
+            style={{ maxHeight: activeStatus === "all" ? undefined : "min(760px, calc(100vh - 240px))" }}
           >
             <div className="flex items-center justify-between pb-3">
               <div className="flex items-center gap-2">
@@ -397,7 +397,7 @@ export default function IssuesKanbanView({
                 {items.length}
               </span>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-visible md:overflow-y-auto pr-1">
               {items.length === 0 && (
                 <div className="rounded-xl border border-dashed border-border/60 bg-background/70 p-4 text-xs text-muted">
                   아직 이 컬럼에 이슈가 없습니다.

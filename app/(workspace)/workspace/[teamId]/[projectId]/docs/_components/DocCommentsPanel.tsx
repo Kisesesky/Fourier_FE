@@ -28,6 +28,12 @@ type ThreadComment = {
   mine: boolean;
 };
 
+function isInsideFencedCodeBlock(text: string, caret: number) {
+  const prefix = text.slice(0, Math.max(0, caret));
+  const fences = prefix.match(/```/g);
+  return Boolean(fences && fences.length % 2 === 1);
+}
+
 export default function DocCommentsPanel({
   layout = "side",
   showOutline = true,
@@ -225,7 +231,16 @@ export default function DocCommentsPanel({
                         value={editingValue}
                         onChange={(e) => setEditingValue(e.target.value)}
                         onKeyDown={(event) => {
+                          if ((event.nativeEvent as KeyboardEvent).isComposing) return;
+                          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                            event.preventDefault();
+                            void submitEdit();
+                            return;
+                          }
                           if (event.key === "Enter" && !event.shiftKey) {
+                            const textarea = event.currentTarget;
+                            const caret = textarea.selectionStart ?? textarea.value.length;
+                            if (isInsideFencedCodeBlock(textarea.value, caret)) return;
                             event.preventDefault();
                             void submitEdit();
                           }
@@ -277,7 +292,16 @@ export default function DocCommentsPanel({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(event) => {
+              if ((event.nativeEvent as KeyboardEvent).isComposing) return;
+              if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                event.preventDefault();
+                void createComment();
+                return;
+              }
               if (event.key === "Enter" && !event.shiftKey) {
+                const textarea = event.currentTarget;
+                const caret = textarea.selectionStart ?? textarea.value.length;
+                if (isInsideFencedCodeBlock(textarea.value, caret)) return;
                 event.preventDefault();
                 void createComment();
               }

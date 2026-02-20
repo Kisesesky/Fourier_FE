@@ -35,7 +35,13 @@ const DocumentCommentDtoSchema = z.object({
   mine: z.boolean().optional(),
 });
 
-export async function getDocsAnalytics(params: { granularity: "hourly" | "daily" | "monthly"; date?: string; month?: string; year?: string }) {
+export async function getDocsAnalytics(params: {
+  granularity: "hourly" | "daily" | "monthly";
+  date?: string;
+  month?: string;
+  year?: string;
+  projectId?: string;
+}) {
   const res = await api.get<{ counts: number[]; granularity: string }>("/docs/analytics", { params });
   const parsed = AnalyticsSchema.safeParse(res.data);
   return parsed.success ? parsed.data : { counts: [], granularity: params.granularity };

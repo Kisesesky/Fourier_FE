@@ -236,7 +236,7 @@ function MessageRow({
   return (
     <div
       className={`group/message relative mx-1 rounded-xl px-3 ${padClass} transition-all duration-150 ease-out ${
-        selected ? 'bg-brand/12 ring-1 ring-brand/40' : 'hover:bg-subtle/55'
+        selected ? 'bg-brand/12 ring-1 ring-brand/40' : 'hover:bg-slate-100/10'
       }`}
       onMouseLeave={() => setQuickEmojiOpen(false)}
       onContextMenu={(e) => {

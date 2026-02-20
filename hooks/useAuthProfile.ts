@@ -8,6 +8,12 @@ export function useAuthProfile() {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem("accessToken")) {
+      setProfile(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetchProfile()
       .then(setProfile)

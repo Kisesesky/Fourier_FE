@@ -12,6 +12,7 @@ import Drawer from "@/components/ui/Drawer";
 import FloatingDm from "../_components/FloatingDm";
 import { setAuthToken } from "@/lib/api";
 import ChatCreateChannelHost from "@/components/layout/ChatCreateChannelHost";
+import { saveWorkspaceEntryPreference } from "@/lib/workspace-entry";
 
 export default function WorkspaceProjectLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,6 +27,11 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
     if (segments[0] !== "workspace" || segments.length < 3) return;
     const teamId = decodeURIComponent(segments[1] ?? "");
     const projectId = decodeURIComponent(segments[2] ?? "");
+    saveWorkspaceEntryPreference({
+      teamId,
+      projectId,
+      path: `/workspace/${encodeURIComponent(teamId)}/${encodeURIComponent(projectId)}`,
+    });
     const section = segments[3] ?? "overview";
     const detail = segments[4];
 

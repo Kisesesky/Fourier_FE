@@ -551,7 +551,7 @@ export default function CalendarDetailView({ pathname, onNavigate, renderHeader,
                               {cell.categorySummaries.slice(0, 2).map((summary) => (
                                 <div
                                   key={summary.key}
-                                  className="inline-flex max-w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                                  className="flex w-full items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
                                   style={{ backgroundColor: `${summary.color}22`, color: summary.color }}
                                 >
                                   <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: summary.color }} />

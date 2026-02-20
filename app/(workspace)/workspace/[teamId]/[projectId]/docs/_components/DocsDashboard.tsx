@@ -36,6 +36,12 @@ import { docToMarkdown, renderMarkdownToHtml } from "../_model/markdown";
 import { useDocsDashboardStore } from "@/workspace/docs/_model/store/useDocsDashboardStore";
 import { parseDocumentComments } from "@/workspace/docs/_model/schemas/docs-dashboard.schemas";
 
+function isInsideFencedCodeBlock(text: string, caret: number) {
+  const prefix = text.slice(0, Math.max(0, caret));
+  const fences = prefix.match(/```/g);
+  return Boolean(fences && fences.length % 2 === 1);
+}
+
 export default function DocsDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -66,6 +72,8 @@ export default function DocsDashboard() {
     setCommentCountByDoc,
     openCommentsByDoc,
     setOpenCommentsByDoc,
+    expandedDocsByDoc,
+    setExpandedDocsByDoc,
     visibleCommentsByDoc,
     setVisibleCommentsByDoc,
     loadingCommentsByDoc,
@@ -346,12 +354,13 @@ export default function DocsDashboard() {
       )}
 
       {readAllMode ? (
-        <section className="flex-1">
-          <div className="max-h-[calc(100vh-180px)] space-y-4 overflow-y-auto">
+        <section className="min-h-0 flex-1">
+          <div className="h-full min-h-0 space-y-4 overflow-y-auto pr-1">
             {readAllDocs.map((doc) => {
               const markdown = docToMarkdown(doc.content);
               const html = renderMarkdownToHtml(markdown);
               const isLong = markdown.length > 900;
+              const isExpanded = Boolean(expandedDocsByDoc[doc.id]);
               const commentCount = commentCountByDoc[doc.id] ?? 0;
               const isCommentOpen = Boolean(openCommentsByDoc[doc.id]);
               const loadedComments = commentsByDoc[doc.id] ?? [];
@@ -372,10 +381,26 @@ export default function DocsDashboard() {
                   </div>
                   <div className="text-sm leading-6 text-slate-700 dark:text-slate-300">
                     <article
-                      className={`prose prose-sm max-w-none text-slate-900 prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-300 prose-pre:bg-slate-100 prose-pre:text-slate-900 prose-code:rounded prose-code:bg-transparent prose-code:px-1 prose-code:py-0.5 prose-code:text-slate-900 prose-code:before:content-none prose-code:after:content-none dark:text-slate-100 dark:prose-invert dark:prose-pre:border-slate-700 dark:prose-pre:bg-slate-800 dark:prose-pre:text-slate-100 dark:prose-code:bg-transparent dark:prose-code:text-slate-100 ${isLong ? "max-h-[300px] overflow-hidden" : ""}`}
+                      className={`prose prose-sm max-w-none text-slate-900 prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-300 prose-pre:bg-slate-100 prose-pre:text-slate-900 prose-code:rounded prose-code:bg-transparent prose-code:px-1 prose-code:py-0.5 prose-code:text-slate-900 prose-code:before:content-none prose-code:after:content-none dark:text-slate-100 dark:prose-invert dark:prose-pre:border-slate-700 dark:prose-pre:bg-slate-800 dark:prose-pre:text-slate-100 dark:prose-code:bg-transparent dark:prose-code:text-slate-100 ${isLong && !isExpanded ? "max-h-[300px] overflow-hidden" : ""}`}
                       dangerouslySetInnerHTML={{ __html: html || "<p>내용 없음</p>" }}
                     />
                   </div>
+                  {isLong && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedDocsByDoc((prev) => ({
+                            ...prev,
+                            [doc.id]: !prev[doc.id],
+                          }))
+                        }
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        {isExpanded ? "...접기" : "...더보기"}
+                      </button>
+                    </div>
+                  )}
                   <div className="mt-3">
                     <button
                       type="button"
@@ -433,7 +458,7 @@ export default function DocsDashboard() {
                         </div>
                       )}
 
-                      <div className="mt-3 border border-border pt-3">
+                      <div className="mt-3 border-t border-border pt-3">
                         <textarea
                           value={draftByDoc[doc.id] ?? ""}
                           onChange={(e) =>
@@ -443,7 +468,16 @@ export default function DocsDashboard() {
                             }))
                           }
                           onKeyDown={(event) => {
+                            if ((event.nativeEvent as KeyboardEvent).isComposing) return;
+                            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                              event.preventDefault();
+                              void submitReadAllComment(doc.id);
+                              return;
+                            }
                             if (event.key === "Enter" && !event.shiftKey) {
+                              const textarea = event.currentTarget;
+                              const caret = textarea.selectionStart ?? textarea.value.length;
+                              if (isInsideFencedCodeBlock(textarea.value, caret)) return;
                               event.preventDefault();
                               void submitReadAllComment(doc.id);
                             }

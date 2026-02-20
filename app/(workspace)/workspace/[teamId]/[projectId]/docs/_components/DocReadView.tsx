@@ -66,7 +66,7 @@ export default function DocReadView({
   }
 
   return (
-    <div className="flex h-full flex-col bg-white dark:bg-slate-950">
+    <div className="flex h-full min-h-0 flex-col bg-white dark:bg-slate-950">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export default function DocReadView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-10 py-8 dark:bg-slate-950">
+      <div className="min-h-0 flex-1 overflow-y-auto px-10 py-8 pb-12 dark:bg-slate-950">
         <div className="mx-auto w-full max-w-5xl">
           <div
             ref={contentBoxRef}

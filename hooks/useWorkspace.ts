@@ -11,6 +11,15 @@ export function useWorkspace() {
   const [error, setError] = useState<Error | null>(null);
 
   const refetch = useCallback(async () => {
+    if (typeof window !== "undefined" && !localStorage.getItem("accessToken")) {
+      setWorkspaces([]);
+      setActiveWorkspaceId(null);
+      setWorkspace(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await fetchMyWorkspaces();

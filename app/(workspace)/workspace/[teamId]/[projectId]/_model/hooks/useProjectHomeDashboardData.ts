@@ -174,64 +174,32 @@ export function useProjectHomeDashboardData({
   }, [projectId, teamId]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const extractDocStats = () => {
-      try {
-        const keys = Object.keys(window.localStorage);
-        let pages = 0;
-        let snapshots = 0;
-        let lastSaved = 0;
-        const snapshotTimes: number[] = [];
-        keys.forEach((key) => {
-          if (key.startsWith("fd.docs.content:")) pages += 1;
-          if (key.startsWith("fd.docs.snapshots:")) {
-            const raw = window.localStorage.getItem(key);
-            if (!raw) return;
-            const parsed = JSON.parse(raw) as { ts?: number }[];
-            if (Array.isArray(parsed)) {
-              snapshots += parsed.length;
-              parsed.forEach((snap) => {
-                if (snap?.ts && snap.ts > lastSaved) lastSaved = snap.ts;
-                if (snap?.ts) snapshotTimes.push(snap.ts);
-              });
-            }
-          }
-        });
-        setDocStats({
-          pages,
-          snapshots,
-          lastSaved: lastSaved ? new Date(lastSaved).toISOString() : "",
-        });
-        setDocSnapshots(snapshotTimes);
-      } catch {
-        setDocStats({ pages: 0, snapshots: 0, lastSaved: "" });
-        setDocSnapshots([]);
-      }
-    };
-
-    extractDocStats();
-    window.addEventListener("docs:snapshots:changed", extractDocStats);
-    window.addEventListener("storage", extractDocStats);
-    return () => {
-      window.removeEventListener("docs:snapshots:changed", extractDocStats);
-      window.removeEventListener("storage", extractDocStats);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!projectId) return;
     let active = true;
     listDocuments(projectId)
       .then((list) => {
         if (!active) return;
-        const rows = parseRecentDocs(list)
+        const parsed = parseRecentDocs(list);
+        const rows = [...parsed]
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
           .slice(0, 8);
+        const updatedTs = parsed
+          .map((doc) => new Date(doc.updatedAt).getTime())
+          .filter((ts) => !Number.isNaN(ts))
+          .sort((a, b) => b - a);
         setRecentDocs(rows);
+        setDocStats({
+          pages: parsed.length,
+          snapshots: 0,
+          lastSaved: updatedTs[0] ? new Date(updatedTs[0]).toISOString() : "",
+        });
+        setDocSnapshots(updatedTs);
       })
       .catch(() => {
         if (!active) return;
         setRecentDocs([]);
+        setDocStats({ pages: 0, snapshots: 0, lastSaved: "" });
+        setDocSnapshots([]);
       });
     return () => {
       active = false;
@@ -535,9 +503,15 @@ export function useProjectHomeDashboardData({
         const cachedDaily = analyticsCacheRef.current.get(keys.daily);
         const cachedMonthly = analyticsCacheRef.current.get(keys.monthly);
         const [hourly, daily, monthly] = await Promise.all([
-          cachedHourly ? Promise.resolve(cachedHourly) : getDocsAnalytics({ granularity: "hourly", date: docHourlyDate }),
-          cachedDaily ? Promise.resolve(cachedDaily) : getDocsAnalytics({ granularity: "daily", month: docDailyMonth }),
-          cachedMonthly ? Promise.resolve(cachedMonthly) : getDocsAnalytics({ granularity: "monthly", year: docMonthlyYear }),
+          cachedHourly
+            ? Promise.resolve(cachedHourly)
+            : getDocsAnalytics({ granularity: "hourly", date: docHourlyDate, projectId }),
+          cachedDaily
+            ? Promise.resolve(cachedDaily)
+            : getDocsAnalytics({ granularity: "daily", month: docDailyMonth, projectId }),
+          cachedMonthly
+            ? Promise.resolve(cachedMonthly)
+            : getDocsAnalytics({ granularity: "monthly", year: docMonthlyYear, projectId }),
         ]);
         if (!cachedHourly) analyticsCacheRef.current.set(keys.hourly, hourly);
         if (!cachedDaily) analyticsCacheRef.current.set(keys.daily, daily);
@@ -556,7 +530,7 @@ export function useProjectHomeDashboardData({
       mounted = false;
       window.clearTimeout(timer);
     };
-  }, [docDailyMonth, docHourlyDate, docMonthlyYear]);
+  }, [docDailyMonth, docHourlyDate, docMonthlyYear, projectId]);
 
   useEffect(() => {
     if (!projectId) return;

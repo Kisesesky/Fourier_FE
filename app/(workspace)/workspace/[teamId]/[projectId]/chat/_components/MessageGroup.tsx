@@ -35,6 +35,7 @@ type MessageRowProps = {
   isMine: boolean;
   view: 'compact' | 'cozy';
   meId: string;
+  otherMemberCount: number;
   otherSeenNames: string[];
   showHeader: boolean;
   showAvatar: boolean;
@@ -62,6 +63,7 @@ type MessageGroupProps = {
   isMine: boolean;
   view: 'compact' | 'cozy';
   meId: string;
+  otherMemberCount: number;
   otherSeen: Record<string, string[]>;
   users: Record<string, ChatUser>;
   threadMetaMap?: Record<string, { count: number; lastTs?: number; lastAuthorId?: string }>;
@@ -188,6 +190,7 @@ function MessageRow({
   isMine,
   view,
   meId,
+  otherMemberCount,
   otherSeenNames,
   showHeader,
   showAvatar,
@@ -233,6 +236,7 @@ function MessageRow({
   const effectiveThread = threadMeta ?? (m.threadCount ? { count: m.threadCount } : undefined);
   const lastReplyTime = effectiveThread?.lastTs ? new Date(effectiveThread.lastTs).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' }) : null;
   const lastReplyUser = effectiveThread?.lastAuthorId ? users[effectiveThread.lastAuthorId] : undefined;
+  const unreadMemberCount = Math.max(otherMemberCount - otherSeenNames.length, 0);
   return (
     <div
       className={`group/message relative mx-1 rounded-xl px-3 ${padClass} transition-all duration-150 ease-out ${
@@ -487,10 +491,12 @@ function MessageRow({
             </button>
           </div>
         )}
-        {otherSeenNames.length > 0 && (
-          <span className="text-[11px] text-muted/80">
-            읽음: {otherSeenNames.slice(0, 3).join(', ')}
-            {otherSeenNames.length > 3 ? ` 외 ${otherSeenNames.length - 3}명` : ''}
+        {unreadMemberCount > 0 && (
+          <span
+            className="inline-flex px-2.5 py-1 text-[11px] font-semibold text-black"
+            title={`안 읽은 인원 ${unreadMemberCount}명`}
+          >
+            {unreadMemberCount}
           </span>
         )}
       </div>
@@ -503,6 +509,7 @@ export function MessageGroup({
   isMine,
   view,
   meId,
+  otherMemberCount,
   otherSeen,
   users,
   threadMetaMap,
@@ -532,6 +539,7 @@ export function MessageGroup({
           isMine={isMine}
           view={view}
           meId={meId}
+          otherMemberCount={otherMemberCount}
           avatarUrl={users[item.authorId]?.avatarUrl}
           threadMeta={threadMetaMap?.[item.id]}
           otherSeenNames={index === items.length - 1 ? seenNames : []}

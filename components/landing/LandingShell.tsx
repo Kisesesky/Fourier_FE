@@ -14,14 +14,15 @@ export default function LandingShell({ children }: { children: React.ReactNode }
     <div className="min-h-screen bg-[#f5f5f3] text-slate-900">
       <header className="fixed inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-90">
             <Image src="/logo.png" alt="Fourier Logo" width={34} height={34} className="h-8.5 w-8.5 rounded-md object-cover" />
             <span className="text-lg font-semibold">Fourier</span>
-          </div>
+          </Link>
 
           <nav className="hidden items-center gap-6 text-sm text-slate-700 lg:flex">
             {LANDING_MODULE_LINKS.map((item) => (
-              <Link key={item.href} href={item.href} className="hover:text-slate-950">
+              <Link key={item.href} href={item.href} className="inline-flex items-center gap-1.5 hover:text-slate-950">
+                <item.icon className="h-4 w-4" />
                 {item.label}
               </Link>
             ))}
@@ -50,10 +51,10 @@ export default function LandingShell({ children }: { children: React.ReactNode }
         <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px]">
           <aside className="ml-auto flex h-full w-full flex-col bg-white p-5 sm:w-[420px]">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2 hover:opacity-90" onClick={() => setMenuOpen(false)}>
                 <Image src="/logo.png" alt="Fourier Logo" width={28} height={28} className="h-7 w-7 rounded-md object-cover" />
                 <span className="text-sm font-semibold">메뉴</span>
-              </div>
+              </Link>
               <button
                 type="button"
                 aria-label="메뉴 닫기"
@@ -78,9 +79,10 @@ export default function LandingShell({ children }: { children: React.ReactNode }
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-lg px-2 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-950"
+                  className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-950"
                   onClick={() => setMenuOpen(false)}
                 >
+                  <item.icon className="h-4 w-4" />
                   {item.label}
                 </Link>
               ))}

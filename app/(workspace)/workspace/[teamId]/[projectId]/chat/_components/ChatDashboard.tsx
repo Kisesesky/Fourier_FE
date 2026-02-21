@@ -78,7 +78,7 @@ const EmptyState = ({ label }: { label: string }) => (
   </div>
 );
 
-export default function ChatDashboard() {
+export default function ChatDashboard({ initialFilter }: { initialFilter?: FilterKey }) {
   const router = useRouter();
   const { buildHref } = useWorkspacePath();
   const {
@@ -124,7 +124,10 @@ export default function ChatDashboard() {
 
   useEffect(() => {
     resetChatDashboardUiState();
-  }, [resetChatDashboardUiState]);
+    if (initialFilter) {
+      setFilter(initialFilter);
+    }
+  }, [initialFilter, resetChatDashboardUiState, setFilter]);
 
   useEffect(() => {
     if (!menuOpen) return;

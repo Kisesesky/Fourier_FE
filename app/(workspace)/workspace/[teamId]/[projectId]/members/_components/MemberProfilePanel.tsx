@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/members/_components/MemberProfilePanel.tsx
 
 import { useEffect, useRef, useState } from "react";
-import { Activity, Ban, ChevronDown, Mail, MapPin, Moon, Pencil, ShieldCheck } from "lucide-react";
+import { Activity, Ban, ChevronDown, Crown, Feather, Flame, Ghost, Mail, MapPin, Moon, Pencil, ShieldCheck, type LucideIcon } from "lucide-react";
 import type { Member, MemberPresence, PresenceStatus } from "@/workspace/members/_model/types";
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
   canEditProfile?: boolean;
   canChangeRole?: boolean;
   canRemove?: boolean;
+  isSelf?: boolean;
   projectName?: string;
   onProfileSave?: (patch: { displayName?: string; avatarUrl?: string | null; backgroundImageUrl?: string | null; bio?: string }) => void | Promise<void>;
   onRoleChange?: (role: Member["role"]) => void | Promise<void>;
@@ -33,6 +34,20 @@ const roleLabel: Record<Member["role"], string> = {
   guest: "게스트",
 };
 
+const roleBadgeClass: Record<Member["role"], string> = {
+  owner: "border-rose-500 bg-rose-100 text-rose-500/80",
+  manager: "border-emerald-500 bg-emerald-100 text-emerald-500/80",
+  member: "border-sky-500 bg-sky-100 text-sky-500/80",
+  guest: "border-slate-500 bg-slate-100 text-slate-500/80",
+};
+
+const roleIcon: Record<Member["role"], LucideIcon> = {
+  owner: Crown,
+  manager: Flame,
+  member: Feather,
+  guest: Ghost,
+};
+
 const presenceOptions: PresenceStatus[] = ["online", "away", "dnd", "offline"];
 
 type ImageEditorTarget = "avatar" | "background" | null;
@@ -44,6 +59,7 @@ export default function MemberProfilePanel({
   canEditProfile = false,
   canChangeRole = false,
   canRemove = true,
+  isSelf = false,
   projectName,
   onProfileSave,
   onRoleChange,
@@ -103,6 +119,7 @@ export default function MemberProfilePanel({
   const coverUrl = backgroundDraft || member.backgroundImageUrl || "/error/profile.png";
   const avatarUrl = avatarDraft || member.avatarUrl || "";
   const computedRoleLabel = projectName ? `${projectName} - ${roleLabel[member.role] ?? "멤버"}` : (roleLabel[member.role] ?? "멤버");
+  const RoleIcon = roleIcon[member.role] ?? Feather;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-panel">
@@ -181,6 +198,20 @@ export default function MemberProfilePanel({
             </div>
           ) : (
             <div className="inline-flex items-center gap-2 text-xl font-semibold text-foreground">
+              <span
+                className={`inline-flex items-center rounded-full border p-1.5 ${roleBadgeClass[member.role] ?? roleBadgeClass.member}`}
+                title={roleLabel[member.role] ?? "멤버"}
+              >
+                <RoleIcon size={12} />
+              </span>
+              {isSelf && (
+                <span
+                  className="inline-flex items-center rounded-full border border-sky-500 bg-sky-100 px-2 py-0.3 text-[11px] font-bold text-sky-500"
+                  title="나"
+                >
+                  <span>ME</span>
+                </span>
+              )}
               <span>{displayNameDraft || member.displayName || member.name}</span>
               {canEditProfile && editMode && (
                 <button

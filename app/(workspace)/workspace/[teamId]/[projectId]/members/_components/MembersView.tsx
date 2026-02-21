@@ -457,6 +457,7 @@ export default function MembersView() {
                 canEditPresence={selectedMember?.id === profile?.id}
                 canEditProfile={selectedMember?.id === profile?.id}
                 canRemove={selectedMember?.id !== profile?.id}
+                isSelf={selectedMember?.id === profile?.id}
                 canChangeRole={!!selectedMember && selectedMember.id !== profile?.id && canManageProjectRoles}
                 projectName={projectName || undefined}
                 onPresenceChange={(status) => {

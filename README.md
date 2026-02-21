@@ -55,6 +55,15 @@
 │ │     │ │ ├─floating-dm.utils.ts                    │     │ │ ├─# 플로팅 디엠 유틸
 │ │     │ │ ├─FloatingLauncher.tsx                    │     │ │ ├─# 플로팅 런처
 │ │     │ │ └─index.ts                                │     │ │ └─# components export
+│ │     │ ├─home-page-modals/                         │     │ ├─# 홈페이지 모달
+│ │     │ │ ├─ConfirmModal.tsx                        │     │ │ ├─# 확인 모달
+│ │     │ │ ├─CreateProjectModal.tsx                  │     │ │ ├─# 프로젝트생성 모달
+│ │     │ │ ├─CreateTeamModal.tsx                     │     │ │ ├─# 팀생성 모달
+│ │     │ │ ├─EditProjectModal.tsx                    │     │ │ ├─# 프로젝트 수정 모달
+│ │     │ │ ├─IconPickerSection.tsx                   │     │ │ ├─# 아이콘 선택 모달
+│ │     │ │ ├─index.ts                                │     │ │ ├─# components export
+│ │     │ │ ├─TeamRenameModal.tsx                     │     │ │ ├─# 팀이름 수정 모달
+│ │     │ │ └─types.ts                                │     │ │ └─# 홈페이지모달 타입
 │ │     │ ├─projects/                                 │     │ ├─# 프로젝트 리스트/개요 전용 UI
 │ │     │ │ ├─index.ts                                │     │ │ ├─# components export
 │ │     │ │ ├─ProjectCard.tsx                         │     │ │ ├─# 프로젝트 카드 UI
@@ -76,6 +85,7 @@
 │ │     │ │ ├─SettingsView.tsx                        │     │ │ ├─# 워크스페이스 설정 뷰
 │ │     │ │ └─TeamMembersView.tsx                     │     │ │ └─# 팀 멤버 리스트 뷰
 │ │     │ ├─FloatingDm.tsx                            │     │ ├─# 플로팅 DM UI
+│ │     │ ├─HomePageModals.tsx                        │     │ ├─# 홈페이지 모달
 │ │     │ ├─index.ts                                  │     │ ├─# components export
 │ │     │ ├─InviteBanner.tsx                          │     │ ├─# 팀 초대 배너 UI
 │ │     │ ├─LeftNav.tsx                               │     │ ├─# 팀 레벨 왼쪽 네비게이션
@@ -312,7 +322,7 @@
 │ │     │ │ ├─[id]/                                   │     │ │ ├─# 개별 이슈 상세 페이지
 │ │     │ │ │ └─page.tsx                              │     │ │ │ └─# 이슈 ID별 페이지
 │ │     │ │ └─page.tsx                                │     │ │ └─# 이슈 루트 페이지
-│ │     │ └─members                                   │     │ └─# 프로젝트 멤버 관리 라우트
+│ │     │ └─members/                                  │     │ └─# 프로젝트 멤버 관리 라우트
 │ │     │   ├─_components/                            │     │   ├─# UI(해당 도메인/route 전용)
 │ │     │   │ ├─index.ts                              │     │   │ ├─# components export
 │ │     │   │ ├─InviteForm.tsx                        │     │   │ ├─# 멤버 초대
@@ -330,6 +340,13 @@
 │ │     │   └─page.tsx                                │     │   └─# 멤버 루트 페이지
 │ │     ├─layout.tsx                                  │     ├─# teamId level layout
 │ │     └─page.tsx                                    │     └─# team loot page(Overview)
+│ ├─product/                                          ├─# 상세페이지
+│ │ └─[slug]/                                         │ └─# slug
+│ │  ├─_components/                                   │   ├─# UI(해당 도메인/route 전용)
+│ │  │ └─ModuleImageGallery.tsx                       │   │ └─# slug page
+│ │  ├─_model/                                        │   ├─# type, schema, logic 등
+│ │  │ └─module-page-data.ts                          │   │ └─# 모듈 페이지 데이터
+│ │  └─page.tsx                                       │   └─# slug page
 │ ├─favicon.ico                                       ├─# 사이트 파비콘 아이콘
 │ ├─globals.css                                       ├─# Tailwind CSS 전역 스타일 정의
 │ ├─layout.tsx                                        ├─# 전체 loot 레이아웃 (앱 최상위)
@@ -341,6 +358,12 @@
 │ │ └─Highlight.tsx                                   │ └─# 텍스트 하이라이트용 UI 컴포넌트
 │ ├─common/                                           ├─# 공용 유틸 UI 컴포넌트
 │ │ └─Modal.tsx                                       │ └─# 기본 모달 래퍼 (전역 스타일/애니메이션)
+│ ├─home/                                             ├─# 홈 화면
+│ │ └─WorkspaceMainPanel.tsx                          │ └─# 홈화면 메인 판넬
+│ ├─landing/                                          ├─# 랜딩 UI 컴포넌트
+│ │ ├─landing.constants.ts                            │ ├─# 랜딩 상수
+│ │ ├─LandingMainContent.tsx                          │ ├─# 랜딩 메인 UI
+│ │ └─LandingShell.tsx                                │ └─# 랜딩 쉘
 │ ├─layout/                                           ├─# 공통 레이아웃 컴포넌트
 │ │ ├─sidebar/                                        │ ├─# 사이드바
 │ │ │  ├─CalendarPanel.tsx                            │ │ ├─# 캘린더 판넬

@@ -2,23 +2,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import LandingMainContent from "@/components/landing/LandingMainContent";
 import LandingShell from "@/components/landing/LandingShell";
+import WorkspaceMainPanel from "@/components/home/WorkspaceMainPanel";
 import Topbar from "@/components/layout/Topbar";
 import LeftNav from "@/workspace/root/LeftNav";
-import WorkspaceTabs, { type TabType } from "@/workspace/root/WorkspaceTabs";
-import InviteBanner from "@/workspace/root/InviteBanner";
 import ProjectToolbar from "@/workspace/root/projects/ProjectToolbar";
 import ProjectCard from "@/workspace/root/projects/ProjectCard";
 import ProjectMenu from "@/workspace/root/projects/ProjectMenu";
 import SettingsView from "@/workspace/root/views/SettingsView";
 import ActivitiesView from "@/workspace/root/views/ActivitiesView";
 import WorkspaceSettingsModal from "@/workspace/root/WorkspaceSettingsModal";
-import RecentVisitedView from "@/workspace/root/views/RecentVisitedView";
-import FriendsView from "@/workspace/root/views/FriendsView";
+import HomePageModals from "@/workspace/root/HomePageModals";
+import type { TabType } from "@/workspace/root/WorkspaceTabs";
 import type { Project, ProjectViewMode } from "@/types/workspace";
-import { LayoutGrid, List, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useTeams } from "@/app/(workspace)/workspace/[teamId]/_model/hooks/useTeams";
@@ -27,7 +24,6 @@ import { useAuthProfile } from "@/hooks/useAuthProfile";
 import { createTeam, deleteTeam, updateTeam } from "@/lib/team";
 import { cloneProject, createProject, deleteProject, favoriteProject, unfavoriteProject, updateProject } from "@/lib/projects";
 import { useToast } from "@/components/ui/Toast";
-import Modal from "@/components/common/Modal";
 import Drawer from "@/components/ui/Drawer";
 import { uploadImage } from "@/lib/uploads";
 import TeamMembersView from "./(workspace)/workspace/[teamId]/_components/views/TeamMembersView";
@@ -531,6 +527,24 @@ export default function HomePage() {
     }
   };
 
+  const handleCloseNewTeamModal = () => {
+    setShowNewTeamModal(false);
+    setNewTeamName("");
+    setNewTeamIconValue("");
+    setTeamIconFile(null);
+    setTeamIconMode("url");
+  };
+
+  const handleCloseNewProjectModal = () => {
+    setShowNewProjectModal(false);
+    setNewProjectName("");
+    setNewProjectDescription("");
+    setNewProjectIconValue("");
+    setProjectIconFile(null);
+    setProjectIconMode("url");
+    setNewProjectStatus("ACTIVE");
+  };
+
   useEffect(() => {
     if (!menuProject) return;
     const handleClick = () => setMenuProject(null);
@@ -695,129 +709,7 @@ export default function HomePage() {
   if (isAuthenticated === false) {
     return (
       <LandingShell>
-          <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <article className="rounded-3xl bg-white p-6 lg:col-span-12">
-              <div className="grid items-stretch gap-4 lg:grid-cols-12">
-                <div className="flex flex-col justify-between lg:col-span-4">
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">통합 협업 대시보드</p>
-                    <h1 className="mt-2 text-4xl font-semibold leading-tight">
-                      팀의 흐름을
-                      <br />
-                      하나로 연결하세요.
-                    </h1>
-                    <p className="mt-3 text-base text-slate-600">
-                      메시지, 일정, 문서, 이슈를 모듈 단위로 연결해 프로젝트 운영을 단순화합니다.
-                    </p>
-                  </div>
-                  <Link href="/sign-in" className="mt-6 inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white">
-                    <ArrowRight className="h-5 w-5" />
-                  </Link>
-                </div>
-                <div className="min-h-[260px] rounded-2xl bg-gradient-to-br from-slate-300 via-slate-200 to-slate-100 lg:col-span-8">
-                  <Image
-                    src="/error/homedashboard.png"
-                    alt="홈 대시보드 화면"
-                    width={2000}
-                    height={1200}
-                    className="h-full w-full rounded-2xl object-cover object-top"
-                    priority
-                  />
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-3xl bg-white p-6 lg:col-span-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">실시간 채팅 협업</p>
-                  <h2 className="mt-1 text-4xl font-semibold leading-tight">채널, DM, 스레드를 한 화면에서.</h2>
-                </div>
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white">
-                  <ArrowRight className="h-5 w-5" />
-                </span>
-              </div>
-              <div className="mt-4 min-h-[260px] rounded-2xl bg-[linear-gradient(180deg,#ff7f73,#ff6b5f)] p-4">
-                <div className="overflow-hidden rounded-xl bg-white/90">
-                  <Image
-                    src="/error/chat.png"
-                    alt="채팅 모듈 화면"
-                    width={2000}
-                    height={1200}
-                    className="h-full w-full object-cover object-top"
-                  />
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-3xl bg-white p-6 lg:col-span-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">이슈 트래킹</p>
-                  <h2 className="mt-1 text-4xl font-semibold leading-tight">테이블부터 칸반까지 유연하게.</h2>
-                </div>
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white">
-                  <ArrowRight className="h-5 w-5" />
-                </span>
-              </div>
-              <div className="mt-4 min-h-[260px] rounded-2xl bg-[linear-gradient(180deg,#59a7ee,#418ed8)] p-4">
-                <div className="overflow-hidden rounded-xl bg-white/90">
-                  <Image
-                    src="/error/issuedashboard.png"
-                    alt="이슈 모듈 화면"
-                    width={2000}
-                    height={1200}
-                    className="h-full w-full object-cover object-top"
-                  />
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-3xl bg-white p-6 lg:col-span-12">
-              <div className="grid items-stretch gap-4 lg:grid-cols-12">
-                <div className="flex flex-col justify-between lg:col-span-4">
-                  <div>
-                    <p className="text-sm text-slate-500">일정 · 문서 · 파일 연결</p>
-                    <h2 className="mt-1 text-4xl font-semibold leading-tight">프로젝트 운영에 필요한 모듈을 한곳에서.</h2>
-                  </div>
-                  <Link href="/sign-in" className="mt-6 inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white">
-                    <ArrowRight className="h-5 w-5" />
-                  </Link>
-                </div>
-                <div className="min-h-[260px] rounded-2xl bg-[linear-gradient(180deg,#f4eacb,#e8ddb8)] lg:col-span-8">
-                  <div className="grid h-full grid-cols-1 gap-2 p-2 md:grid-cols-3">
-                    <div className="overflow-hidden rounded-xl bg-white/80">
-                      <Image
-                        src="/error/calendar.png"
-                        alt="캘린더 모듈 화면"
-                        width={1200}
-                        height={800}
-                        className="h-full w-full object-cover object-top"
-                      />
-                    </div>
-                    <div className="overflow-hidden rounded-xl bg-white/80">
-                      <Image
-                        src="/error/docs.png"
-                        alt="문서 모듈 화면"
-                        width={1200}
-                        height={800}
-                        className="h-full w-full object-cover object-top"
-                      />
-                    </div>
-                    <div className="overflow-hidden rounded-xl bg-white/80">
-                      <Image
-                        src="/error/file.png"
-                        alt="파일함 모듈 화면"
-                        width={1200}
-                        height={800}
-                        className="h-full w-full object-cover object-top"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </section>
+          <LandingMainContent />
       </LandingShell>
     );
   }
@@ -900,104 +792,30 @@ export default function HomePage() {
           onSelectTeam={handleSelectTeam}
         />
 
-        <main className="flex h-full flex-1 flex-col gap-6 overflow-y-auto px-5 py-6 md:px-10">
-          <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6">
-            {teams.length === 0 ? (
-              <section className="rounded-2xl border border-dashed border-border bg-panel p-10 text-center text-sm text-muted">
-                <p className="text-lg font-semibold text-foreground">팀이 없습니다.</p>
-                <p className="mt-2 text-sm text-muted">먼저 팀을 생성한 다음 진행해주세요.</p>
-                <p className="text-[11px] text-muted">Tip: 팀은 나중에 언제든 수정/초대가 가능해요.</p>
-                <button
-                  type="button"
-                  className="mt-5 rounded-full border border-border px-5 py-2 text-sm text-muted transition hover:bg-accent hover:text-foreground"
-                  onClick={() => setShowNewTeamModal(true)}
-                >
-                  + 팀 추가
-                </button>
-              </section>
-            ) : leftNavView === "recent" ? (
-              <RecentVisitedView />
-            ) : leftNavView === "favorites" ? (
-              <section className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.4em] text-white/40">Pinned</p>
-                    <h2 className="text-3xl font-semibold text-white">My Favorites</h2>
-                    <p className="text-sm text-white/55">즐겨찾기한 프로젝트를 빠르게 열어보세요.</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {(["grid", "list"] as ProjectViewMode[]).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        className={`flex h-12 w-12 items-center justify-center rounded-full border ${
-                          viewMode === mode
-                            ? "border-white text-white"
-                            : "border-white/20 text-white/50 hover:text-white"
-                        }`}
-                        aria-label={`${mode} view`}
-                        onClick={() => setViewMode(mode)}
-                      >
-                        {mode === "grid" ? <LayoutGrid size={16} /> : <List size={16} />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {favoriteProjects.length === 0 ? (
-                  <div className="rounded-2xl border border-border bg-panel p-10 text-center text-sm text-muted">
-                    아직 즐겨찾기한 프로젝트가 없습니다. 프로젝트 카드의 ⭐ 버튼을 눌러 추가해 보세요.
-                  </div>
-                ) : (
-                  <div className={viewMode === "grid" ? "flex flex-wrap gap-5" : "space-y-3"}>
-                    {favoriteProjects.map((project) => (
-                      <div key={project.id} className="relative">
-                        <ProjectCard
-                          project={project}
-                          viewMode={viewMode}
-                          isStarred={!!starredProjects[project.id]}
-                          onToggleStar={handleToggleStar}
-                          onOpenMenu={(id) => setMenuProject((prev) => (prev === id ? null : id))}
-                          onOpenProject={handleProjectNavigate}
-                        />
-                        {menuProject === project.id && (
-                          <ProjectMenu
-                            onClose={() => setMenuProject(null)}
-                            onEdit={() => openEditProjectModal(project)}
-                            onClone={() => handleCloneProject(project.id)}
-                            onDelete={() => openDeleteModal(project.id, project.title)}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            ) : leftNavView === "friends" ? (
-              <FriendsView
-                onSelectTeam={handleSelectTeam}
-                activeTab={friendsTab}
-                onTabChange={setFriendsTab}
-              />
-            ) : (
-              <>
-                <section className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-semibold tracking-tight">{activeTeam?.name ?? "Workspace"}</h1>
-                    {activeTeam?.role && (
-                      <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-                        {activeTeam.role}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs uppercase tracking-[0.5em] text-muted">Projects</p>
-                </section>
-                {activeTab === "Projects" && <InviteBanner />}
-                <WorkspaceTabs activeTab={activeTab} onChange={setActiveTab} />
-                {renderWorkspaceContent()}
-              </>
-            )}
-          </div>
-        </main>
+        <WorkspaceMainPanel
+          teamsCount={teams.length}
+          onOpenCreateTeam={() => setShowNewTeamModal(true)}
+          leftNavView={leftNavView}
+          favoriteProjects={favoriteProjects}
+          viewMode={viewMode}
+          onChangeViewMode={setViewMode}
+          starredProjects={starredProjects}
+          menuProject={menuProject}
+          setMenuProject={setMenuProject}
+          onToggleStar={handleToggleStar}
+          onOpenProject={handleProjectNavigate}
+          onOpenEditProjectModal={openEditProjectModal}
+          onCloneProject={handleCloneProject}
+          onOpenDeleteModal={openDeleteModal}
+          friendsTab={friendsTab}
+          onChangeFriendsTab={setFriendsTab}
+          onSelectTeam={handleSelectTeam}
+          activeTeamName={activeTeam?.name}
+          activeTeamRole={activeTeam?.role}
+          activeTab={activeTab}
+          onChangeActiveTab={setActiveTab}
+          workspaceContent={renderWorkspaceContent()}
+        />
       </div>
 
       <Drawer
@@ -1029,504 +847,76 @@ export default function HomePage() {
         />
       </Drawer>
 
-      {showNewTeamModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
-          onClick={() => setShowNewTeamModal(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-3xl border border-border bg-panel p-6 text-foreground shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="space-y-2">
-              <p className="text-[11px] uppercase tracking-[0.45em] text-muted">Create a team</p>
-              <h2 className="text-2xl font-semibold">
-                {newTeamName.trim() ? `${newTeamName.trim()}'s Team` : "Name your space"}
-              </h2>
-              <p className="text-sm text-muted">
-                Teams keep projects organized. You can rename anytime.
-              </p>
-            </div>
-
-            <div className="mt-6 flex items-center gap-4 rounded-2xl border border-border bg-accent/40 p-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-border bg-panel">
-                {newTeamIconValue ? (
-                  <img src={newTeamIconValue} alt="Team icon" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-xs text-muted">Icon</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <div className="mb-3 flex items-center justify-between">
-                  <label className="text-[11px] uppercase tracking-[0.3em] text-muted">Team Icon</label>
-                  <div className="flex gap-2 text-xs">
-                    <button
-                      type="button"
-                      className={`rounded-full border px-3 py-1 ${teamIconMode === "url" ? "border-primary text-foreground" : "border-border text-muted"}`}
-                      onClick={() => setTeamIconMode("url")}
-                    >
-                      URL
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-full border px-3 py-1 ${teamIconMode === "upload" ? "border-primary text-foreground" : "border-border text-muted"}`}
-                      onClick={() => setTeamIconMode("upload")}
-                    >
-                      Upload
-                    </button>
-                  </div>
-                </div>
-                {teamIconMode === "url" ? (
-                  <input
-                    className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-                    placeholder="https://..."
-                    value={newTeamIconValue}
-                    onChange={(e) => setNewTeamIconValue(e.target.value)}
-                  />
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="w-full text-sm text-muted"
-                      onChange={(e) => setTeamIconFile(e.target.files?.[0] ?? null)}
-                    />
-                    <button
-                      type="button"
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
-                      disabled={!teamIconFile || uploadingTeamIcon}
-                      onClick={handleUploadTeamIcon}
-                    >
-                      {uploadingTeamIcon ? "Uploading..." : "Upload"}
-                    </button>
-                  </div>
-                )}
-                <div className="mt-2">
-                  <label className="text-[11px] uppercase tracking-[0.3em] text-muted">Team Name</label>
-                  <input
-                    className="mt-3 w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-                    placeholder="Team name"
-                    value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center justify-end gap-2 text-sm">
-              <button
-                type="button"
-                className="rounded-full bg-primary px-5 py-1.5 text-primary-foreground disabled:opacity-50"
-                disabled={!newTeamName.trim() || creatingTeam}
-                onClick={handleCreateTeam}
-              >
-                {creatingTeam ? "Creating..." : "Create"}
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-border px-4 py-1.5 text-muted"
-                onClick={() => {
-                  setShowNewTeamModal(false);
-                  setNewTeamName("");
-                  setNewTeamIconValue("");
-                  setTeamIconFile(null);
-                  setTeamIconMode("url");
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showNewProjectModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
-          onClick={() => setShowNewProjectModal(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-3xl border border-border bg-panel p-6 text-foreground shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="space-y-2">
-              <p className="text-[11px] uppercase tracking-[0.45em] text-muted">Create a project</p>
-              <h2 className="text-2xl font-semibold">
-                {newProjectName.trim()
-                  ? newProjectName.trim().endsWith("'s Project")
-                    ? newProjectName.trim()
-                    : `${newProjectName.trim()}'s Project`
-                  : "Start something new"}
-              </h2>
-              <p className="text-sm text-muted">Add an icon, a short description, and status.</p>
-            </div>
-
-            <div className="mt-6 flex items-center gap-4 rounded-2xl border border-border bg-accent/40 p-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-border bg-panel">
-                {newProjectIconValue ? (
-                  <img src={newProjectIconValue} alt="Project icon" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-xs text-muted">Icon</span>
-                )}
-              </div>
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] uppercase tracking-[0.3em] text-muted">Project Icon</label>
-                  <div className="flex gap-2 text-xs">
-                    <button
-                      type="button"
-                      className={`rounded-full border px-3 py-1 ${projectIconMode === "url" ? "border-primary text-foreground" : "border-border text-muted"}`}
-                      onClick={() => setProjectIconMode("url")}
-                    >
-                      URL
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-full border px-3 py-1 ${projectIconMode === "upload" ? "border-primary text-foreground" : "border-border text-muted"}`}
-                      onClick={() => setProjectIconMode("upload")}
-                    >
-                      Upload
-                    </button>
-                  </div>
-                </div>
-                {projectIconMode === "url" ? (
-                  <input
-                    className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-                    placeholder="https://..."
-                    value={newProjectIconValue}
-                    onChange={(e) => setNewProjectIconValue(e.target.value)}
-                  />
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="w-full text-sm text-muted"
-                      onChange={(e) => setProjectIconFile(e.target.files?.[0] ?? null)}
-                    />
-                    <button
-                      type="button"
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
-                      disabled={!projectIconFile || uploadingProjectIcon}
-                      onClick={handleUploadProjectIcon}
-                    >
-                      {uploadingProjectIcon ? "Uploading..." : "Upload"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-4">
-              <input
-                className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-                placeholder="Project name"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-              />
-              <textarea
-                className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-                placeholder="Description"
-                rows={3}
-                value={newProjectDescription}
-                onChange={(e) => setNewProjectDescription(e.target.value)}
-              />
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-[0.3em] text-muted">Status</label>
-                <select
-                  className="h-10 w-full rounded-xl border border-border bg-panel px-3 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-                  value={newProjectStatus}
-                  onChange={(e) => setNewProjectStatus(e.target.value as "ACTIVE" | "DRAFT" | "DISABLED")}
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="DRAFT">Draft</option>
-                  <option value="DISABLED">Disabled</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center justify-end gap-2 text-sm">
-              <button
-                type="button"
-                className="rounded-full border border-border px-4 py-1.5 text-muted"
-                onClick={() => {
-                  setShowNewProjectModal(false);
-                  setNewProjectName("");
-                  setNewProjectDescription("");
-                  setNewProjectIconValue("");
-                  setProjectIconFile(null);
-                  setProjectIconMode("url");
-                  setNewProjectStatus("ACTIVE");
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-full bg-primary px-5 py-1.5 text-primary-foreground disabled:opacity-50"
-                disabled={!newProjectName.trim() || creatingProject}
-                onClick={handleCreateProject}
-              >
-                {creatingProject ? "Creating..." : "Create"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Modal
-        open={editProjectModalOpen}
-        onClose={() => setEditProjectModalOpen(false)}
-        title="프로젝트 수정"
-        widthClass="max-w-md"
-      >
-        <div className="p-6 space-y-5">
-          <div className="space-y-2">
-            <p className="text-sm text-muted">이름, 아이콘, 상태를 업데이트하세요.</p>
-            <input
-              className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-              value={editProjectName}
-              onChange={(e) => setEditProjectName(e.target.value)}
-              placeholder="프로젝트 이름"
-            />
-          </div>
-          <div className="space-y-3 rounded-2xl border border-border bg-accent/40 p-4">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] uppercase tracking-[0.3em] text-muted">Project Icon</label>
-              <div className="flex gap-2 text-xs">
-                <button
-                  type="button"
-                  className={`rounded-full border px-3 py-1 ${editProjectIconMode === "url" ? "border-primary text-foreground" : "border-border text-muted"}`}
-                  onClick={() => setEditProjectIconMode("url")}
-                >
-                  URL
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-full border px-3 py-1 ${editProjectIconMode === "upload" ? "border-primary text-foreground" : "border-border text-muted"}`}
-                  onClick={() => setEditProjectIconMode("upload")}
-                >
-                  Upload
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-border bg-panel">
-                {editProjectIconValue ? (
-                  <img src={editProjectIconValue} alt="Project icon" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-xs text-muted">Icon</span>
-                )}
-              </div>
-              <div className="flex-1">
-                {editProjectIconMode === "url" ? (
-                  <input
-                    className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-                    placeholder="https://..."
-                    value={editProjectIconValue}
-                    onChange={(e) => setEditProjectIconValue(e.target.value)}
-                  />
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="w-full text-sm text-muted"
-                      onChange={(e) => setEditProjectIconFile(e.target.files?.[0] ?? null)}
-                    />
-                    <button
-                      type="button"
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
-                      disabled={!editProjectIconFile || uploadingEditProjectIcon}
-                      onClick={handleUploadEditProjectIcon}
-                    >
-                      {uploadingEditProjectIcon ? "Uploading..." : "Upload"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs uppercase tracking-[0.3em] text-muted">Status</label>
-            <select
-              className="h-10 w-full rounded-xl border border-border bg-panel px-3 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-              value={editProjectStatus}
-              onChange={(e) => setEditProjectStatus(e.target.value as "ACTIVE" | "DRAFT" | "DISABLED")}
-            >
-              <option value="ACTIVE">Active</option>
-              <option value="DRAFT">Draft</option>
-              <option value="DISABLED">Disabled</option>
-            </select>
-          </div>
-          <div className="flex justify-end gap-2 text-sm">
-            <button
-              type="button"
-              className="rounded-full border border-border px-4 py-1.5 text-muted"
-              onClick={() => setEditProjectModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-primary px-5 py-1.5 text-primary-foreground disabled:opacity-50"
-              disabled={!editProjectName.trim()}
-              onClick={handleUpdateProject}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title="프로젝트 삭제"
-        widthClass="max-w-md"
-      >
-        <div className="p-6 space-y-4">
-          <p className="text-sm text-muted">
-            "{targetProjectName}" 프로젝트를 삭제할까요? 이 작업은 되돌릴 수 없습니다.
-          </p>
-          <div className="flex justify-end gap-2 text-sm">
-            <button
-              type="button"
-              className="rounded-full border border-border px-4 py-1.5 text-muted"
-              onClick={() => setDeleteModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-rose-500 px-5 py-1.5 text-white disabled:opacity-50"
-              onClick={handleDeleteProject}
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={teamRenameModalOpen}
-        onClose={() => setTeamRenameModalOpen(false)}
-        title="팀 수정"
-        widthClass="max-w-md"
-      >
-        <div className="p-6 space-y-4">
-          <p className="text-sm text-muted">팀 이름과 아이콘을 수정하세요.</p>
-          <input
-            className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-            value={teamRenameValue}
-            onChange={(e) => setTeamRenameValue(e.target.value)}
-            placeholder="팀 이름"
-          />
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] uppercase tracking-[0.3em] text-muted">Team Icon</label>
-              <div className="flex gap-2 text-xs">
-                <button
-                  type="button"
-                  className={`rounded-full border px-3 py-1 ${teamEditIconMode === "url" ? "border-primary text-foreground" : "border-border text-muted"}`}
-                  onClick={() => setTeamEditIconMode("url")}
-                >
-                  URL
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-full border px-3 py-1 ${teamEditIconMode === "upload" ? "border-primary text-foreground" : "border-border text-muted"}`}
-                  onClick={() => setTeamEditIconMode("upload")}
-                >
-                  Upload
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-border bg-panel">
-                {teamEditIconValue ? (
-                  <img src={teamEditIconValue} alt="Team icon" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-xs text-muted">Icon</span>
-                )}
-              </div>
-              <div className="flex-1">
-                {teamEditIconMode === "url" ? (
-                  <input
-                    className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
-                    placeholder="https://..."
-                    value={teamEditIconValue}
-                    onChange={(e) => setTeamEditIconValue(e.target.value)}
-                  />
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="w-full text-sm text-muted"
-                      onChange={(e) => setTeamEditIconFile(e.target.files?.[0] ?? null)}
-                    />
-                    <button
-                      type="button"
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
-                      disabled={!teamEditIconFile || uploadingTeamEditIcon}
-                      onClick={handleUploadTeamEditIcon}
-                    >
-                      {uploadingTeamEditIcon ? "Uploading..." : "Upload"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 text-sm">
-            <button
-              type="button"
-              className="rounded-full border border-border px-4 py-1.5 text-muted"
-              onClick={() => setTeamRenameModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-primary px-5 py-1.5 text-primary-foreground disabled:opacity-50"
-              disabled={!teamRenameValue.trim()}
-              onClick={handleRenameTeam}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={teamDeleteModalOpen}
-        onClose={() => setTeamDeleteModalOpen(false)}
-        title="팀 삭제"
-        widthClass="max-w-md"
-      >
-        <div className="p-6 space-y-4">
-          <p className="text-sm text-muted">
-            "{targetTeamName}" 팀을 삭제할까요? 이 작업은 되돌릴 수 없습니다.
-          </p>
-          <div className="flex justify-end gap-2 text-sm">
-            <button
-              type="button"
-              className="rounded-full border border-border px-4 py-1.5 text-muted"
-              onClick={() => setTeamDeleteModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-rose-500 px-5 py-1.5 text-white disabled:opacity-50"
-              onClick={handleDeleteTeam}
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <HomePageModals
+        showNewTeamModal={showNewTeamModal}
+        newTeamName={newTeamName}
+        newTeamIconValue={newTeamIconValue}
+        teamIconMode={teamIconMode}
+        teamIconFile={teamIconFile}
+        uploadingTeamIcon={uploadingTeamIcon}
+        creatingTeam={creatingTeam}
+        onCloseNewTeamModal={handleCloseNewTeamModal}
+        onSetNewTeamName={setNewTeamName}
+        onSetNewTeamIconValue={setNewTeamIconValue}
+        onSetTeamIconMode={setTeamIconMode}
+        onSetTeamIconFile={setTeamIconFile}
+        onUploadTeamIcon={handleUploadTeamIcon}
+        onCreateTeam={handleCreateTeam}
+        showNewProjectModal={showNewProjectModal}
+        newProjectName={newProjectName}
+        newProjectDescription={newProjectDescription}
+        newProjectIconValue={newProjectIconValue}
+        newProjectStatus={newProjectStatus}
+        projectIconMode={projectIconMode}
+        projectIconFile={projectIconFile}
+        uploadingProjectIcon={uploadingProjectIcon}
+        creatingProject={creatingProject}
+        onCloseNewProjectModal={handleCloseNewProjectModal}
+        onSetNewProjectName={setNewProjectName}
+        onSetNewProjectDescription={setNewProjectDescription}
+        onSetNewProjectIconValue={setNewProjectIconValue}
+        onSetNewProjectStatus={setNewProjectStatus}
+        onSetProjectIconMode={setProjectIconMode}
+        onSetProjectIconFile={setProjectIconFile}
+        onUploadProjectIcon={handleUploadProjectIcon}
+        onCreateProject={handleCreateProject}
+        editProjectModalOpen={editProjectModalOpen}
+        editProjectName={editProjectName}
+        editProjectStatus={editProjectStatus}
+        editProjectIconValue={editProjectIconValue}
+        editProjectIconMode={editProjectIconMode}
+        editProjectIconFile={editProjectIconFile}
+        uploadingEditProjectIcon={uploadingEditProjectIcon}
+        onCloseEditProjectModal={() => setEditProjectModalOpen(false)}
+        onSetEditProjectName={setEditProjectName}
+        onSetEditProjectStatus={setEditProjectStatus}
+        onSetEditProjectIconValue={setEditProjectIconValue}
+        onSetEditProjectIconMode={setEditProjectIconMode}
+        onSetEditProjectIconFile={setEditProjectIconFile}
+        onUploadEditProjectIcon={handleUploadEditProjectIcon}
+        onUpdateProject={handleUpdateProject}
+        deleteModalOpen={deleteModalOpen}
+        targetProjectName={targetProjectName}
+        onCloseDeleteModal={() => setDeleteModalOpen(false)}
+        onDeleteProject={handleDeleteProject}
+        teamRenameModalOpen={teamRenameModalOpen}
+        teamRenameValue={teamRenameValue}
+        teamEditIconValue={teamEditIconValue}
+        teamEditIconMode={teamEditIconMode}
+        teamEditIconFile={teamEditIconFile}
+        uploadingTeamEditIcon={uploadingTeamEditIcon}
+        onCloseTeamRenameModal={() => setTeamRenameModalOpen(false)}
+        onSetTeamRenameValue={setTeamRenameValue}
+        onSetTeamEditIconValue={setTeamEditIconValue}
+        onSetTeamEditIconMode={setTeamEditIconMode}
+        onSetTeamEditIconFile={setTeamEditIconFile}
+        onUploadTeamEditIcon={handleUploadTeamEditIcon}
+        onRenameTeam={handleRenameTeam}
+        teamDeleteModalOpen={teamDeleteModalOpen}
+        targetTeamName={targetTeamName}
+        onCloseTeamDeleteModal={() => setTeamDeleteModalOpen(false)}
+        onDeleteTeam={handleDeleteTeam}
+      />
 
       {showWorkspaceSettings && <WorkspaceSettingsModal onClose={() => setShowWorkspaceSettings(false)} />}
       <FloatingDm />

@@ -28,6 +28,7 @@ import { useMessageSections } from "@/workspace/chat/_model/hooks/useMessageSect
 import { useChatLifecycle } from "@/workspace/chat/_model/hooks/useChatLifecycle";
 import { rtbroadcast, rtlisten } from "@/lib/realtime";
 import { useChatViewUiStore } from "@/workspace/chat/_model/store/useChatViewUiStore";
+import { fetchFriends, removeFriend } from "@/lib/members";
 
 const VIEWMODE_KEY = 'fd.chat.viewmode';
 
@@ -38,10 +39,68 @@ type ChatViewProps = {
 function ChannelIntro({
   channelName,
   createdAt,
+  isDM = false,
+  dmDisplayName,
+  dmAvatarUrl,
+  friendActionLabel = "친구 추가하기",
+  onFriendAction,
+  onBlock,
+  onReport,
 }: {
   channelName: string;
   createdAt: number;
+  isDM?: boolean;
+  dmDisplayName?: string;
+  dmAvatarUrl?: string;
+  friendActionLabel?: string;
+  onFriendAction?: () => void;
+  onBlock?: () => void;
+  onReport?: () => void;
 }) {
+  if (isDM) {
+    const displayName = dmDisplayName?.trim() || "Unknown";
+    return (
+      <div className="mb-4 px-4 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-muted/20 text-base font-semibold text-foreground">
+            {dmAvatarUrl ? (
+              <img src={dmAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
+            ) : (
+              displayName.slice(0, 2).toUpperCase()
+            )}
+          </div>
+          <h1 className="text-3xl font-semibold text-foreground">{displayName}</h1>
+        </div>
+        <p className="mt-2 text-sm text-muted">
+          {displayName}님과 나눈 다이렉트 메시지의 첫 부분이에요.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-400"
+            onClick={onFriendAction}
+          >
+            {friendActionLabel}
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-400"
+            onClick={onBlock}
+          >
+            차단하기
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-400"
+            onClick={onReport}
+          >
+            신고하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const d = new Date(createdAt);
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -364,6 +423,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     [dmParticipantIds, me.id],
   );
   const dmUser = isDM && dmOtherId ? users[dmOtherId] : undefined;
+  const [dmFriendMemberId, setDmFriendMemberId] = useState<string | null>(null);
   const channelLabel = isDM
     ? (dmUser?.name ?? currentChannel?.name?.replace(/^@\s*/, "") ?? "Direct Message")
     : (currentChannel?.name ?? channelId ?? "Channel");
@@ -407,6 +467,46 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     });
     return map;
   }, [messages]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadFriendState = async () => {
+      if (!isDM || !dmOtherId) {
+        setDmFriendMemberId(null);
+        return;
+      }
+      try {
+        const friends = await fetchFriends();
+        if (cancelled) return;
+        const found = friends.find((friend) => friend.userId === dmOtherId);
+        setDmFriendMemberId(found?.memberId ?? null);
+      } catch {
+        if (cancelled) return;
+        setDmFriendMemberId(null);
+      }
+    };
+    void loadFriendState();
+    return () => {
+      cancelled = true;
+    };
+  }, [dmOtherId, isDM]);
+
+  const handleFriendAction = useCallback(async () => {
+    if (!isDM || !dmOtherId) return;
+    if (dmFriendMemberId) {
+      try {
+        await removeFriend(dmFriendMemberId);
+        setDmFriendMemberId(null);
+        show({ title: "친구 삭제", description: "친구 목록에서 삭제했습니다.", variant: "success" });
+        window.dispatchEvent(new CustomEvent("friends:refresh"));
+      } catch (err) {
+        console.error("Failed to remove friend", err);
+        show({ title: "친구 삭제 실패", description: "잠시 후 다시 시도해주세요.", variant: "error" });
+      }
+      return;
+    }
+    show({ title: "친구 추가", description: "준비중입니다." });
+  }, [dmFriendMemberId, dmOtherId, isDM, show]);
 
   const handleOpenThread = useCallback(
     (rootId: string) => {
@@ -545,7 +645,17 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
             if (selectMode) clearSelection();
           }}
         >
-          <ChannelIntro channelName={normalizedChannelName} createdAt={channelCreatedAtMs} />
+          <ChannelIntro
+            channelName={normalizedChannelName}
+            createdAt={channelCreatedAtMs}
+            isDM={isDM}
+            dmDisplayName={dmUser?.name ?? normalizedChannelName}
+            dmAvatarUrl={dmUser?.avatarUrl}
+            friendActionLabel={dmFriendMemberId ? "친구 삭제하기" : "친구 추가하기"}
+            onFriendAction={handleFriendAction}
+            onBlock={() => show({ title: "차단하기", description: "준비중입니다." })}
+            onReport={() => show({ title: "신고하기", description: "준비중입니다." })}
+          />
           {sections.map((section) => {
             const { head, items, showDayDivider, showNewDivider } = section;
             return (
@@ -557,6 +667,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
                   isMine={head.authorId === me.id}
                   view={view}
                   meId={me.id}
+                  otherMemberCount={Math.max(memberIds.filter((id) => id !== me.id).length, 0)}
                   otherSeen={otherSeen}
                   users={users}
                   threadMetaMap={replyMetaMap}

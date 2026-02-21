@@ -87,6 +87,8 @@ export default function ChatPanel({
           </div>
         ) : (
           dmList.map((channel) => {
+            const unreadCount = channelActivity[channel.id]?.unreadCount ?? 0;
+            const unreadLabel = unreadCount > 99 ? "99+" : unreadCount > 0 ? String(unreadCount) : "";
             const raw = channel.id.replace(/^dm:/, "");
             const dmIds = raw.split("+").filter(Boolean);
             const otherId = dmIds.find((id) => id !== meId) ?? dmIds[0];
@@ -115,6 +117,11 @@ export default function ChatPanel({
                 </span>
                 <span className="inline-flex rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-sky-500">DM</span>
                 <span className="truncate">{dmName}</span>
+                {unreadLabel && (
+                  <span className="ml-auto rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-500">
+                    {unreadLabel}
+                  </span>
+                )}
               </button>
             );
           })

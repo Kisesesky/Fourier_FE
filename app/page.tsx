@@ -258,7 +258,7 @@ export default function HomePage() {
           variant: "warning",
         });
         localStorage.removeItem("accessToken");
-        router.replace("/sign-in ");
+        router.replace("/sign-in");
         return;
       }
       show({

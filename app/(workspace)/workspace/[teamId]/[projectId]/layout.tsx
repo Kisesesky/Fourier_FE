@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
@@ -16,6 +16,7 @@ import ChatCreateChannelHost from "@/components/layout/ChatCreateChannelHost";
 import { saveWorkspaceEntryPreference } from "@/lib/workspace-entry";
 
 export default function WorkspaceProjectLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState<number | string>("clamp(240px, 28vw, 360px)");
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
@@ -105,8 +106,19 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
   useEffect(() => {
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("accessToken");
+    if (!token) {
+      router.replace("/sign-in");
+      return;
+    }
     setAuthToken(token);
-  }, []);
+    const handleUnauthorized = () => {
+      router.replace("/sign-in");
+    };
+    window.addEventListener("auth:unauthorized", handleUnauthorized as EventListener);
+    return () => {
+      window.removeEventListener("auth:unauthorized", handleUnauthorized as EventListener);
+    };
+  }, [router]);
 
   useEffect(() => {
     setSidebarOpen(false);

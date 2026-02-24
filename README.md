@@ -47,300 +47,301 @@
 │ │ └─layout.tsx                                      │ └─# 인증 페이지 공통 레이아웃
 │ ├─(workspace)/                                      ├─# 워크스페이스 관련 전용 라우트 그룹
 │ │ └─workspace/                                      │ └─# /workspace 경로 루트
-│ │   └─[teamId]/                                     │   └─# 특정 팀에 해당하는 모든 기능
-│ │     ├─_components/                                │     ├─# 팀 레벨 공통 UI
-│ │     │ ├─floating-dm/                              │     │ ├─# 플로팅 디엠 UI
-│ │     │ │ ├─DmListView.tsx                          │     │ │ ├─# 디엠 리스트 뷰
-│ │     │ │ ├─floating-dm.constants.ts                │     │ │ ├─# 플로팅 디엠 상수 정의
-│ │     │ │ ├─floating-dm.utils.ts                    │     │ │ ├─# 플로팅 디엠 유틸
-│ │     │ │ ├─FloatingLauncher.tsx                    │     │ │ ├─# 플로팅 런처
-│ │     │ │ └─index.ts                                │     │ │ └─# components export
-│ │     │ ├─home-page-modals/                         │     │ ├─# 홈페이지 모달
-│ │     │ │ ├─ConfirmModal.tsx                        │     │ │ ├─# 확인 모달
-│ │     │ │ ├─CreateProjectModal.tsx                  │     │ │ ├─# 프로젝트생성 모달
-│ │     │ │ ├─CreateTeamModal.tsx                     │     │ │ ├─# 팀생성 모달
-│ │     │ │ ├─EditProjectModal.tsx                    │     │ │ ├─# 프로젝트 수정 모달
-│ │     │ │ ├─IconPickerSection.tsx                   │     │ │ ├─# 아이콘 선택 모달
-│ │     │ │ ├─index.ts                                │     │ │ ├─# components export
-│ │     │ │ ├─TeamRenameModal.tsx                     │     │ │ ├─# 팀이름 수정 모달
-│ │     │ │ └─types.ts                                │     │ │ └─# 홈페이지모달 타입
-│ │     │ ├─projects/                                 │     │ ├─# 프로젝트 리스트/개요 전용 UI
-│ │     │ │ ├─index.ts                                │     │ │ ├─# components export
-│ │     │ │ ├─ProjectCard.tsx                         │     │ │ ├─# 프로젝트 카드 UI
-│ │     │ │ ├─ProjectMenu.tsx                         │     │ │ ├─# 프로젝트 우클릭 메뉴
-│ │     │ │ └─ProjectToolbar.tsx                      │     │ │ └─# 프로젝트 상단 툴바
-│ │     │ ├─views/                                    │     │ ├─# 팀 대시보드 뷰
-│ │     │ │ ├─team-members/                           │     │ │ ├─# 팀멤버
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ ├─InviteMemberModal.tsx                 │     │ │ │ ├─# 팀 초대 모달
-│ │     │ │ │ ├─MembersTab.tsx                        │     │ │ │ ├─# 멤버 탭
-│ │     │ │ │ ├─PendingInvitesTab.tsx                 │     │ │ │ ├─# 초대 탭
-│ │     │ │ │ ├─RolesTab.tsx                          │     │ │ │ ├─# 권한 탭
-│ │     │ │ │ ├─team-members.constants.ts             │     │ │ │ ├─# 팀 멤버 상수 정의
-│ │     │ │ │ └─team-members.types.ts                 │     │ │ │ └─# 팀 멤버 타입 정의
-│ │     │ │ ├─ActivitiesView.tsx                      │     │ │ ├─# 최근 활동 뷰
-│ │     │ │ ├─FriendsView.tsx                         │     │ │ ├─# 친구 멤버 리스트 뷰
-│ │     │ │ ├─index.ts                                │     │ │ ├─# components export
-│ │     │ │ ├─RecentVisitedView.tsx                   │     │ │ ├─# 최근 방문한 프로젝트 뷰
-│ │     │ │ ├─SettingsView.tsx                        │     │ │ ├─# 워크스페이스 설정 뷰
-│ │     │ │ └─TeamMembersView.tsx                     │     │ │ └─# 팀 멤버 리스트 뷰
-│ │     │ ├─FloatingSupportCenter.tsx                 │     │ ├─# 플로팅 고객센터 UI
-│ │     │ ├─FloatingDm.tsx                            │     │ ├─# 플로팅 DM UI
-│ │     │ ├─HomePageModals.tsx                        │     │ ├─# 홈페이지 모달
-│ │     │ ├─index.ts                                  │     │ ├─# components export
-│ │     │ ├─InviteBanner.tsx                          │     │ ├─# 팀 초대 배너 UI
-│ │     │ ├─LeftNav.tsx                               │     │ ├─# 팀 레벨 왼쪽 네비게이션
-│ │     │ ├─WorkspaceSettingsModal.tsx                │     │ ├─# 워크스페이스 단위 설정 모달
-│ │     │ └─WorkspaceTabs.tsx                         │     │ └─# 팀 레벨 탭 UI
-│ │     ├─_model/                                     │     ├─# type, schema, logic등
-│ │     │ ├─hooks/                                    │     │ ├─# 팀 hooks
-│ │     │ │ └─useTeams.ts                             │     │ │ └─# 팀 목록/상태 관리
-│ │     │ ├─project.constants.ts                      │     │ ├─# 프로젝트 상수 정의
-│ │     │ ├─project.types.ts                          │     │ ├─# 프로젝트 타입 정의
-│ │     │ ├─view.constants.ts                         │     │ ├─# 뷰 상수 데이터
-│ │     │ ├─view.types.ts                             │     │ ├─# 뷰 타입
-│ │     │ ├─view.utils.ts                             │     │ ├─# 뷰 유틸
-│ │     │ └─workspace.constants.ts                    │     │ └─# 워크스페이스 상수/설정값
-│ │     ├─[projectId]/                                │     ├─# 특정 프로젝트에 해당하는 기능
-│ │     │ ├─_components/                              │     │ ├─# UI(해당 도메인/route 전용)
-│ │     │ │ ├─home-dashboard/                         │     │ │ ├─# 홈 대시보드
-│ │     │ │ │ ├─details/                              │     │ │ │ ├─# 상세페이지
-│ │     │ │ │ │ ├─CalendarDetailView.tsx              │     │ │ │ │ ├─# 캘린더 상세페이지
-│ │     │ │ │ │ ├─ChatDetailView.tsx                  │     │ │ │ │ ├─# 채팅 상세페이지
-│ │     │ │ │ │ ├─detail-view.types.ts                │     │ │ │ │ ├─# 상세페이지 타입 정의
-│ │     │ │ │ │ ├─DocsDetailView.tsx                  │     │ │ │ │ ├─# 문서 상세페이지
-│ │     │ │ │ │ ├─FileDetailView.tsx                  │     │ │ │ │ ├─# 파일 상세페이지
-│ │     │ │ │ │ ├─IssuesDetailView.tsx                │     │ │ │ │ ├─# 이슈 상세페이지
-│ │     │ │ │ │ └─MembersDetailView.tsx               │     │ │ │ │ └─# 멤버 상세페이지
-│ │     │ │ │ ├─graph-ui.tsx                          │     │ │ │ ├─# 그래프 UI
-│ │     │ │ │ └─ProjectModuleDetailView.tsx           │     │ │ │ └─# 프로젝트 모듈 상세페이지
-│ │     │ ├─_model/                                   │     │ ├─# type, schema, logic등
-│ │     │ │ ├─hooks/                                  │     │ │ ├─# 프로젝트 hook
-│ │     │ │ │ ├─useProjectHomeDashboardData.ts        │     │ │ │ ├─# 프로젝트 홈 대시보드 데이터
-│ │     │ │ │ └─useProjects.ts                        │     │ │ │ └─# 프로젝트 데이터
-│ │     │ │ ├─schemas/                                │     │ │ ├─# Schemas
-│ │     │ │ │ └─home-dashboard.schemas.ts             │     │ │ │ └─# 홈대시보드 스케마
-│ │     │ │ ├─store/                                  │     │ │ ├─# Store
-│ │     │ │ │ └─useProjectDashboardUiStore.ts         │     │ │ │ └─# 프로젝트대시보드 UI Store
-│ │     │ │ ├─dashboard-page.constants.ts             │     │ │ ├─# 대시보드 페이지 상수 정의
-│ │     │ │ ├─dashboard-page.types.ts                 │     │ │ ├─# 대시보드 페이지 타입 정의
-│ │     │ │ └─dashboard-page.utils.ts                 │     │ │ └─# 대시보드 페이지 유틸
-│ │     │ ├─calendar/                                 │     │ ├─# 프로젝트 캘린더 기능
-│ │     │ │ ├─_components/                            │     │ │ ├─# UI(해당 도메인/route 전용)
-│ │     │ │ │ ├─CalendarAgendaView.tsx                │     │ │ │ ├─# 일/주 일정 리스트
-│ │     │ │ │ ├─CalendarCreateModal.tsx               │     │ │ │ ├─# 일정 생성/수정 모달
-│ │     │ │ │ ├─CalendarDetailsPanel.tsx              │     │ │ │ ├─# 오른쪽 상세 패널
-│ │     │ │ │ ├─CalendarHeader.tsx                    │     │ │ │ ├─# 캘린더 top navigation
-│ │     │ │ │ ├─CalendarManageModal.tsx               │     │ │ │ ├─# 캘린더 설정 관리
-│ │     │ │ │ ├─CalendarMonthView.tsx                 │     │ │ │ ├─# 월간 보기
-│ │     │ │ │ ├─CalendarTimelineView.tsx              │     │ │ │ ├─# 시간 축 기반 Day/Week
-│ │     │ │ │ ├─CalendarView.tsx                      │     │ │ │ ├─# 캘린더 전체 page View
-│ │     │ │ │ ├─DayEventPill.tsx                      │     │ │ │ ├─# 일정 Pill UI
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ ├─TimelineTaskBar.tsx                   │     │ │ │ ├─# 일정 타임라인 블록
-│ │     │ │ │ └─UpcomingEventCard.tsx                 │     │ │ │ └─# 다가오는 일정 카드
-│ │     │ │ ├─_model/                                 │     │ │ ├─# type, schema, logic등
-│ │     │ │ │ ├─hooks/                                │     │ │ │ ├─# 캘린더 hooks
-│ │     │ │ │ │ ├─index.ts                            │     │ │ │ │ ├─# components export
-│ │     │ │ │ │ └─useCalendarState.ts                 │     │ │ │ │ └─# 캘린더 상태관리
-│ │     │ │ │ ├─schemas/                              │     │ │ │ ├─# Schemas
-│ │     │ │ │ │ └─calendar-view.schemas.ts            │     │ │ │ │ └─# 캘린더 뷰 스케마
-│ │     │ │ │ ├─store/                                │     │ │ │ ├─# Store
-│ │     │ │ │ │ └─useCalendarViewStore.ts             │     │ │ │ │ └─# 캘린더뷰 Store
-│ │     │ │ │ ├─constants.ts                          │     │ │ │ ├─# 캘린더 상수 데이터
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ ├─types.ts                              │     │ │ │ ├─# 이벤트, 캘린더 정보 타입
-│ │     │ │ │ ├─utils.ts                              │     │ │ │ ├─# 날짜 포맷, 범위 계산 등
-│ │     │ │ │ ├─view.constants.ts                     │     │ │ │ ├─# 캘린더 뷰 상수 데이터
-│ │     │ │ │ ├─view.types.ts                         │     │ │ │ ├─# 캘린더 뷰 이벤트, 캘린더 정보 타입
-│ │     │ │ │ └─view.utils.ts                         │     │ │ │ └─# 캘린더 뷰 유틸
-│ │     │ │ ├─_service/                               │     │ │ ├─# API/서비스 등
-│ │     │ │ │ ├─api.ts                                │     │ │ │ ├─# 캘린더 API
-│ │     │ │ │ └─index.ts                              │     │ │ │ └─# components export
-│ │     │ │ ├─[calendarId]/                           │     │ │ ├─# 특정 캘린더 상세
-│ │     │ │ │ └─page.tsx                              │     │ │ │ └─# 캘린더 ID별 상세
-│ │     │ │ └─page.tsx                                │     │ │ └─# 캘린더 루트 페이지
-│ │     │ ├─chat/                                     │     │ ├─# 프로젝트 채팅 기능
-│ │     │ │ ├─_components/                            │     │ │ ├─# UI(해당 도메인/route 전용)
-│ │     │ │ │ ├─ChannelModals.tsx                     │     │ │ │ ├─# 채널 생성/수정/삭제 모달
-│ │     │ │ │ ├─ChannelSettingsModal.tsx              │     │ │ │ ├─# 채널 설정
-│ │     │ │ │ ├─ChatDashboard.tsx                     │     │ │ │ ├─# 채널 목록 + 검색 패널
-│ │     │ │ │ ├─ChatHeader.tsx                        │     │ │ │ ├─# 채널 상단 바
-│ │     │ │ │ ├─ChatRightPanel.tsx                    │     │ │ │ ├─# 우측 패널(스레드/파일등)
-│ │     │ │ │ ├─ChatView.tsx                          │     │ │ │ ├─# 메시지 리스트 전체 뷰
-│ │     │ │ │ ├─CodeFencePreview.tsx                  │     │ │ │ ├─# 코드 블록 미리보기
-│ │     │ │ │ ├─CommandPalette.tsx                    │     │ │ │ ├─# 채팅 명령 팔레트
-│ │     │ │ │ ├─Composer.tsx                          │     │ │ │ ├─# 메시지 입력창
-│ │     │ │ │ ├─EmojiPicker.tsx                       │     │ │ │ ├─# 이모지 선택창
-│ │     │ │ │ ├─FilesPanel.tsx                        │     │ │ │ ├─# 채널 파일목록
-│ │     │ │ │ ├─HuddleBar.tsx                         │     │ │ │ ├─# 음성/화상 위한 미니 바
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ ├─Lightbox.tsx                          │     │ │ │ ├─# 이미지 확대
-│ │     │ │ │ ├─LinkPreview.tsx                       │     │ │ │ ├─# 링크 프리뷰
-│ │     │ │ │ ├─LiveReadersBar.tsx                    │     │ │ │ ├─# 읽고 있는 사람들 UI
-│ │     │ │ │ ├─MarkdownText.tsx                      │     │ │ │ ├─# 메시지 마크다운 랜더러
-│ │     │ │ │ ├─MentionPopover.tsx                    │     │ │ │ ├─# 멘션 자동완성
-│ │     │ │ │ ├─MessageContextMenu.tsx                │     │ │ │ ├─# 메시지 우클릭 메뉴
-│ │     │ │ │ ├─MessageGroup.tsx                      │     │ │ │ ├─# 메시지 그룹핑
-│ │     │ │ │ ├─PinManager.tsx                        │     │ │ │ ├─# 고정 메시지 UI
-│ │     │ │ │ ├─ProfilePopover.tsx                    │     │ │ │ ├─# 사용자 프로필 팝오버
-│ │     │ │ │ ├─ReadBy.tsx                            │     │ │ │ ├─# 읽은 사용자 목록
-│ │     │ │ │ ├─SavedModal.tsx                        │     │ │ │ ├─# 저장된 메시지 보기 모달
-│ │     │ │ │ ├─SearchPanel.tsx                       │     │ │ │ ├─# 채팅 검색창
-│ │     │ │ │ ├─SelectionBar.tsx                      │     │ │ │ ├─# 선택 모드 UI
-│ │     │ │ │ ├─ThreadsView.tsx                       │     │ │ │ ├─# 스레드 뷰
-│ │     │ │ │ └─ThreadTeaser.tsx                      │     │ │ │ └─# 스레드 티져
-│ │     │ │ ├─_model/                                 │     │ │ ├─# type, schema, logic 등
-│ │     │ │ │ ├─hooks/                                │     │ │ │ ├─# 채팅 hooks
-│ │     │ │ │ │ ├─index.ts                            │     │ │ │ │ ├─# components export
-│ │     │ │ │ │ ├─useChatLifecycle.ts                 │     │ │ │ │ ├─# 채팅연결/정리 관리
-│ │     │ │ │ │ ├─useMessageSections.ts               │     │ │ │ │ ├─# 날짜별 메시지 구간
-│ │     │ │ │ │ └─useThreadItems.ts                   │     │ │ │ │ └─# 스레드 아이템 관리
-│ │     │ │ │ ├─store/                                │     │ │ │ ├─# Store
-│ │     │ │ │ │ ├─useChatDashboardUiStore.ts          │     │ │ │ │ ├─# 채팅대시보드 UI Store
-│ │     │ │ │ │ ├─useChatViewUiStore.ts               │     │ │ │ │ ├─# 채팅 뷰 UI Store
-│ │     │ │ │ │ └─useThreadViewSotre.ts               │     │ │ │ │ └─# 스레드 뷰 Store
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ ├─store.ts                              │     │ │ │ ├─# 채팅 전용 zustand store
-│ │     │ │ │ ├─types.ts                              │     │ │ │ ├─# 채팅 타입 정의
-│ │     │ │ │ ├─view.constants.ts                     │     │ │ │ ├─# 채팅 뷰 상수 정의
-│ │     │ │ │ └─view.types.ts                         │     │ │ │ └─# 채팅 뷰 타입 정의
-│ │     │ │ ├─_service/                               │     │ │ ├─# API/서비스 등
-│ │     │ │ │ ├─api.ts                                │     │ │ │ ├─# 채팅 API
-│ │     │ │ │ └─index.ts                              │     │ │ │ └─# components export
-│ │     │ │ ├─[channelId]/                            │     │ │ ├─# 특정 채널 화면
-│ │     │ │ │ └─page.tsx                              │     │ │ │ └─# 채널 메시지 page
-│ │     │ │ ├─threads/                                │     │ │ ├─# 스레드 목록
-│ │     │ │ │ └─page.tsx                              │     │ │ │ └─# 스레드 탐색
-│ │     │ │ └─page.tsx                                │     │ │ └─# 채팅 루트 페이지
-│ │     │ ├─docs/                                     │     │ ├─# 문서 기능
-│ │     │ │ ├─_components/                            │     │ │ ├─# UI(해당 도메인/route 전용)
-│ │     │ │ │ ├─note-drive/                           │     │ │ │ ├─# 폴더/문서 라이브러리 UI
-│ │     │ │ │ │ ├─tree/                               │     │ │ │ │ ├─# tree 폴더와 문서
-│ │     │ │ │ │ │ ├─DeleteConfirmModal.tsx            │     │ │ │ │ │ ├─# 삭제 모달
-│ │     │ │ │ │ │ ├─DocNode.tsx                       │     │ │ │ │ │ ├─# 문서 노드 UI
-│ │     │ │ │ │ │ ├─DocsTree.tsx                      │     │ │ │ │ │ ├─# 폴더/문서 트리
-│ │     │ │ │ │ │ ├─FolderNode.tsx                    │     │ │ │ │ │ ├─# 폴더 노드 UI
-│ │     │ │ │ │ │ ├─index.ts                          │     │ │ │ │ │ ├─# components export
-│ │     │ │ │ │ │ ├─TreeContextMenu.tsx               │     │ │ │ │ │ ├─# 트리 우클릭 메뉴
-│ │     │ │ │ │ │ └─TreeToolbar.tsx                   │     │ │ │ │ │ └─# 트리 툴바
-│ │     │ │ │ │ ├─CreateFolderModal.tsx               │     │ │ │ │ ├─# 새폴더 생성 모달
-│ │     │ │ │ │ ├─DocumentGrid.tsx                    │     │ │ │ │ ├─# 문서 그리드 뷰
-│ │     │ │ │ │ ├─DocumentTable.tsx                   │     │ │ │ │ ├─# 문서 테이블 뷰
-│ │     │ │ │ │ ├─FilterMenu.tsx                      │     │ │ │ │ ├─# 필터 메뉴
-│ │     │ │ │ │ ├─FolderGrid.tsx                      │     │ │ │ │ ├─# 폴더 그리드 뷰
-│ │     │ │ │ │ ├─index.ts                            │     │ │ │ │ ├─# components export
-│ │     │ │ │ │ └─SortMenu.tsx                        │     │ │ │ │ └─# 정렬 메뉴
-│ │     │ │ │ ├─DocCommentsPanel.tsx                  │     │ │ │ ├─# 문서 댓글 패널
-│ │     │ │ │ ├─DocEditorCanvas.tsx                   │     │ │ │ ├─# 문서 에디터
-│ │     │ │ │ ├─DocEditorContext.tsx                  │     │ │ │ ├─# Tiptap 에디터 컨텍스트
-│ │     │ │ │ ├─DocEditorTabs.tsx                     │     │ │ │ ├─# DocEditor Tab부분
-│ │     │ │ │ ├─DocEditorToolbar.tsx                  │     │ │ │ ├─# DocEditor toolbar
-│ │     │ │ │ ├─DocImageModal.tsx                     │     │ │ │ ├─# 문서 Image 모달
-│ │     │ │ │ ├─DocLinkModal.tsx                      │     │ │ │ ├─# 문서 Link 모달
-│ │     │ │ │ ├─DocReadView.tsx                       │     │ │ │ ├─# 읽기 전용 뷰
-│ │     │ │ │ ├─DocsDashboard.tsx                     │     │ │ │ ├─# 문서 대시보드(최근문서)
-│ │     │ │ │ ├─DocView.tsx                           │     │ │ │ ├─# 문서 에디터 뷰
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ └─SlashMenu.tsx                         │     │ │ │ └─# 슬래시 명령
-│ │     │ │ ├─_model/                                 │     │ │ ├─# type, schema, logic 등
-│ │     │ │ │ ├─hooks/                                │     │ │ │ ├─# 문서 hooks
-│ │     │ │ │ │ ├─index.ts                            │     │ │ │ │ ├─# components export
-│ │     │ │ │ │ ├─useDocOutline.ts                    │     │ │ │ │ ├─# 문서 아웃라인
-│ │     │ │ │ │ └─useDocTree.ts                       │     │ │ │ │ └─# 폴더+문서 계층 트리
-│ │     │ │ │ ├─schemas/                              │     │ │ │ ├─# Schemas
-│ │     │ │ │ │ └─docs-dashboard.schemas.ts           │     │ │ │ │ └─# 문서 대시보드 스케마
-│ │     │ │ │ ├─store/                                │     │ │ │ ├─# Store
-│ │     │ │ │ │ └─useDocsDashboardStore.ts            │     │ │ │ │ └─# 문서 대시보드 Store
-│ │     │ │ │ ├─utils/                                │     │ │ │ ├─# 문서 Utils
-│ │     │ │ │ │ ├─index.ts                            │     │ │ │ │ ├─# components export
-│ │     │ │ │ │ └─noteDriveViewUtils.ts               │     │ │ │ │ └─# 노트 드라이브 뷰 헬퍼
-│ │     │ │ │ ├─docs.ts                               │     │ │ │ ├─# 문서 구조, 블록 구조
-│ │     │ │ │ ├─events.ts                             │     │ │ │ ├─# docs:update 이벤트 hub
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ ├─markdown.ts                           │     │ │ │ ├─# 마크다운 변환 로직
-│ │     │ │ │ ├─types.ts                              │     │ │ │ ├─# 문서 타입 정의
-│ │     │ │ │ ├─view.constants.ts                     │     │ │ │ ├─# 문서 뷰 상수
-│ │     │ │ │ └─view.types.ts                         │     │ │ │ └─# 문서 뷰 타입
-│ │     │ │ ├─_service/                               │     │ │ ├─# API/서비스 등
-│ │     │ │ │ ├─api.ts                                │     │ │ │ ├─# 문서 API
-│ │     │ │ │ └─index.ts                              │     │ │ │ └─# components export
-│ │     │ │ ├─[docId]/                                │     │ │ ├─# 특정 문서 페이지
-│ │     │ │ │ └─page.tsx                              │     │ │ │ └─# 문서 ID별 에디터
-│ │     │ │ └─page.tsx                                │     │ │ └─# 문서 루트 페이지
-│ │     │ ├─file/                                     │     │ ├─# 프로젝트 파일 관리 라우트
-│ │     │ │ ├─_model/                                 │     │ │ ├─# type, schema, logic 등
-│ │     │ │ │ ├─hooks/                                │     │ │ │ ├─# 파일 hooks
-│ │     │ │ │ │ ├─useFilePageData.ts                  │     │ │ │ │ ├─# 파일 페이지 데이터
-│ │     │ │ │ │ └─useProjectFileFolders.ts            │     │ │ │ │ └─# 파일 폴더 관리
-│ │     │ │ │ ├─schemas/                              │     │ │ │ ├─# Schemas
-│ │     │ │ │ │ └─file.schemas.ts                     │     │ │ │ │ └─# 파일 스케마
-│ │     │ │ │ ├─store/                                │     │ │ │ ├─# Store
-│ │     │ │ │ │ └─useFilePageStore.ts                 │     │ │ │ │ └─# 파일 페이지 Store
-│ │     │ │ │ ├─file-page.types.ts                    │     │ │ │ ├─# 파일 페이지 타입 정의
-│ │     │ │ │ └─vault.ts                              │     │ │ │ └─# 파일 저장소 로직
-│ │     │ │ ├─_service/                               │     │ │ ├─# API/서비스 등
-│ │     │ │ │ └─api.ts                                │     │ │ │ └─# 파일 업로드/관리 API
-│ │     │ │ └─page.tsx                                │     │ │ └─# 파일 루트 페이지
-│ │     │ ├─issues/                                   │     │ ├─# 이슈 트래커 라우트
-│ │     │ │ ├─_components/                            │     │ │ ├─# UI(해당 도메인/route 전용)
-│ │     │ │ │ ├─views/                                │     │ │ │ ├─# 이슈 리스트 뷰
-│ │     │ │ │ │ ├─table/                              │     │ │ │ │ ├─# 테이블 뷰 컴포넌트
-│ │     │ │ │ │ │ ├─index.ts                          │     │ │ │ │ │ ├─# components export
-│ │     │ │ │ │ │ ├─IssueActions.tsx                  │     │ │ │ │ │ ├─# 이슈 액션 버튼
-│ │     │ │ │ │ │ ├─IssueRow.tsx                      │     │ │ │ │ │ ├─# 이슈 행 UI
-│ │     │ │ │ │ │ └─SubtaskList.tsx                   │     │ │ │ │ │ └─# 서브태스크 리스트
-│ │     │ │ │ ├─timeline/                             │     │ │ │ │ ├─# 타임라인 뷰
-│ │     │ │ │ │ │ ├─index.ts                          │     │ │ │ │ │ ├─# components export
-│ │     │ │ │ │ │ ├─TimelineGroup.tsx                 │     │ │ │ │ │ ├─# 타임라인 그룹
-│ │     │ │ │ │ │ └─TimelineTooltip.tsx               │     │ │ │ │ │ └─# 타임라인 툴팁
-│ │     │ │ │ │ ├─index.ts                            │     │ │ │ │ ├─# components export
-│ │     │ │ │ │ ├─IssuesChartView.tsx                 │     │ │ │ │ ├─# 이슈 차트 뷰
-│ │     │ │ │ │ ├─IssuesDashboardView.tsx             │     │ │ │ │ ├─# 이슈 대시보드
-│ │     │ │ │ │ ├─IssuesKanbanView.ts                 │     │ │ │ │ ├─# 칸반 보드 뷰
-│ │     │ │ │ │ ├─IssuesTableView.ts                  │     │ │ │ │ ├─# 테이블 뷰
-│ │     │ │ │ │ └─IssuesTimelineView.ts               │     │ │ │ │ └─# 타임라인 뷰
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ └─IssuesBoardView.tsx                   │     │ │ │ └─# 이슈 보드 메인 뷰(뷰 전환)
-│ │     │ │ ├─_model/                                 │     │ │ ├─# type, schema, logic 등
-│ │     │ │ │ ├─hooks/                                │     │ │ │ ├─# 이슈 hooks
-│ │     │ │ │ │ ├─index.ts                            │     │ │ │ │ ├─# components export
-│ │     │ │ │ │ └─useIssuesBoardState.ts              │     │ │ │ │ └─# 보드 상태 관리
-│ │     │ │ │ ├─store/                                │     │ │ │ ├─# Store
-│ │     │ │ │ │ └─useIssuesViewStore.ts               │     │ │ │ │ └─# 이슈 뷰 Store
-│ │     │ │ │ ├─utils/                                │     │ │ │ ├─# 이슈 뷰 Utils
-│ │     │ │ │ │ ├─index.ts                            │     │ │ │ │ ├─# components export
-│ │     │ │ │ │ └─issueViewUtils.ts                   │     │ │ │ │ └─# 이슈 뷰 헬퍼
-│ │     │ │ │ ├─analytics.constants.ts                │     │ │ │ ├─# 상수
-│ │     │ │ │ ├─board.types.ts                        │     │ │ │ ├─# 칸반 보드 타입
-│ │     │ │ │ ├─index.ts                              │     │ │ │ ├─# components export
-│ │     │ │ │ ├─types.ts                              │     │ │ │ ├─# 이슈 타입 정의
-│ │     │ │ │ ├─view.constants.ts                     │     │ │ │ ├─# 이슈 뷰 상수
-│ │     │ │ │ └─view.types.ts                         │     │ │ │ └─# 이수 뷰 타입
-│ │     │ │ ├─_service/                               │     │ │ ├─# API/서비스 등
-│ │     │ │ │ ├─api.ts                                │     │ │ │ ├─# 이슈 API
-│ │     │ │ │ └─index.ts                              │     │ │ │ └─# components export
-│ │     │ │ ├─[id]/                                   │     │ │ ├─# 개별 이슈 상세 페이지
-│ │     │ │ │ └─page.tsx                              │     │ │ │ └─# 이슈 ID별 페이지
-│ │     │ │ └─page.tsx                                │     │ │ └─# 이슈 루트 페이지
-│ │     │ └─members/                                  │     │ └─# 프로젝트 멤버 관리 라우트
-│ │     │   ├─_components/                            │     │   ├─# UI(해당 도메인/route 전용)
-│ │     │   │ ├─index.ts                              │     │   │ ├─# components export
-│ │     │   │ ├─InviteForm.tsx                        │     │   │ ├─# 멤버 초대
-│ │     │   │ ├─MemberAvatar.tsx                      │     │   │ ├─# 멤버 아바타
-│ │     │   │ ├─MemberCard.tsx                        │     │   │ ├─# 멤버 카드
-│ │     │   │ ├─MemberProfilePanel.tsx                │     │   │ ├─# 멤버 프로필 패널
-│ │     │   │ └─MembersView.tsx                       │     │   │ └─# 멤버 리스트 뷰
-│ │     │   ├─_model/                                 │     │   ├─# type, schema, logic 등
-│ │     │   │ ├─schemas/                              │     │   │ ├─# Schemas
-│ │     │   │ │ └─member.schemas.ts                   │     │   │ │ └─# 멤버 Schemas
-│ │     │   │ ├─store/                                │     │   │ ├─# Store
-│ │     │   │ │ └─useMembersViewStore.ts              │     │   │ │ └─# 멤버 뷰 Store
-│ │     │   │ ├─index.ts                              │     │   │ ├─# components export
-│ │     │   │ └─types.ts                              │     │   │ └─# 멤버 타입
-│ │     │   └─page.tsx                                │     │   └─# 멤버 루트 페이지
-│ │     ├─layout.tsx                                  │     ├─# teamId level layout
-│ │     └─page.tsx                                    │     └─# team loot page(Overview)
+│ │   ├─[teamId]/                                     │   ├─# 특정 팀에 해당하는 모든 기능
+│ │   │ ├─_components/                                │   │ ├─# 팀 레벨 공통 UI
+│ │   │ │ ├─floating-dm/                              │   │ │ ├─# 플로팅 디엠 UI
+│ │   │ │ │ ├─DmListView.tsx                          │   │ │ │ ├─# 디엠 리스트 뷰
+│ │   │ │ │ ├─floating-dm.constants.ts                │   │ │ │ ├─# 플로팅 디엠 상수 정의
+│ │   │ │ │ ├─floating-dm.utils.ts                    │   │ │ │ ├─# 플로팅 디엠 유틸
+│ │   │ │ │ ├─FloatingLauncher.tsx                    │   │ │ │ ├─# 플로팅 런처
+│ │   │ │ │ └─index.ts                                │   │ │ │ └─# components export
+│ │   │ │ ├─home-page-modals/                         │   │ │ ├─# 홈페이지 모달
+│ │   │ │ │ ├─ConfirmModal.tsx                        │   │ │ │ ├─# 확인 모달
+│ │   │ │ │ ├─CreateProjectModal.tsx                  │   │ │ │ ├─# 프로젝트생성 모달
+│ │   │ │ │ ├─CreateTeamModal.tsx                     │   │ │ │ ├─# 팀생성 모달
+│ │   │ │ │ ├─EditProjectModal.tsx                    │   │ │ │ ├─# 프로젝트 수정 모달
+│ │   │ │ │ ├─IconPickerSection.tsx                   │   │ │ │ ├─# 아이콘 선택 모달
+│ │   │ │ │ ├─index.ts                                │   │ │ │ ├─# components export
+│ │   │ │ │ ├─TeamRenameModal.tsx                     │   │ │ │ ├─# 팀이름 수정 모달
+│ │   │ │ │ └─types.ts                                │   │ │ │ └─# 홈페이지모달 타입
+│ │   │ │ ├─projects/                                 │   │ │ ├─# 프로젝트 리스트/개요 전용 UI
+│ │   │ │ │ ├─index.ts                                │   │ │ │ ├─# components export
+│ │   │ │ │ ├─ProjectCard.tsx                         │   │ │ │ ├─# 프로젝트 카드 UI
+│ │   │ │ │ ├─ProjectMenu.tsx                         │   │ │ │ ├─# 프로젝트 우클릭 메뉴
+│ │   │ │ │ └─ProjectToolbar.tsx                      │   │ │ │ └─# 프로젝트 상단 툴바
+│ │   │ │ ├─views/                                    │   │ │ ├─# 팀 대시보드 뷰
+│ │   │ │ │ ├─team-members/                           │   │ │ │ ├─# 팀멤버
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ ├─InviteMemberModal.tsx                 │   │ │ │ │ ├─# 팀 초대 모달
+│ │   │ │ │ │ ├─MembersTab.tsx                        │   │ │ │ │ ├─# 멤버 탭
+│ │   │ │ │ │ ├─PendingInvitesTab.tsx                 │   │ │ │ │ ├─# 초대 탭
+│ │   │ │ │ │ ├─RolesTab.tsx                          │   │ │ │ │ ├─# 권한 탭
+│ │   │ │ │ │ ├─team-members.constants.ts             │   │ │ │ │ ├─# 팀 멤버 상수 정의
+│ │   │ │ │ │ └─team-members.types.ts                 │   │ │ │ │ └─# 팀 멤버 타입 정의
+│ │   │ │ │ ├─ActivitiesView.tsx                      │   │ │ │ ├─# 최근 활동 뷰
+│ │   │ │ │ ├─FriendsView.tsx                         │   │ │ │ ├─# 친구 멤버 리스트 뷰
+│ │   │ │ │ ├─index.ts                                │   │ │ │ ├─# components export
+│ │   │ │ │ ├─RecentVisitedView.tsx                   │   │ │ │ ├─# 최근 방문한 프로젝트 뷰
+│ │   │ │ │ ├─SettingsView.tsx                        │   │ │ │ ├─# 워크스페이스 설정 뷰
+│ │   │ │ │ └─TeamMembersView.tsx                     │   │ │ │ └─# 팀 멤버 리스트 뷰
+│ │   │ │ ├─FloatingSupportCenter.tsx                 │   │ │ ├─# 플로팅 고객센터 UI
+│ │   │ │ ├─FloatingDm.tsx                            │   │ │ ├─# 플로팅 DM UI
+│ │   │ │ ├─HomePageModals.tsx                        │   │ │ ├─# 홈페이지 모달
+│ │   │ │ ├─index.ts                                  │   │ │ ├─# components export
+│ │   │ │ ├─InviteBanner.tsx                          │   │ │ ├─# 팀 초대 배너 UI
+│ │   │ │ ├─LeftNav.tsx                               │   │ │ ├─# 팀 레벨 왼쪽 네비게이션
+│ │   │ │ ├─WorkspaceSettingsModal.tsx                │   │ │ ├─# 워크스페이스 단위 설정 모달
+│ │   │ │ └─WorkspaceTabs.tsx                         │   │ │ └─# 팀 레벨 탭 UI
+│ │   │ ├─_model/                                     │   │ ├─# type, schema, logic등
+│ │   │ │ ├─hooks/                                    │   │ │ ├─# 팀 hooks
+│ │   │ │ │ └─useTeams.ts                             │   │ │ │ └─# 팀 목록/상태 관리
+│ │   │ │ ├─project.constants.ts                      │   │ │ ├─# 프로젝트 상수 정의
+│ │   │ │ ├─project.types.ts                          │   │ │ ├─# 프로젝트 타입 정의
+│ │   │ │ ├─view.constants.ts                         │   │ │ ├─# 뷰 상수 데이터
+│ │   │ │ ├─view.types.ts                             │   │ │ ├─# 뷰 타입
+│ │   │ │ ├─view.utils.ts                             │   │ │ ├─# 뷰 유틸
+│ │   │ │ └─workspace.constants.ts                    │   │ │ └─# 워크스페이스 상수/설정값
+│ │   │ ├─[projectId]/                                │   │ ├─# 특정 프로젝트에 해당하는 기능
+│ │   │ │ ├─_components/                              │   │ │ ├─# UI(해당 도메인/route 전용)
+│ │   │ │ │ ├─home-dashboard/                         │   │ │ │ ├─# 홈 대시보드
+│ │   │ │ │ │ ├─details/                              │   │ │ │ │ ├─# 상세페이지
+│ │   │ │ │ │ │ ├─CalendarDetailView.tsx              │   │ │ │ │ │ ├─# 캘린더 상세페이지
+│ │   │ │ │ │ │ ├─ChatDetailView.tsx                  │   │ │ │ │ │ ├─# 채팅 상세페이지
+│ │   │ │ │ │ │ ├─detail-view.types.ts                │   │ │ │ │ │ ├─# 상세페이지 타입 정의
+│ │   │ │ │ │ │ ├─DocsDetailView.tsx                  │   │ │ │ │ │ ├─# 문서 상세페이지
+│ │   │ │ │ │ │ ├─FileDetailView.tsx                  │   │ │ │ │ │ ├─# 파일 상세페이지
+│ │   │ │ │ │ │ ├─IssuesDetailView.tsx                │   │ │ │ │ │ ├─# 이슈 상세페이지
+│ │   │ │ │ │ │ └─MembersDetailView.tsx               │   │ │ │ │ │ └─# 멤버 상세페이지
+│ │   │ │ │ │ ├─graph-ui.tsx                          │   │ │ │ │ ├─# 그래프 UI
+│ │   │ │ │ │ └─ProjectModuleDetailView.tsx           │   │ │ │ │ └─# 프로젝트 모듈 상세페이지
+│ │   │ │ ├─_model/                                   │   │ │ ├─# type, schema, logic등
+│ │   │ │ │ ├─hooks/                                  │   │ │ │ ├─# 프로젝트 hook
+│ │   │ │ │ │ ├─useProjectHomeDashboardData.ts        │   │ │ │ │ ├─# 프로젝트 홈 대시보드 데이터
+│ │   │ │ │ │ └─useProjects.ts                        │   │ │ │ │ └─# 프로젝트 데이터
+│ │   │ │ │ ├─schemas/                                │   │ │ │ ├─# Schemas
+│ │   │ │ │ │ └─home-dashboard.schemas.ts             │   │ │ │ │ └─# 홈대시보드 스케마
+│ │   │ │ │ ├─store/                                  │   │ │ │ ├─# Store
+│ │   │ │ │ │ └─useProjectDashboardUiStore.ts         │   │ │ │ │ └─# 프로젝트대시보드 UI Store
+│ │   │ │ │ ├─dashboard-page.constants.ts             │   │ │ │ ├─# 대시보드 페이지 상수 정의
+│ │   │ │ │ ├─dashboard-page.types.ts                 │   │ │ │ ├─# 대시보드 페이지 타입 정의
+│ │   │ │ │ └─dashboard-page.utils.ts                 │   │ │ │ └─# 대시보드 페이지 유틸
+│ │   │ │ ├─calendar/                                 │   │ │ ├─# 프로젝트 캘린더 기능
+│ │   │ │ │ ├─_components/                            │   │ │ │ ├─# UI(해당 도메인/route 전용)
+│ │   │ │ │ │ ├─CalendarAgendaView.tsx                │   │ │ │ │ ├─# 일/주 일정 리스트
+│ │   │ │ │ │ ├─CalendarCreateModal.tsx               │   │ │ │ │ ├─# 일정 생성/수정 모달
+│ │   │ │ │ │ ├─CalendarDetailsPanel.tsx              │   │ │ │ │ ├─# 오른쪽 상세 패널
+│ │   │ │ │ │ ├─CalendarHeader.tsx                    │   │ │ │ │ ├─# 캘린더 top navigation
+│ │   │ │ │ │ ├─CalendarManageModal.tsx               │   │ │ │ │ ├─# 캘린더 설정 관리
+│ │   │ │ │ │ ├─CalendarMonthView.tsx                 │   │ │ │ │ ├─# 월간 보기
+│ │   │ │ │ │ ├─CalendarTimelineView.tsx              │   │ │ │ │ ├─# 시간 축 기반 Day/Week
+│ │   │ │ │ │ ├─CalendarView.tsx                      │   │ │ │ │ ├─# 캘린더 전체 page View
+│ │   │ │ │ │ ├─DayEventPill.tsx                      │   │ │ │ │ ├─# 일정 Pill UI
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ ├─TimelineTaskBar.tsx                   │   │ │ │ │ ├─# 일정 타임라인 블록
+│ │   │ │ │ │ └─UpcomingEventCard.tsx                 │   │ │ │ │ └─# 다가오는 일정 카드
+│ │   │ │ │ ├─_model/                                 │   │ │ │ ├─# type, schema, logic등
+│ │   │ │ │ │ ├─hooks/                                │   │ │ │ │ ├─# 캘린더 hooks
+│ │   │ │ │ │ │ ├─index.ts                            │   │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ └─useCalendarState.ts                 │   │ │ │ │ │ └─# 캘린더 상태관리
+│ │   │ │ │ │ ├─schemas/                              │   │ │ │ │ ├─# Schemas
+│ │   │ │ │ │ │ └─calendar-view.schemas.ts            │   │ │ │ │ │ └─# 캘린더 뷰 스케마
+│ │   │ │ │ │ ├─store/                                │   │ │ │ │ ├─# Store
+│ │   │ │ │ │ │ └─useCalendarViewStore.ts             │   │ │ │ │ │ └─# 캘린더뷰 Store
+│ │   │ │ │ │ ├─constants.ts                          │   │ │ │ │ ├─# 캘린더 상수 데이터
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ ├─types.ts                              │   │ │ │ │ ├─# 이벤트, 캘린더 정보 타입
+│ │   │ │ │ │ ├─utils.ts                              │   │ │ │ │ ├─# 날짜 포맷, 범위 계산 등
+│ │   │ │ │ │ ├─view.constants.ts                     │   │ │ │ │ ├─# 캘린더 뷰 상수 데이터
+│ │   │ │ │ │ ├─view.types.ts                         │   │ │ │ │ ├─# 캘린더 뷰 이벤트, 캘린더 정보 타입
+│ │   │ │ │ │ └─view.utils.ts                         │   │ │ │ │ └─# 캘린더 뷰 유틸
+│ │   │ │ │ ├─_service/                               │   │ │ │ ├─# API/서비스 등
+│ │   │ │ │ │ ├─api.ts                                │   │ │ │ │ ├─# 캘린더 API
+│ │   │ │ │ │ └─index.ts                              │   │ │ │ │ └─# components export
+│ │   │ │ │ ├─[calendarId]/                           │   │ │ │ ├─# 특정 캘린더 상세
+│ │   │ │ │ │ └─page.tsx                              │   │ │ │ │ └─# 캘린더 ID별 상세
+│ │   │ │ │ └─page.tsx                                │   │ │ │ └─# 캘린더 루트 페이지
+│ │   │ │ ├─chat/                                     │   │ │ ├─# 프로젝트 채팅 기능
+│ │   │ │ │ ├─_components/                            │   │ │ │ ├─# UI(해당 도메인/route 전용)
+│ │   │ │ │ │ ├─ChannelModals.tsx                     │   │ │ │ │ ├─# 채널 생성/수정/삭제 모달
+│ │   │ │ │ │ ├─ChannelSettingsModal.tsx              │   │ │ │ │ ├─# 채널 설정
+│ │   │ │ │ │ ├─ChatDashboard.tsx                     │   │ │ │ │ ├─# 채널 목록 + 검색 패널
+│ │   │ │ │ │ ├─ChatHeader.tsx                        │   │ │ │ │ ├─# 채널 상단 바
+│ │   │ │ │ │ ├─ChatRightPanel.tsx                    │   │ │ │ │ ├─# 우측 패널(스레드/파일등)
+│ │   │ │ │ │ ├─ChatView.tsx                          │   │ │ │ │ ├─# 메시지 리스트 전체 뷰
+│ │   │ │ │ │ ├─CodeFencePreview.tsx                  │   │ │ │ │ ├─# 코드 블록 미리보기
+│ │   │ │ │ │ ├─CommandPalette.tsx                    │   │ │ │ │ ├─# 채팅 명령 팔레트
+│ │   │ │ │ │ ├─Composer.tsx                          │   │ │ │ │ ├─# 메시지 입력창
+│ │   │ │ │ │ ├─EmojiPicker.tsx                       │   │ │ │ │ ├─# 이모지 선택창
+│ │   │ │ │ │ ├─FilesPanel.tsx                        │   │ │ │ │ ├─# 채널 파일목록
+│ │   │ │ │ │ ├─HuddleBar.tsx                         │   │ │ │ │ ├─# 음성/화상 위한 미니 바
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ ├─Lightbox.tsx                          │   │ │ │ │ ├─# 이미지 확대
+│ │   │ │ │ │ ├─LinkPreview.tsx                       │   │ │ │ │ ├─# 링크 프리뷰
+│ │   │ │ │ │ ├─LiveReadersBar.tsx                    │   │ │ │ │ ├─# 읽고 있는 사람들 UI
+│ │   │ │ │ │ ├─MarkdownText.tsx                      │   │ │ │ │ ├─# 메시지 마크다운 랜더러
+│ │   │ │ │ │ ├─MentionPopover.tsx                    │   │ │ │ │ ├─# 멘션 자동완성
+│ │   │ │ │ │ ├─MessageContextMenu.tsx                │   │ │ │ │ ├─# 메시지 우클릭 메뉴
+│ │   │ │ │ │ ├─MessageGroup.tsx                      │   │ │ │ │ ├─# 메시지 그룹핑
+│ │   │ │ │ │ ├─PinManager.tsx                        │   │ │ │ │ ├─# 고정 메시지 UI
+│ │   │ │ │ │ ├─ProfilePopover.tsx                    │   │ │ │ │ ├─# 사용자 프로필 팝오버
+│ │   │ │ │ │ ├─ReadBy.tsx                            │   │ │ │ │ ├─# 읽은 사용자 목록
+│ │   │ │ │ │ ├─SavedModal.tsx                        │   │ │ │ │ ├─# 저장된 메시지 보기 모달
+│ │   │ │ │ │ ├─SearchPanel.tsx                       │   │ │ │ │ ├─# 채팅 검색창
+│ │   │ │ │ │ ├─SelectionBar.tsx                      │   │ │ │ │ ├─# 선택 모드 UI
+│ │   │ │ │ │ ├─ThreadsView.tsx                       │   │ │ │ │ ├─# 스레드 뷰
+│ │   │ │ │ │ └─ThreadTeaser.tsx                      │   │ │ │ │ └─# 스레드 티져
+│ │   │ │ │ ├─_model/                                 │   │ │ │ ├─# type, schema, logic 등
+│ │   │ │ │ │ ├─hooks/                                │   │ │ │ │ ├─# 채팅 hooks
+│ │   │ │ │ │ │ ├─index.ts                            │   │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ ├─useChatLifecycle.ts                 │   │ │ │ │ │ ├─# 채팅연결/정리 관리
+│ │   │ │ │ │ │ ├─useMessageSections.ts               │   │ │ │ │ │ ├─# 날짜별 메시지 구간
+│ │   │ │ │ │ │ └─useThreadItems.ts                   │   │ │ │ │ │ └─# 스레드 아이템 관리
+│ │   │ │ │ │ ├─store/                                │   │ │ │ │ ├─# Store
+│ │   │ │ │ │ │ ├─useChatDashboardUiStore.ts          │   │ │ │ │ │ ├─# 채팅대시보드 UI Store
+│ │   │ │ │ │ │ ├─useChatViewUiStore.ts               │   │ │ │ │ │ ├─# 채팅 뷰 UI Store
+│ │   │ │ │ │ │ └─useThreadViewSotre.ts               │   │ │ │ │ │ └─# 스레드 뷰 Store
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ ├─store.ts                              │   │ │ │ │ ├─# 채팅 전용 zustand store
+│ │   │ │ │ │ ├─types.ts                              │   │ │ │ │ ├─# 채팅 타입 정의
+│ │   │ │ │ │ ├─view.constants.ts                     │   │ │ │ │ ├─# 채팅 뷰 상수 정의
+│ │   │ │ │ │ └─view.types.ts                         │   │ │ │ │ └─# 채팅 뷰 타입 정의
+│ │   │ │ │ ├─_service/                               │   │ │ │ ├─# API/서비스 등
+│ │   │ │ │ │ ├─api.ts                                │   │ │ │ │ ├─# 채팅 API
+│ │   │ │ │ │ └─index.ts                              │   │ │ │ │ └─# components export
+│ │   │ │ │ ├─[channelId]/                            │   │ │ │ ├─# 특정 채널 화면
+│ │   │ │ │ │ └─page.tsx                              │   │ │ │ │ └─# 채널 메시지 page
+│ │   │ │ │ ├─threads/                                │   │ │ │ ├─# 스레드 목록
+│ │   │ │ │ │ └─page.tsx                              │   │ │ │ │ └─# 스레드 탐색
+│ │   │ │ │ └─page.tsx                                │   │ │ │ └─# 채팅 루트 페이지
+│ │   │ │ ├─docs/                                     │   │ │ ├─# 문서 기능
+│ │   │ │ │ ├─_components/                            │   │ │ │ ├─# UI(해당 도메인/route 전용)
+│ │   │ │ │ │ ├─note-drive/                           │   │ │ │ │ ├─# 폴더/문서 라이브러리 UI
+│ │   │ │ │ │ │ ├─tree/                               │   │ │ │ │ │ ├─# tree 폴더와 문서
+│ │   │ │ │ │ │ │ ├─DeleteConfirmModal.tsx            │   │ │ │ │ │ │ ├─# 삭제 모달
+│ │   │ │ │ │ │ │ ├─DocNode.tsx                       │   │ │ │ │ │ │ ├─# 문서 노드 UI
+│ │   │ │ │ │ │ │ ├─DocsTree.tsx                      │   │ │ │ │ │ │ ├─# 폴더/문서 트리
+│ │   │ │ │ │ │ │ ├─FolderNode.tsx                    │   │ │ │ │ │ │ ├─# 폴더 노드 UI
+│ │   │ │ │ │ │ │ ├─index.ts                          │   │ │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ │ ├─TreeContextMenu.tsx               │   │ │ │ │ │ │ ├─# 트리 우클릭 메뉴
+│ │   │ │ │ │ │ │ └─TreeToolbar.tsx                   │   │ │ │ │ │ │ └─# 트리 툴바
+│ │   │ │ │ │ │ ├─CreateFolderModal.tsx               │   │ │ │ │ │ ├─# 새폴더 생성 모달
+│ │   │ │ │ │ │ ├─DocumentGrid.tsx                    │   │ │ │ │ │ ├─# 문서 그리드 뷰
+│ │   │ │ │ │ │ ├─DocumentTable.tsx                   │   │ │ │ │ │ ├─# 문서 테이블 뷰
+│ │   │ │ │ │ │ ├─FilterMenu.tsx                      │   │ │ │ │ │ ├─# 필터 메뉴
+│ │   │ │ │ │ │ ├─FolderGrid.tsx                      │   │ │ │ │ │ ├─# 폴더 그리드 뷰
+│ │   │ │ │ │ │ ├─index.ts                            │   │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ └─SortMenu.tsx                        │   │ │ │ │ │ └─# 정렬 메뉴
+│ │   │ │ │ │ ├─DocCommentsPanel.tsx                  │   │ │ │ │ ├─# 문서 댓글 패널
+│ │   │ │ │ │ ├─DocEditorCanvas.tsx                   │   │ │ │ │ ├─# 문서 에디터
+│ │   │ │ │ │ ├─DocEditorContext.tsx                  │   │ │ │ │ ├─# Tiptap 에디터 컨텍스트
+│ │   │ │ │ │ ├─DocEditorTabs.tsx                     │   │ │ │ │ ├─# DocEditor Tab부분
+│ │   │ │ │ │ ├─DocEditorToolbar.tsx                  │   │ │ │ │ ├─# DocEditor toolbar
+│ │   │ │ │ │ ├─DocImageModal.tsx                     │   │ │ │ │ ├─# 문서 Image 모달
+│ │   │ │ │ │ ├─DocLinkModal.tsx                      │   │ │ │ │ ├─# 문서 Link 모달
+│ │   │ │ │ │ ├─DocReadView.tsx                       │   │ │ │ │ ├─# 읽기 전용 뷰
+│ │   │ │ │ │ ├─DocsDashboard.tsx                     │   │ │ │ │ ├─# 문서 대시보드(최근문서)
+│ │   │ │ │ │ ├─DocView.tsx                           │   │ │ │ │ ├─# 문서 에디터 뷰
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ └─SlashMenu.tsx                         │   │ │ │ │ └─# 슬래시 명령
+│ │   │ │ │ ├─_model/                                 │   │ │ │ ├─# type, schema, logic 등
+│ │   │ │ │ │ ├─hooks/                                │   │ │ │ │ ├─# 문서 hooks
+│ │   │ │ │ │ │ ├─index.ts                            │   │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ ├─useDocOutline.ts                    │   │ │ │ │ │ ├─# 문서 아웃라인
+│ │   │ │ │ │ │ └─useDocTree.ts                       │   │ │ │ │ │ └─# 폴더+문서 계층 트리
+│ │   │ │ │ │ ├─schemas/                              │   │ │ │ │ ├─# Schemas
+│ │   │ │ │ │ │ └─docs-dashboard.schemas.ts           │   │ │ │ │ │ └─# 문서 대시보드 스케마
+│ │   │ │ │ │ ├─store/                                │   │ │ │ │ ├─# Store
+│ │   │ │ │ │ │ └─useDocsDashboardStore.ts            │   │ │ │ │ │ └─# 문서 대시보드 Store
+│ │   │ │ │ │ ├─utils/                                │   │ │ │ │ ├─# 문서 Utils
+│ │   │ │ │ │ │ ├─index.ts                            │   │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ └─noteDriveViewUtils.ts               │   │ │ │ │ │ └─# 노트 드라이브 뷰 헬퍼
+│ │   │ │ │ │ ├─docs.ts                               │   │ │ │ │ ├─# 문서 구조, 블록 구조
+│ │   │ │ │ │ ├─events.ts                             │   │ │ │ │ ├─# docs:update 이벤트 hub
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ ├─markdown.ts                           │   │ │ │ │ ├─# 마크다운 변환 로직
+│ │   │ │ │ │ ├─types.ts                              │   │ │ │ │ ├─# 문서 타입 정의
+│ │   │ │ │ │ ├─view.constants.ts                     │   │ │ │ │ ├─# 문서 뷰 상수
+│ │   │ │ │ │ └─view.types.ts                         │   │ │ │ │ └─# 문서 뷰 타입
+│ │   │ │ │ ├─_service/                               │   │ │ │ ├─# API/서비스 등
+│ │   │ │ │ │ ├─api.ts                                │   │ │ │ │ ├─# 문서 API
+│ │   │ │ │ │ └─index.ts                              │   │ │ │ │ └─# components export
+│ │   │ │ │ ├─[docId]/                                │   │ │ │ ├─# 특정 문서 페이지
+│ │   │ │ │ │ └─page.tsx                              │   │ │ │ │ └─# 문서 ID별 에디터
+│ │   │ │ │ └─page.tsx                                │   │ │ │ └─# 문서 루트 페이지
+│ │   │ │ ├─file/                                     │   │ │ ├─# 프로젝트 파일 관리 라우트
+│ │   │ │ │ ├─_model/                                 │   │ │ │ ├─# type, schema, logic 등
+│ │   │ │ │ │ ├─hooks/                                │   │ │ │ │ ├─# 파일 hooks
+│ │   │ │ │ │ │ ├─useFilePageData.ts                  │   │ │ │ │ │ ├─# 파일 페이지 데이터
+│ │   │ │ │ │ │ └─useProjectFileFolders.ts            │   │ │ │ │ │ └─# 파일 폴더 관리
+│ │   │ │ │ │ ├─schemas/                              │   │ │ │ │ ├─# Schemas
+│ │   │ │ │ │ │ └─file.schemas.ts                     │   │ │ │ │ │ └─# 파일 스케마
+│ │   │ │ │ │ ├─store/                                │   │ │ │ │ ├─# Store
+│ │   │ │ │ │ │ └─useFilePageStore.ts                 │   │ │ │ │ │ └─# 파일 페이지 Store
+│ │   │ │ │ │ ├─file-page.types.ts                    │   │ │ │ │ ├─# 파일 페이지 타입 정의
+│ │   │ │ │ │ └─vault.ts                              │   │ │ │ │ └─# 파일 저장소 로직
+│ │   │ │ │ ├─_service/                               │   │ │ │ ├─# API/서비스 등
+│ │   │ │ │ │ └─api.ts                                │   │ │ │ │ └─# 파일 업로드/관리 API
+│ │   │ │ │ └─page.tsx                                │   │ │ │ └─# 파일 루트 페이지
+│ │   │ │ ├─issues/                                   │   │ │ ├─# 이슈 트래커 라우트
+│ │   │ │ │ ├─_components/                            │   │ │ │ ├─# UI(해당 도메인/route 전용)
+│ │   │ │ │ │ ├─views/                                │   │ │ │ │ ├─# 이슈 리스트 뷰
+│ │   │ │ │ │ │ ├─table/                              │   │ │ │ │ │ ├─# 테이블 뷰 컴포넌트
+│ │   │ │ │ │ │ │ ├─index.ts                          │   │ │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ │ ├─IssueActions.tsx                  │   │ │ │ │ │ │ ├─# 이슈 액션 버튼
+│ │   │ │ │ │ │ │ ├─IssueRow.tsx                      │   │ │ │ │ │ │ ├─# 이슈 행 UI
+│ │   │ │ │ │ │ │ └─SubtaskList.tsx                   │   │ │ │ │ │ │ └─# 서브태스크 리스트
+│ │   │ │ │ │ ├─timeline/                             │   │ │ │ │ │ ├─# 타임라인 뷰
+│ │   │ │ │ │ │ │ ├─index.ts                          │   │ │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ │ ├─TimelineGroup.tsx                 │   │ │ │ │ │ │ ├─# 타임라인 그룹
+│ │   │ │ │ │ │ │ └─TimelineTooltip.tsx               │   │ │ │ │ │ │ └─# 타임라인 툴팁
+│ │   │ │ │ │ │ ├─index.ts                            │   │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ ├─IssuesChartView.tsx                 │   │ │ │ │ │ ├─# 이슈 차트 뷰
+│ │   │ │ │ │ │ ├─IssuesDashboardView.tsx             │   │ │ │ │ │ ├─# 이슈 대시보드
+│ │   │ │ │ │ │ ├─IssuesKanbanView.ts                 │   │ │ │ │ │ ├─# 칸반 보드 뷰
+│ │   │ │ │ │ │ ├─IssuesTableView.ts                  │   │ │ │ │ │ ├─# 테이블 뷰
+│ │   │ │ │ │ │ └─IssuesTimelineView.ts               │   │ │ │ │ │ └─# 타임라인 뷰
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ └─IssuesBoardView.tsx                   │   │ │ │ │ └─# 이슈 보드 메인 뷰(뷰 전환)
+│ │   │ │ │ ├─_model/                                 │   │ │ │ ├─# type, schema, logic 등
+│ │   │ │ │ │ ├─hooks/                                │   │ │ │ │ ├─# 이슈 hooks
+│ │   │ │ │ │ │ ├─index.ts                            │   │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ └─useIssuesBoardState.ts              │   │ │ │ │ │ └─# 보드 상태 관리
+│ │   │ │ │ │ ├─store/                                │   │ │ │ │ ├─# Store
+│ │   │ │ │ │ │ └─useIssuesViewStore.ts               │   │ │ │ │ │ └─# 이슈 뷰 Store
+│ │   │ │ │ │ ├─utils/                                │   │ │ │ │ ├─# 이슈 뷰 Utils
+│ │   │ │ │ │ │ ├─index.ts                            │   │ │ │ │ │ ├─# components export
+│ │   │ │ │ │ │ └─issueViewUtils.ts                   │   │ │ │ │ │ └─# 이슈 뷰 헬퍼
+│ │   │ │ │ │ ├─analytics.constants.ts                │   │ │ │ │ ├─# 상수
+│ │   │ │ │ │ ├─board.types.ts                        │   │ │ │ │ ├─# 칸반 보드 타입
+│ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
+│ │   │ │ │ │ ├─types.ts                              │   │ │ │ │ ├─# 이슈 타입 정의
+│ │   │ │ │ │ ├─view.constants.ts                     │   │ │ │ │ ├─# 이슈 뷰 상수
+│ │   │ │ │ │ └─view.types.ts                         │   │ │ │ │ └─# 이수 뷰 타입
+│ │   │ │ │ ├─_service/                               │   │ │ │ ├─# API/서비스 등
+│ │   │ │ │ │ ├─api.ts                                │   │ │ │ │ ├─# 이슈 API
+│ │   │ │ │ │ └─index.ts                              │   │ │ │ │ └─# components export
+│ │   │ │ │ ├─[id]/                                   │   │ │ │ ├─# 개별 이슈 상세 페이지
+│ │   │ │ │ │ └─page.tsx                              │   │ │ │ │ └─# 이슈 ID별 페이지
+│ │   │ │ │ └─page.tsx                                │   │ │ │ └─# 이슈 루트 페이지
+│ │   │ │ └─members/                                  │   │ │ └─# 프로젝트 멤버 관리 라우트
+│ │   │ │   ├─_components/                            │   │ │   ├─# UI(해당 도메인/route 전용)
+│ │   │ │   │ ├─index.ts                              │   │ │   │ ├─# components export
+│ │   │ │   │ ├─InviteForm.tsx                        │   │ │   │ ├─# 멤버 초대
+│ │   │ │   │ ├─MemberAvatar.tsx                      │   │ │   │ ├─# 멤버 아바타
+│ │   │ │   │ ├─MemberCard.tsx                        │   │ │   │ ├─# 멤버 카드
+│ │   │ │   │ ├─MemberProfilePanel.tsx                │   │ │   │ ├─# 멤버 프로필 패널
+│ │   │ │   │ └─MembersView.tsx                       │   │ │   │ └─# 멤버 리스트 뷰
+│ │   │ │   ├─_model/                                 │   │ │   ├─# type, schema, logic 등
+│ │   │ │   │ ├─schemas/                              │   │ │   │ ├─# Schemas
+│ │   │ │   │ │ └─member.schemas.ts                   │   │ │   │ │ └─# 멤버 Schemas
+│ │   │ │   │ ├─store/                                │   │ │   │ ├─# Store
+│ │   │ │   │ │ └─useMembersViewStore.ts              │   │ │   │ │ └─# 멤버 뷰 Store
+│ │   │ │   │ ├─index.ts                              │   │ │   │ ├─# components export
+│ │   │ │   │ └─types.ts                              │   │ │   │ └─# 멤버 타입
+│ │   │ │   └─page.tsx                                │   │ │   └─# 멤버 루트 페이지
+│ │   │ ├─layout.tsx                                  │   │ ├─# teamId level layout
+│ │   │ └─page.tsx                                    │   │ └─# team loot page(Overview)
+│ │   └─layout.tsx                                    │   └─# workspace level layout
 │ ├─product/                                          ├─# 상세페이지
 │ │ └─[slug]/                                         │ └─# slug
 │ │  ├─_components/                                   │   ├─# UI(해당 도메인/route 전용)

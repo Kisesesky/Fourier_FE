@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Menu, X, Instagram, Facebook, Linkedin, Youtube, Globe, ChevronDown, ArrowRight } from 'lucide-react';
+import { Menu, X, Instagram, Facebook, Linkedin, Youtube, Globe, ChevronDown } from 'lucide-react';
 import { LANDING_MODULE_LINKS } from '@/components/landing/landing.constants';
 
 export default function LandingShell({ children }: { children: React.ReactNode }) {
@@ -94,78 +94,46 @@ export default function LandingShell({ children }: { children: React.ReactNode }
       <main className="mx-auto w-full max-w-7xl px-6 pb-12 pt-24">{children}</main>
 
       <footer className="mt-10 w-full border-t border-slate-200 bg-slate-100">
-        <div className="mx-auto grid w-full max-w-7xl gap-8 px-6 py-12 text-sm text-slate-700 md:grid-cols-[1.2fr_1fr_1fr_1fr_1fr]">
-          <div>
-            <div className="flex items-center gap-3">
-              <Image src="/logo.png" alt="Fourier Logo" width={36} height={36} className="h-9 w-9 rounded-lg object-cover" />
-              <span className="text-2xl font-semibold text-slate-900">Fourier</span>
+        <div className="mx-auto w-full max-w-7xl px-6 py-12">
+          <div className="grid gap-5 md:grid-cols-[1.25fr_1fr]">
+            <div className="py-2">
+              <div className="flex items-center gap-3">
+                <Image src="/logo.png" alt="Fourier Logo" width={36} height={36} className="h-9 w-9 rounded-lg object-cover" />
+                <span className="text-2xl font-semibold text-slate-900">Fourier</span>
+              </div>
+              <p className="mt-4 text-sm text-slate-600">
+                팀의 업무 흐름을 하나로 연결해 더 빠르고 선명하게 협업할 수 있도록 돕습니다.
+              </p>
+              <div className="mt-6 flex items-center gap-3 text-slate-500">
+                <Instagram className="h-5 w-5" />
+                <X className="h-5 w-5" />
+                <Linkedin className="h-5 w-5" />
+                <Facebook className="h-5 w-5" />
+                <Youtube className="h-5 w-5" />
+              </div>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800">
+                  <Globe className="h-4 w-4" />
+                  한국어
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                <p className="text-sm text-slate-500">쿠키 설정</p>
+              </div>
             </div>
-            <div className="mt-6 flex items-center gap-3 text-slate-500">
-              <Instagram className="h-5 w-5" />
-              <X className="h-5 w-5" />
-              <Linkedin className="h-5 w-5" />
-              <Facebook className="h-5 w-5" />
-              <Youtube className="h-5 w-5" />
-            </div>
-            <button type="button" className="mt-8 inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-base font-semibold text-slate-800">
-              <Globe className="h-4 w-4" />
-              한국어
-              <ChevronDown className="h-4 w-4" />
-            </button>
-            <p className="mt-7 text-slate-500">쿠키 설정</p>
-            <p className="mt-8 text-[30px] font-semibold leading-none text-slate-900">F</p>
-            <p className="mt-4 text-slate-500">© 2026 Fourier Labs, Inc.</p>
-          </div>
 
-          <div>
-            <p className="font-semibold text-slate-900">회사 소개</p>
-            <ul className="mt-3 space-y-2.5">
-              <li>Fourier 소개</li>
-              <li>채용</li>
-              <li>보안</li>
-              <li>서비스 상태</li>
-              <li>이용약관 및 개인정보 보호정책</li>
-              <li>개인정보 보호 권한</li>
-            </ul>
-          </div>
-
-          <div>
-            <p className="font-semibold text-slate-900">다운로드</p>
-            <ul className="mt-3 space-y-2.5">
-              <li>iOS & Android</li>
-              <li>Mac & Windows</li>
-              <li>메일</li>
-              <li>캘린더</li>
-              <li>Web Clipper</li>
-            </ul>
-          </div>
-
-          <div>
-            <p className="font-semibold text-slate-900">자료</p>
-            <ul className="mt-3 space-y-2.5">
-              <li>도움말 센터</li>
-              <li>요금제</li>
-              <li>블로그</li>
-              <li>커뮤니티</li>
-              <li>API 통합</li>
-              <li>템플릿</li>
-              <li>파트너 프로그램</li>
-            </ul>
-          </div>
-
-          <div className="flex flex-col justify-between">
-            <div>
-              <p className="font-semibold text-slate-900">용도별</p>
-              <ul className="mt-3 space-y-2.5">
-                <li>회사</li>
-                <li>팀</li>
-                <li>개인</li>
+            <div className="py-2">
+              <p className="text-sm font-semibold tracking-[0.08em] text-slate-900">회사 소개</p>
+              <ul className="mt-4 grid gap-2 text-sm text-slate-700">
+                <li>Fourier 소개</li>
+                <li>서비스 상태</li>
+                <li>이용약관 및 개인정보 보호정책</li>
+                <li>개인정보 보호 권한</li>
               </ul>
             </div>
-            <button type="button" className="inline-flex items-center gap-1 text-lg font-semibold text-slate-900">
-              더 살펴보기
-              <ArrowRight className="h-5 w-5" />
-            </button>
+          </div>
+
+          <div className="mt-5 border-t border-slate-200 pt-4 text-sm text-slate-500">
+            © 2026 Fourier Labs, Inc.
           </div>
         </div>
       </footer>

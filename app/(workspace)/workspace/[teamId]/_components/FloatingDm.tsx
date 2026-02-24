@@ -2,17 +2,17 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronDown, Search, Send, Smile } from "lucide-react";
+import { ArrowLeft, ChevronDown, MoreHorizontal, Plus, Reply, Search, Send, Smile, SmilePlus } from "lucide-react";
 import Modal from "@/components/common/Modal";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useAuthProfile } from "@/hooks/useAuthProfile";
 import { fetchFriends, type FriendProfile } from "@/lib/members";
 import { createDmRoom, fetchDmMessages, sendDmMessage, type DmMessage } from "@/lib/chat";
 import { getChatSocket } from "@/lib/socket";
+import EmojiPicker from "@/workspace/chat/_components/EmojiPicker";
 import DmListView from "./floating-dm/DmListView";
 import FloatingLauncher from "./floating-dm/FloatingLauncher";
 import {
-  FLOATING_DM_EMOJIS,
   FLOATING_DM_FILE_TYPE_OPTIONS,
   FLOATING_DM_STORAGE_KEYS,
 } from "./floating-dm/floating-dm.constants";
@@ -45,7 +45,8 @@ export default function FloatingDm() {
   const [, setLastReadAt] = useState<Record<string, string>>({});
   const [replyTarget, setReplyTarget] = useState<DmMessage | null>(null);
   const [emojiOpenFor, setEmojiOpenFor] = useState<string | null>(null);
-  const [inputEmojiOpen, setInputEmojiOpen] = useState(false);
+  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
+  const [inputFocused, setInputFocused] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [detailSearchOpen, setDetailSearchOpen] = useState(false);
@@ -59,10 +60,14 @@ export default function FloatingDm() {
   const [, setNowTick] = useState(0);
   const messageRefs = useMemo(() => new Map<string, HTMLDivElement | null>(), []);
   const messageScrollRef = useRef<HTMLDivElement | null>(null);
+  const draftInputRef = useRef<HTMLTextAreaElement | null>(null);
   const detailFileRef = useRef<HTMLDivElement | null>(null);
   const floatingBtnRef = useRef<HTMLButtonElement | null>(null);
   const contextRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef({ active: false, offsetX: 0, offsetY: 0, moved: false });
+  const dmComposerShellClass = `flex items-start gap-2 rounded-2xl border px-2 py-2 transition ${
+    inputFocused ? "border-brand/60 bg-panel shadow-[0_0_0_1px_rgba(59,130,246,0.18)]" : "border-border/70 bg-panel/95"
+  }`;
 
   const getDefaultFloatingPos = () => {
     const defaultSize = 48;
@@ -325,6 +330,12 @@ export default function FloatingDm() {
   }, [messages, open, view]);
 
   useEffect(() => {
+    if (!draftInputRef.current) return;
+    draftInputRef.current.style.height = "0px";
+    draftInputRef.current.style.height = `${Math.min(draftInputRef.current.scrollHeight, 96)}px`;
+  }, [draft]);
+
+  useEffect(() => {
     if (!open) return;
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     const socket = getChatSocket(token);
@@ -452,6 +463,16 @@ export default function FloatingDm() {
       return next;
     });
   };
+
+  useEffect(() => {
+    const onDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-dm-menu]")) return;
+      setMenuOpenFor(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
 
   const handleSend = async () => {
     if (!canSend || !roomId) return;
@@ -739,7 +760,7 @@ export default function FloatingDm() {
                             ref={(el) => {
                               messageRefs.set(msg.id, el);
                             }}
-                            className={`group flex ${mine ? "justify-end" : "justify-start"} rounded-2xl transition ${
+                            className={`group relative flex ${mine ? "justify-end" : "justify-start"} rounded-2xl transition ${
                               searchResults.includes(msg.id)
                                 ? "bg-black/5 dark:bg-white/5"
                                 : "hover:bg-black/5 dark:hover:bg-white/5"
@@ -833,41 +854,79 @@ export default function FloatingDm() {
                                     ))}
                                   </div>
                                 )}
-                                <div className="mt-2 flex items-center gap-2 text-[11px] text-muted opacity-0 transition group-hover:opacity-100">
-                                  <button
-                                    type="button"
-                                    className="rounded-full border border-border px-2 py-0.5 hover:text-foreground"
-                                    onClick={() => {
-                                      setReplyTarget(msg);
-                                    }}
-                                  >
-                                    Reply
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="rounded-full border border-border px-2 py-0.5 hover:text-foreground"
-                                    onClick={() => setEmojiOpenFor((prev) => (prev === msg.id ? null : msg.id))}
-                                  >
-                                    Reaction
-                                  </button>
-                                </div>
-                                {emojiOpenFor === msg.id && (
-                                  <div className="mt-2 inline-flex flex-wrap gap-2 rounded-xl border border-border bg-panel/80 px-3 py-2">
-                                    {FLOATING_DM_EMOJIS.map((emoji) => (
-                                      <button
-                                        key={`${msg.id}-${emoji}`}
-                                        type="button"
-                                        className="rounded-full px-1 text-base"
-                                        onClick={() => {
-                                          handleToggleReaction(msg.id, emoji);
-                                          setEmojiOpenFor(null);
-                                        }}
-                                      >
-                                        {emoji}
-                                      </button>
-                                    ))}
+                                <div className="absolute right-2 top-1 z-20 flex items-center gap-0.5 rounded-lg border border-border bg-background px-1 py-0.5 opacity-0 shadow-lg transition group-hover:opacity-100">
+                                  <div className="relative" data-dm-menu>
+                                    <button
+                                      type="button"
+                                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+                                      onClick={() => setEmojiOpenFor((prev) => (prev === msg.id ? null : msg.id))}
+                                      aria-label="퀵 이모지"
+                                    >
+                                      <SmilePlus size={15} />
+                                    </button>
+                                    {emojiOpenFor === msg.id && (
+                                      <div className="absolute bottom-full right-0 mb-1 flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 shadow-lg">
+                                        {["😁", "😥", "👌", "👋", "🙏", "❤️", "✅"].map((emoji) => (
+                                          <button
+                                            key={`${msg.id}-${emoji}`}
+                                            type="button"
+                                            className="inline-flex h-7 w-7 items-center justify-center rounded text-base hover:bg-subtle/60"
+                                            onClick={() => {
+                                              handleToggleReaction(msg.id, emoji);
+                                              setEmojiOpenFor(null);
+                                            }}
+                                          >
+                                            {emoji}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
+                                  <button
+                                    type="button"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+                                    onClick={() => setReplyTarget(msg)}
+                                    aria-label="답장"
+                                  >
+                                    <Reply size={14} />
+                                  </button>
+                                  <div className="relative" data-dm-menu>
+                                    <button
+                                      type="button"
+                                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+                                      onClick={() => setMenuOpenFor((prev) => (prev === msg.id ? null : msg.id))}
+                                      aria-label="추가 메뉴"
+                                    >
+                                      <MoreHorizontal size={14} />
+                                    </button>
+                                    {menuOpenFor === msg.id && (
+                                      <div className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-border bg-panel p-1 shadow-xl">
+                                        <button
+                                          type="button"
+                                          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted hover:bg-subtle/60 hover:text-foreground"
+                                          onClick={() => {
+                                            setMenuOpenFor(null);
+                                            setEmojiOpenFor(msg.id);
+                                          }}
+                                        >
+                                          <SmilePlus size={13} />
+                                          반응 추가
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted hover:bg-subtle/60 hover:text-foreground"
+                                          onClick={() => {
+                                            setMenuOpenFor(null);
+                                            setReplyTarget(msg);
+                                          }}
+                                        >
+                                          <Reply size={13} />
+                                          답장
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -912,27 +971,32 @@ export default function FloatingDm() {
                       </button>
                     </div>
                   )}
-                  <div className="flex items-center gap-3 rounded-full border border-border bg-panel/80 px-4 py-2">
+                  <div className={dmComposerShellClass}>
                     <button
                       type="button"
-                      className="flex h-12 w-12 items-center justify-center rounded-full bg-panel text-muted hover:text-foreground"
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-foreground/90 transition hover:bg-subtle/80 hover:text-foreground"
                     >
-                      +
+                      <Plus size={20} />
                     </button>
-                    <button
-                      type="button"
-                      className="flex h-12 w-12 items-center justify-center rounded-full bg-panel text-muted hover:text-foreground"
-                      onClick={() => setInputEmojiOpen((prev) => !prev)}
-                    >
-                      <Smile size={14} />
-                    </button>
-                    <input
-                      className="h-9 flex-1 bg-transparent text-xs text-foreground placeholder:text-muted focus:outline-none"
-                      placeholder="#대화에 메시지 보내기"
+                    <EmojiPicker
+                      presentation="modal"
+                      anchorClass="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground/90 hover:bg-subtle/80"
+                      triggerContent={<Smile size={22} />}
+                      onPick={(emoji) => setDraft((prev) => `${prev}${emoji}`)}
+                    />
+                    <textarea
+                      ref={draftInputRef}
+                      rows={1}
+                      maxLength={3000}
+                      onFocus={() => setInputFocused(true)}
+                      onBlur={() => setInputFocused(false)}
+                      className="hide-scrollbar max-h-24 min-h-10 flex-1 resize-none rounded-xl bg-background/70 px-3 py-2.5 text-[15px] leading-snug text-foreground outline-none placeholder:text-muted/75"
+                      placeholder={selected ? `@${selected.displayName}에게 메시지 보내기` : "메시지 입력…"}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
+                          if (e.shiftKey) return;
                           e.preventDefault();
                           void handleSend();
                         }
@@ -940,27 +1004,13 @@ export default function FloatingDm() {
                     />
                     <button
                       type="button"
-                      className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-500 text-white disabled:opacity-50"
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-subtle/70 disabled:text-muted"
                       disabled={!canSend}
                       onClick={handleSend}
                     >
-                      <Send size={14} />
+                      <Send size={17} />
                     </button>
                   </div>
-                  {inputEmojiOpen && (
-                    <div className="mt-2 inline-flex flex-wrap gap-2 rounded-xl border border-border bg-panel/80 px-3 py-2">
-                      {FLOATING_DM_EMOJIS.map((emoji) => (
-                        <button
-                          key={`input-${emoji}`}
-                          type="button"
-                          className="rounded-full px-1 text-base"
-                          onClick={() => setDraft((prev) => `${prev}${emoji}`)}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
               </div>

@@ -9,10 +9,25 @@ const api = axios.create({
   },
 });
 
+let redirectingToSignIn = false;
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err?.response?.status;
+    if (status === 401 && typeof window !== "undefined") {
+      const token = window.localStorage.getItem("accessToken");
+      if (token) {
+        window.localStorage.removeItem("accessToken");
+        delete api.defaults.headers.common.Authorization;
+        window.sessionStorage.removeItem("auth:justSignedIn");
+        window.dispatchEvent(new Event("auth:unauthorized"));
+        if (!redirectingToSignIn && window.location.pathname !== "/sign-in") {
+          redirectingToSignIn = true;
+          window.location.replace("/sign-in");
+        }
+      }
+    }
     if (status !== 401) {
       console.error("API Error:", err.response?.data || err.message);
     }

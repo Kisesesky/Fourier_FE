@@ -50,7 +50,7 @@ export default function FindPasswordPage() {
       </form>
 
       <div className="flex flex-col gap-2 border-t border-border pt-4 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/sign-in " className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">
+        <Link href="/sign-in" className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">
           로그인으로 돌아가기
         </Link>
         <Link href="/sign-up" className="text-foreground underline decoration-border underline-offset-4 hover:text-primary">

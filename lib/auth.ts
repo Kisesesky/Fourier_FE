@@ -32,6 +32,15 @@ export async function signOut(): Promise<void> {
   await api.post("/auth/sign-out");
 }
 
+export async function changePassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) {
+  const res = await api.post("/auth/change-password", payload);
+  return res.data as { success: boolean; message: string };
+}
+
 export async function fetchProfile(): Promise<AuthProfile> {
   const res = await api.get("/auth/profile");
   return res.data;

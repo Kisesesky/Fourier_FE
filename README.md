@@ -84,6 +84,7 @@
 │ │     │ │ ├─RecentVisitedView.tsx                   │     │ │ ├─# 최근 방문한 프로젝트 뷰
 │ │     │ │ ├─SettingsView.tsx                        │     │ │ ├─# 워크스페이스 설정 뷰
 │ │     │ │ └─TeamMembersView.tsx                     │     │ │ └─# 팀 멤버 리스트 뷰
+│ │     │ ├─FloatingSupportCenter.tsx                 │     │ ├─# 플로팅 고객센터 UI
 │ │     │ ├─FloatingDm.tsx                            │     │ ├─# 플로팅 DM UI
 │ │     │ ├─HomePageModals.tsx                        │     │ ├─# 홈페이지 모달
 │ │     │ ├─index.ts                                  │     │ ├─# components export
@@ -427,6 +428,7 @@
 │ ├─realtime.ts                                       ├─# 실시간 동기화 및 Presence 관련 유팅
 │ ├─search.ts                                         ├─# 검색 기능 지원 함수
 │ ├─socket.ts                                         ├─# WebSocket 통신 함수 및 설정
+│ ├─support.ts                                        ├─# 고객센터 관리
 │ ├─team.ts                                           ├─# 팀 관리
 │ ├─theme.ts                                          ├─# 테마 관련 유틸
 │ ├─uploads.ts                                        ├─# 파일 업로드

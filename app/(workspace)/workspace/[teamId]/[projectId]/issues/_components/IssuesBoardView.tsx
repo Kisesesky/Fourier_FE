@@ -97,10 +97,14 @@ export default function IssuesBoardView() {
   const [timelineFilters, setTimelineFilters] = useState<Record<string, boolean>>({});
 
   const timelineOptions = useMemo(() => {
-    const opts = issueGroups.map((group) => ({ key: group.id, label: group.name }));
+    const opts = issueGroups.map((group) => ({
+      key: group.id,
+      label: group.name,
+      color: group.color ?? "#475569",
+    }));
     const hasUngrouped = issues.some((issue) => !issue.group && !issue.parentId);
     if (hasUngrouped) {
-      opts.push({ key: "ungrouped", label: "미분류" });
+      opts.push({ key: "ungrouped", label: "미분류", color: "#64748b" });
     }
     return opts;
   }, [issueGroups, issues]);
@@ -129,6 +133,26 @@ export default function IssuesBoardView() {
       return changed ? next : prev;
     });
   }, [timelineOptions]);
+
+  const timelineAllChecked = useMemo(
+    () =>
+      timelineOptions.length > 0 &&
+      timelineOptions.every((opt) => timelineFilters[opt.key] ?? true),
+    [timelineFilters, timelineOptions],
+  );
+
+  const handleToggleTimelineAll = useCallback(
+    (checked: boolean) => {
+      setTimelineFilters((prev) => {
+        const next = { ...prev };
+        timelineOptions.forEach((opt) => {
+          next[opt.key] = checked;
+        });
+        return next;
+      });
+    },
+    [timelineOptions],
+  );
 
   useEffect(() => {
     const viewParam = searchParams?.get("view") as ViewMode | null;
@@ -300,23 +324,6 @@ export default function IssuesBoardView() {
             <div>
               <div className="text-lg font-semibold text-foreground">{ISSUES_VIEW_META[view].label}</div>
               <div className="text-sm text-muted">{ISSUES_VIEW_META[view].description}</div>
-              {view === "timeline" && timelineOptions.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
-                  {timelineOptions.map((opt) => (
-                    <label key={opt.key} className="inline-flex items-center gap-2 rounded-full border border-border bg-panel/60 px-3 py-1">
-                      <input
-                        type="checkbox"
-                        className="h-3.5 w-3.5"
-                        checked={timelineFilters[opt.key] ?? true}
-                        onChange={(e) =>
-                          setTimelineFilters((prev) => ({ ...prev, [opt.key]: e.target.checked }))
-                        }
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -425,7 +432,39 @@ export default function IssuesBoardView() {
               )}
 
               {view === "timeline" && (
-                <IssuesTimelineView issues={issues} memberMap={memberMap} groupFilter={timelineFilters} />
+                <>
+                  {timelineOptions.length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-3 text-xs font-bold">
+                      <label className="inline-flex items-center gap-2 rounded-full border border-transparent bg-slate-700 px-3 py-1 text-white">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 accent-slate-900"
+                          checked={timelineAllChecked}
+                          onChange={(e) => handleToggleTimelineAll(e.target.checked)}
+                        />
+                        <span>전체보기</span>
+                      </label>
+                      {timelineOptions.map((opt) => (
+                        <label
+                          key={opt.key}
+                          className="inline-flex items-center gap-2 rounded-full border border-transparent px-3 py-1 text-white"
+                          style={{ backgroundColor: opt.color }}
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 accent-slate-900"
+                            checked={timelineFilters[opt.key] ?? true}
+                            onChange={(e) =>
+                              setTimelineFilters((prev) => ({ ...prev, [opt.key]: e.target.checked }))
+                            }
+                          />
+                          <span>{opt.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <IssuesTimelineView issues={issues} memberMap={memberMap} groupFilter={timelineFilters} />
+                </>
               )}
 
               {view === "chart" && (

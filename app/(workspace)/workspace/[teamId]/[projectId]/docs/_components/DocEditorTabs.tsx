@@ -170,7 +170,7 @@ export default function DocEditorTabs() {
 
       <div
         ref={historyRef}
-        className="absolute right-4 top-2 flex items-center gap-2"
+        className="absolute right-4 top-2 hidden items-center gap-2 sm:flex"
       >
         <button
           type="button"

@@ -22,6 +22,10 @@ export default function IssuesTimelineView({
     title: string;
     range: string;
     assignee: string;
+    priorityKey: Issue["priority"];
+    priority: string;
+    statusKey: Issue["status"];
+    status: string;
     avatarUrl?: string | null;
     x: number;
     y: number;

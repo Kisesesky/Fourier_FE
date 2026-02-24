@@ -195,49 +195,59 @@ export default function IssuesKanbanView({
       <button
         type="button"
         onClick={onClick}
-        className={`flex w-full items-center gap-2 rounded-lg border border-border/60 bg-background/70 px-2 py-1 text-left ${textSize} ${rowOpacity}`}
+        className={`w-full rounded-xl border border-border/60 bg-background/70 px-2.5 py-2 text-left ${textSize} ${rowOpacity}`}
       >
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <CornerDownRight size={12} className="text-muted" />
-            <StatusIcon size={12} className={statusIconClass(issue.status)} />
-            <span className="truncate text-foreground/90">{issue.title || "제목 없음"}</span>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+              <CornerDownRight size={12} className="shrink-0 text-muted" />
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                style={{ backgroundColor: issue.group?.color ?? "#94a3b8" }}
+              >
+                {issue.group?.name ?? "미분류"}
+              </span>
+            </div>
+            <div className="flex items-start gap-2 text-foreground">
+              <StatusIcon size={12} className={`mt-0.5 shrink-0 ${statusIconClass(issue.status)}`} />
+              <span className="line-clamp-2 break-words font-semibold">{issue.title || "제목 없음"}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold ${priorityBadge(issue.priority)}`}>
+                {issue.priority === "urgent"
+                  ? "매우 높음"
+                  : issue.priority === "high"
+                    ? "높음"
+                    : issue.priority === "low"
+                      ? "낮음"
+                      : issue.priority === "very_low"
+                        ? "매우 낮음"
+                        : "중간"}
+              </span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold ${meta.className}`}>
+                <StatusIcon size={11} />
+                {meta.label}
+              </span>
+              {issue.startAt && (
+                <span className="inline-flex items-center rounded-full bg-subtle px-2 py-0.5 text-[10px] text-muted">
+                  {String(issue.startAt).slice(5, 10)}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1 pl-5">
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${priorityBadge(issue.priority)}`}>
-              {issue.priority === "urgent"
-                ? "매우 높음"
-                : issue.priority === "high"
-                  ? "높음"
-                  : issue.priority === "low"
-                    ? "낮음"
-                    : issue.priority === "very_low"
-                      ? "매우 낮음"
-                      : "중간"}
-            </span>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.className}`}>
-              <StatusIcon size={11} />
-              {meta.label}
-            </span>
-            {issue.startAt && (
-              <span className="hidden sm:inline-flex items-center rounded-full bg-subtle px-2 py-0.5 text-[10px] text-muted">
-                {String(issue.startAt).slice(5, 10)}
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-subtle">
+            {avatar ? (
+              <img
+                src={avatar}
+                alt={name}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <span className="text-[9px] font-semibold text-muted">
+                {name.slice(0, 1).toUpperCase()}
               </span>
             )}
           </div>
-        </div>
-        <div className="ml-2 hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-subtle sm:flex">
-          {avatar ? (
-            <img
-              src={avatar}
-              alt={name}
-              className="h-8 w-8 rounded-full object-cover"
-            />
-          ) : (
-            <span className="text-[9px] font-semibold text-muted">
-              {name.slice(0, 1).toUpperCase()}
-            </span>
-          )}
         </div>
       </button>
     );
@@ -405,79 +415,85 @@ export default function IssuesKanbanView({
               )}
               {items.map((issue) => (
                 <div key={issue.id} className="rounded-2xl border border-border bg-white/90 p-3 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setIssueActionsId(issue.id)}
-                    className="group w-full text-left transition hover:border-brand/50"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                          <span
-                            className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
-                            style={{ backgroundColor: issue.group?.color ?? "#94a3b8" }}
-                          >
-                            {issue.group?.name ?? "미분류"}
-                          </span>
-                          <ColumnIcon size={14} className={tone.accent} />
-                          <span className="line-clamp-2">{issue.title || "제목 없음"}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
-                          <span className={`rounded-full px-2 py-0.5 ${priorityBadge(issue.priority)}`}>
-                            {issue.priority === "urgent"
-                              ? "매우 높음"
-                              : issue.priority === "high"
-                                ? "높음"
-                                : issue.priority === "low"
-                                  ? "낮음"
-                                  : issue.priority === "very_low"
-                                    ? "매우 낮음"
-                                    : "중간"}
-                          </span>
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${statusBadge(issue.status)}`}>
-                            {(() => {
-                              const meta = statusMeta(issue.status);
-                              const StatusIcon = meta.icon;
-                              return <StatusIcon size={11} />;
-                            })()}
-                            {issue.status === "in_progress"
-                              ? "작업 중"
-                              : issue.status === "review"
-                                ? "리뷰 대기"
-                                : issue.status === "done"
-                                  ? "완료"
-                                  : issue.status === "backlog"
-                                    ? "백로그"
-                                    : "할 일"}
-                          </span>
-                          {issue.startAt && (
-                            <span className="rounded-full bg-subtle px-2 py-0.5">
-                              {String(issue.startAt).slice(5, 10)}
-                            </span>
-                          )}
-                        </div>
-                        {renderSubtasks(issue)}
-                      </div>
-                      {(() => {
-                        const member =
-                          (issue.assigneeId && memberMap[issue.assigneeId]) ||
-                          Object.values(memberMap).find((m) => m.name === issue.assignee);
-                        const avatar = member?.avatarUrl ?? null;
-                        const name = member?.name || issue.assignee || "U";
-                        return avatar ? (
-                          <img
-                            src={avatar}
-                            alt={name}
-                            className="h-9 w-9 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-muted">
-                            {name.slice(0, 1).toUpperCase()}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setIssueActionsId(issue.id)}
+                      className="group w-full text-left transition"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                                style={{ backgroundColor: issue.group?.color ?? "#94a3b8" }}
+                              >
+                                {issue.group?.name ?? "미분류"}
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2 text-sm font-semibold text-foreground">
+                              <ColumnIcon size={14} className={`mt-0.5 shrink-0 ${tone.accent}`} />
+                              <span className="line-clamp-2 break-words">{issue.title || "제목 없음"}</span>
+                            </div>
                           </div>
-                        );
-                      })()}
-                    </div>
-                  </button>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
+                            <span className={`rounded-full px-2 py-0.5 ${priorityBadge(issue.priority)}`}>
+                              {issue.priority === "urgent"
+                                ? "매우 높음"
+                                : issue.priority === "high"
+                                  ? "높음"
+                                  : issue.priority === "low"
+                                    ? "낮음"
+                                    : issue.priority === "very_low"
+                                      ? "매우 낮음"
+                                      : "중간"}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${statusBadge(issue.status)}`}>
+                              {(() => {
+                                const meta = statusMeta(issue.status);
+                                const StatusIcon = meta.icon;
+                                return <StatusIcon size={11} />;
+                              })()}
+                              {issue.status === "in_progress"
+                                ? "작업 중"
+                                : issue.status === "review"
+                                  ? "리뷰 대기"
+                                  : issue.status === "done"
+                                    ? "완료"
+                                    : issue.status === "backlog"
+                                      ? "백로그"
+                                      : "할 일"}
+                            </span>
+                            {issue.startAt && (
+                              <span className="rounded-full bg-subtle px-2 py-0.5">
+                                {String(issue.startAt).slice(5, 10)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {(() => {
+                          const member =
+                            (issue.assigneeId && memberMap[issue.assigneeId]) ||
+                            Object.values(memberMap).find((m) => m.name === issue.assignee);
+                          const avatar = member?.avatarUrl ?? null;
+                          const name = member?.name || issue.assignee || "U";
+                          return avatar ? (
+                            <img
+                              src={avatar}
+                              alt={name}
+                              className="h-9 w-9 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-muted">
+                              {name.slice(0, 1).toUpperCase()}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </button>
+                    {renderSubtasks(issue)}
+                  </div>
                   <IssueActions
                     issue={issue}
                     issueActionsId={issueActionsId}

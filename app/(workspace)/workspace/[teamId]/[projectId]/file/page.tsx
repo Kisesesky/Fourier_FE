@@ -1,14 +1,19 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/file/page.tsx
 'use client';
 
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
+  ArrowUpDown,
+  Check,
   Download,
   Eye,
   FileArchive,
   FileImage,
   FileText,
   FileType2,
+  LayoutGrid,
+  List as ListIcon,
   Upload,
   X,
 } from "lucide-react";
@@ -45,7 +50,23 @@ const getTypeIcon = (file: ViewFile) => {
   return <FileArchive size={16} className="text-slate-600" />;
 };
 
+const FILE_SORT_OPTIONS = [
+  { key: "name", label: "이름" },
+  { key: "size", label: "크기" },
+  { key: "createdAt", label: "업로드 일시" },
+  { key: "type", label: "유형" },
+] as const;
+
+type FileSortKey = (typeof FILE_SORT_OPTIONS)[number]["key"];
+
 export default function WorkspaceFilePage() {
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [sortKey, setSortKey] = useState<FileSortKey>("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [query, setQuery] = useState("");
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement | null>(null);
+
   const {
     files,
     errorMessage,
@@ -59,6 +80,42 @@ export default function WorkspaceFilePage() {
     removeFile,
     openPreview,
   } = useFilePageData();
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (!sortRef.current) return;
+      if (!sortRef.current.contains(event.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [sortOpen]);
+
+  const visibleFiles = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? files.filter((file) => {
+          const fullName = file.name.toLowerCase();
+          return (
+            fullName.includes(q) ||
+            getCategoryLabel(file.category).toLowerCase().includes(q) ||
+            file.ext.toLowerCase().includes(q)
+          );
+        })
+      : files;
+
+    const sorted = [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortKey === "size") cmp = a.size - b.size;
+      else if (sortKey === "type") cmp = a.ext.localeCompare(b.ext);
+      else cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  }, [files, query, sortDir, sortKey]);
 
   return (
     <div className="h-full bg-background px-6 py-6">
@@ -92,7 +149,7 @@ export default function WorkspaceFilePage() {
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-foreground">{scopeLabel}</p>
-            <p className="text-xs text-muted">{files.length}개 파일</p>
+            <p className="text-xs text-muted">{visibleFiles.length}개 파일</p>
           </div>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
             <Upload size={15} />
@@ -106,61 +163,183 @@ export default function WorkspaceFilePage() {
             />
           </label>
         </div>
-        <div className="grid grid-cols-[1.5fr_100px_90px_150px_130px_130px] items-center border-b border-border px-4 py-2 text-xs font-semibold text-muted">
-          <span>파일명</span>
-          <span>카테고리</span>
-          <span>크기</span>
-          <span>업로드 일시</span>
-          <span>유형</span>
-          <span className="text-right">관리</span>
-        </div>
-        <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
-          {files.length === 0 ? (
-            <div className="flex h-40 items-center justify-center text-sm text-muted">표시할 파일이 없습니다.</div>
-          ) : (
-            files.map((file) => (
-              <div
-                key={file.id}
-                className="grid grid-cols-[1.5fr_100px_90px_150px_130px_130px] items-center gap-2 border-b border-border/60 px-4 py-2 text-sm last:border-b-0"
+        <div className="border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+              placeholder="파일 검색"
+            />
+            <div ref={sortRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setSortOpen((prev) => !prev)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted hover:text-foreground"
+                title={`정렬 기준: ${FILE_SORT_OPTIONS.find((opt) => opt.key === sortKey)?.label ?? ""}`}
+                aria-label={`정렬 기준: ${FILE_SORT_OPTIONS.find((opt) => opt.key === sortKey)?.label ?? ""}`}
               >
-                <div className="flex min-w-0 items-center gap-2">
-                  {getTypeIcon(file)}
-                  <span className="truncate text-foreground">{file.name}</span>
+                <ArrowUpDown size={14} />
+              </button>
+              {sortOpen && (
+                <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-border bg-panel text-sm shadow-xl">
+                  {FILE_SORT_OPTIONS.map((option) => (
+                    <button
+                      key={option.key}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left hover:bg-subtle/60 ${
+                        option.key === sortKey ? "text-foreground" : "text-muted"
+                      }`}
+                      onClick={() => {
+                        if (sortKey === option.key) {
+                          setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+                        } else {
+                          setSortKey(option.key);
+                          setSortDir("asc");
+                        }
+                        setSortOpen(false);
+                      }}
+                    >
+                      <span>{option.label}</span>
+                      {option.key === sortKey && <Check size={12} />}
+                    </button>
+                  ))}
                 </div>
-                <span className="text-muted">{getCategoryLabel(file.category)}</span>
-                <span className="text-muted">{formatSize(file.size)}</span>
-                <span className="text-muted">{formatDate(file.createdAt)}</span>
-                <span className="truncate text-muted">{file.ext.toUpperCase()}</span>
-                <div className="flex items-center justify-end gap-1">
-                  <button
-                    type="button"
-                    onClick={() => void openPreview(file, PREVIEWABLE_TEXT_EXTS)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition hover:bg-subtle hover:text-foreground"
-                    title="열기"
-                  >
-                    <Eye size={14} />
-                  </button>
-                  <a
-                    href={file.url}
-                    download={file.name}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition hover:bg-subtle hover:text-foreground"
-                    title="다운로드"
-                  >
-                    <Download size={14} />
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => void removeFile(file.id)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 text-rose-500 transition hover:bg-rose-50"
-                    title="삭제"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+              )}
+            </div>
+            <button
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border ${
+                viewMode === "list"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-muted"
+              }`}
+              onClick={() => setViewMode("list")}
+            >
+              <ListIcon size={14} />
+            </button>
+            <button
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md border ${
+                viewMode === "grid"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-muted"
+              }`}
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid size={14} />
+            </button>
+          </div>
         </div>
+        {viewMode === "list" ? (
+          <>
+            <div className="grid grid-cols-[1.5fr_100px_90px_150px_130px_130px] items-center border-b border-border px-4 py-2 text-xs font-semibold text-muted">
+              <span>파일명</span>
+              <span>카테고리</span>
+              <span>크기</span>
+              <span>업로드 일시</span>
+              <span>유형</span>
+              <span className="text-right">관리</span>
+            </div>
+            <div className="max-h-[calc(100vh-450px)] overflow-y-auto">
+              {visibleFiles.length === 0 ? (
+                <div className="flex h-40 items-center justify-center text-sm text-muted">표시할 파일이 없습니다.</div>
+              ) : (
+                visibleFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="grid grid-cols-[1.5fr_100px_90px_150px_130px_130px] items-center gap-2 border-b border-border/60 px-4 py-2 text-sm last:border-b-0"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      {getTypeIcon(file)}
+                      <span className="truncate text-foreground">{file.name}</span>
+                    </div>
+                    <span className="text-muted">{getCategoryLabel(file.category)}</span>
+                    <span className="text-muted">{formatSize(file.size)}</span>
+                    <span className="text-muted">{formatDate(file.createdAt)}</span>
+                    <span className="truncate text-muted">{file.ext.toUpperCase()}</span>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => void openPreview(file, PREVIEWABLE_TEXT_EXTS)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition hover:bg-subtle hover:text-foreground"
+                        title="열기"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <a
+                        href={file.url}
+                        download={file.name}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition hover:bg-subtle hover:text-foreground"
+                        title="다운로드"
+                      >
+                        <Download size={14} />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => void removeFile(file.id)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 text-rose-500 transition hover:bg-rose-50"
+                        title="삭제"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="max-h-[calc(100vh-450px)] overflow-y-auto p-4">
+            {visibleFiles.length === 0 ? (
+              <div className="flex h-40 items-center justify-center text-sm text-muted">표시할 파일이 없습니다.</div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {visibleFiles.map((file) => (
+                  <div key={file.id} className="rounded-xl border border-border bg-background p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          {getTypeIcon(file)}
+                          <span className="truncate text-sm font-semibold text-foreground">{file.name}</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted">
+                          <span className="rounded-full bg-subtle px-2 py-0.5">{getCategoryLabel(file.category)}</span>
+                          <span className="rounded-full bg-subtle px-2 py-0.5">{file.ext.toUpperCase()}</span>
+                          <span className="rounded-full bg-subtle px-2 py-0.5">{formatSize(file.size)}</span>
+                        </div>
+                        <p className="mt-2 text-[11px] text-muted">{formatDate(file.createdAt)}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => void openPreview(file, PREVIEWABLE_TEXT_EXTS)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition hover:bg-subtle hover:text-foreground"
+                        title="열기"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <a
+                        href={file.url}
+                        download={file.name}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition hover:bg-subtle hover:text-foreground"
+                        title="다운로드"
+                      >
+                        <Download size={14} />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => void removeFile(file.id)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 text-rose-500 transition hover:bg-rose-50"
+                        title="삭제"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {previewFile ? (

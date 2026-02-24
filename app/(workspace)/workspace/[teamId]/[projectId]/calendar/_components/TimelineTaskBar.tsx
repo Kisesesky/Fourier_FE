@@ -122,13 +122,13 @@ export function TimelineTaskBar({
         style={{ backgroundColor: color }}
         aria-label={`${title} ${hint}`}
       >
-        <div className="flex items-center gap-2 px-3 text-left">
+        <div className="flex items-center gap-1.5 px-2 sm:gap-2 sm:px-3 text-left">
           {isIssue && (
-            <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-[9px]">
+            <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-[9px]">
               이슈
             </span>
           )}
-          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[11px] font-semibold text-slate-700 sm:h-5 sm:w-5 sm:text-[10px]">
+          <div className="hidden h-6 w-6 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[11px] font-semibold text-slate-700 sm:flex sm:h-5 sm:w-5 sm:text-[10px]">
             {createdBy?.avatarUrl ? (
               <img src={createdBy.avatarUrl} alt={createdBy?.name ?? "User"} className="h-full w-full object-cover" />
             ) : (
@@ -148,7 +148,7 @@ export function TimelineTaskBar({
           >
             <div className="flex items-center gap-2">
               {isIssue && (
-                <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
                   이슈
                 </span>
               )}
@@ -161,29 +161,29 @@ export function TimelineTaskBar({
               </div>
               <span className="font-semibold">{title}</span>
             </div>
-            <div className="mt-2 space-y-1 text-[11px] text-muted">
-              <div className="inline-flex items-center gap-1">
+            <div className="mt-2 space-y-1.5 text-[11px] text-muted">
+              <div className="flex items-start gap-1.5">
                 <CalendarDays size={12} />
-                {dateLabel}
+                <span className="break-words leading-relaxed">{dateLabel}</span>
               </div>
-              <div className="inline-flex items-center gap-1">
+              <div className="flex items-start gap-1.5">
                 <Clock size={12} />
-                {timeLabel}
+                <span className="break-words leading-relaxed">{timeLabel}</span>
               </div>
               {calendarName && (
-                <div className="inline-flex items-center gap-1">
+                <div className="flex items-start gap-1.5">
                   <CalendarDays size={12} />
-                  {calendarName}
+                  <span className="break-words leading-relaxed">{calendarName}</span>
                 </div>
               )}
               {location && (
-                <div className="inline-flex items-center gap-1">
+                <div className="flex items-start gap-1.5">
                   <MapPin size={12} />
-                  {location}
+                  <span className="break-words leading-relaxed">{location}</span>
                 </div>
               )}
               {description && (
-                <div className="hidden items-start gap-1 md:inline-flex">
+                <div className="flex items-start gap-1.5">
                   <StickyNote size={12} className="mt-0.5" />
                   <span className="line-clamp-3">{description}</span>
                 </div>

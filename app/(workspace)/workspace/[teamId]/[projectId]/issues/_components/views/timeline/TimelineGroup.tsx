@@ -6,6 +6,59 @@ import type React from "react";
 import type { Issue } from "@/workspace/issues/_model/types";
 import { formatIssueDateRange } from "@/workspace/issues/_model/utils/issueViewUtils";
 
+type TimelineBarColorMode = "group" | "priority" | "status";
+
+const PRIORITY_COLOR: Record<Issue["priority"], string> = {
+  very_low: "#64748b",
+  low: "#0ea5e9",
+  medium: "#f59e0b",
+  high: "#f97316",
+  urgent: "#f43f5e",
+};
+
+const STATUS_COLOR: Record<Issue["status"], string> = {
+  backlog: "#64748b",
+  todo: "#f43f5e",
+  in_progress: "#f59e0b",
+  review: "#8b5cf6",
+  done: "#10b981",
+};
+
+const PRIORITY_BADGE_STYLE: Record<Issue["priority"], string> = {
+  very_low: "bg-slate-500 text-slate-100",
+  low: "bg-sky-500 text-sky-100",
+  medium: "bg-amber-500 text-amber-100",
+  high: "bg-orange-500 text-orange-100",
+  urgent: "bg-rose-500 text-rose-100",
+};
+
+const STATUS_BADGE_STYLE: Record<Issue["status"], string> = {
+  backlog: "bg-slate-500 text-slate-100",
+  todo: "bg-rose-500 text-rose-100",
+  in_progress: "bg-amber-500 text-amber-100",
+  review: "bg-violet-500 text-violet-100",
+  done: "bg-emerald-500 text-emerald-100",
+};
+
+const PRIORITY_LABEL: Record<Issue["priority"], string> = {
+  very_low: "매우 낮음",
+  low: "낮음",
+  medium: "중간",
+  high: "높음",
+  urgent: "매우 높음",
+};
+
+const STATUS_LABEL: Record<Issue["status"], string> = {
+  backlog: "백로그",
+  todo: "할 일",
+  in_progress: "작업 중",
+  review: "리뷰 대기",
+  done: "완료",
+};
+
+const PRIORITY_ORDER: Issue["priority"][] = ["very_low", "low", "medium", "high", "urgent"];
+const STATUS_ORDER: Issue["status"][] = ["backlog", "todo", "in_progress", "review", "done"];
+
 export default function TimelineGroup({
   groupId,
   group,
@@ -35,6 +88,10 @@ export default function TimelineGroup({
     title: string;
     range: string;
     assignee: string;
+    priorityKey: Issue["priority"];
+    priority: string;
+    statusKey: Issue["status"];
+    status: string;
     avatarUrl?: string | null;
     x: number;
     y: number;
@@ -42,6 +99,7 @@ export default function TimelineGroup({
 }) {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const [scrollSpacer, setScrollSpacer] = useState(0);
+  const [barColorMode, setBarColorMode] = useState<TimelineBarColorMode>("group");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -121,9 +179,72 @@ export default function TimelineGroup({
 
   return (
     <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-panel/60">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
-        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
-        <span>{group.name}</span>
+      <div className="border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
+          <span>{group.name}</span>
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-background p-1 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setBarColorMode("group")}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+              barColorMode === "group"
+                ? "bg-slate-700 text-white shadow-[0_1px_6px_rgba(15,23,42,0.35)]"
+                : "text-muted hover:bg-subtle/70 hover:text-foreground"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+            기본
+          </button>
+          <button
+            type="button"
+            onClick={() => setBarColorMode("priority")}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+              barColorMode === "priority"
+                ? "bg-amber-500 text-white shadow-[0_1px_6px_rgba(245,158,11,0.35)]"
+                : "text-muted hover:bg-subtle/70 hover:text-foreground"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+            우선순위
+          </button>
+          <button
+            type="button"
+            onClick={() => setBarColorMode("status")}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+              barColorMode === "status"
+                ? "bg-emerald-500 text-white shadow-[0_1px_6px_rgba(16,185,129,0.35)]"
+                : "text-muted hover:bg-subtle/70 hover:text-foreground"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+            상태
+          </button>
+        </div>
+        </div>
+        {barColorMode !== "group" && (
+          <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5 text-[10px]">
+            {barColorMode === "priority"
+              ? PRIORITY_ORDER.map((priority) => (
+                  <span
+                    key={priority}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold ${PRIORITY_BADGE_STYLE[priority]}`}
+                  >
+                    {PRIORITY_LABEL[priority]}
+                  </span>
+                ))
+              : STATUS_ORDER.map((status) => (
+                  <span
+                    key={status}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold ${STATUS_BADGE_STYLE[status]}`}
+                  >
+                    {STATUS_LABEL[status]}
+                  </span>
+                ))}
+          </div>
+        )}
       </div>
       <div className="flex min-w-0 overflow-x-hidden">
         <div className="w-32 shrink-0 border-r border-border md:w-40">
@@ -240,7 +361,12 @@ export default function TimelineGroup({
                           transform: "translateY(-50%)",
                           left: leftPx + inset,
                           width: barWidth,
-                          backgroundColor: group.color,
+                          backgroundColor:
+                            barColorMode === "priority"
+                              ? PRIORITY_COLOR[issue.priority]
+                              : barColorMode === "status"
+                                ? STATUS_COLOR[issue.status]
+                                : group.color,
                         }}
                         onMouseEnter={(e) => {
                           const assignee = issue.assignee ?? "미지정";
@@ -252,6 +378,10 @@ export default function TimelineGroup({
                             title: issue.title,
                             range: formatIssueDateRange(issue.startAt, issue.endAt),
                             assignee,
+                            priorityKey: issue.priority,
+                            priority: PRIORITY_LABEL[issue.priority],
+                            statusKey: issue.status,
+                            status: STATUS_LABEL[issue.status],
                             avatarUrl,
                             x: e.clientX,
                             y: e.clientY,

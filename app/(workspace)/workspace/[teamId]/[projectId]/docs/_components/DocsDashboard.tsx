@@ -63,7 +63,6 @@ export default function DocsDashboard() {
     sortKey,
     setSortKey,
     sortDir,
-    setSortDir,
     folderModalOpen,
     setFolderModalOpen,
     commentsByDoc,
@@ -314,12 +313,10 @@ export default function DocsDashboard() {
             <div className="ml-auto flex gap-2 items-center">
               <SortMenu
                 sortKey={sortKey}
-                sortDir={sortDir}
                 onChange={(k) => setSortKey(k)}
-                onToggleDir={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
               />
               <button
-                className={`rounded-md px-3 py-1.5 border ${
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-md border ${
                   viewMode === "list"
                     ? "border-foreground bg-foreground text-background"
                     : "border-border bg-background text-muted"
@@ -330,7 +327,7 @@ export default function DocsDashboard() {
               </button>
 
               <button
-                className={`rounded-md px-3 py-1.5 border ${
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-md border ${
                   viewMode === "grid"
                     ? "border-foreground bg-foreground text-background"
                     : "border-border bg-background text-muted"

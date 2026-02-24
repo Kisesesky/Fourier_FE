@@ -80,18 +80,18 @@ export function DayEventPill({
       {showLabel ? (
         <div className="flex min-w-0 flex-col gap-0.5">
           <div
-            className="flex min-w-0 items-center gap-2 px-2.5 py-[6px] text-white shadow-sm sm:gap-1.5 sm:px-2 sm:py-[5px]"
+            className="flex min-w-0 items-center gap-1.5 px-2 py-[6px] text-white shadow-sm sm:gap-2 sm:px-2.5 sm:py-[5px]"
             style={{
               backgroundColor: baseColor,
               borderRadius: DAY_EVENT_RADIUS[variant],
             }}
           >
             {isIssue && (
-              <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-[9px]">
+              <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white sm:text-[9px]">
                 이슈
               </span>
             )}
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[11px] font-semibold text-slate-700 sm:h-6 sm:w-6 sm:text-[10px]">
+            <div className="hidden h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 text-[11px] font-semibold text-slate-700 sm:flex sm:h-6 sm:w-6 sm:text-[10px]">
               {avatarUrl ? (
                 <img src={avatarUrl} alt={event.createdBy?.name ?? "User"} className="h-full w-full object-cover" />
               ) : (
@@ -128,7 +128,7 @@ export function DayEventPill({
           >
             <div className="flex items-center gap-2">
               {isIssue && (
-                <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
                   이슈
                 </span>
               )}
@@ -141,23 +141,23 @@ export function DayEventPill({
               </div>
               <span className="font-semibold">{event.title}</span>
             </div>
-            <div className="mt-2 space-y-1 text-[11px] text-muted">
-              <div className="inline-flex items-center gap-1">
+            <div className="mt-2 space-y-1.5 text-[11px] text-muted">
+              <div className="flex items-start gap-1.5">
                 <CalendarDays size={12} />
-                {dateLabel}
+                <span className="break-words leading-relaxed">{dateLabel}</span>
               </div>
-              <div className="inline-flex items-center gap-1">
+              <div className="flex items-start gap-1.5">
                 <Clock size={12} />
-                {timeLabel}
+                <span className="break-words leading-relaxed">{timeLabel}</span>
               </div>
               {event.location && (
-                <div className="inline-flex items-center gap-1">
+                <div className="flex items-start gap-1.5">
                   <MapPin size={12} />
-                  {event.location}
+                  <span className="break-words leading-relaxed">{event.location}</span>
                 </div>
               )}
               {event.description && (
-                <div className="hidden items-start gap-1 md:inline-flex">
+                <div className="flex items-start gap-1.5">
                   <StickyNote size={12} className="mt-0.5" />
                   <span className="line-clamp-3">{event.description}</span>
                 </div>

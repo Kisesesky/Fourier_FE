@@ -111,14 +111,14 @@ export default function DocReadView({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-10 py-8 pb-12 dark:bg-slate-950">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 pb-10 sm:px-6 sm:py-8 sm:pb-12 lg:px-10 dark:bg-slate-950">
         <div className="mx-auto w-full max-w-5xl">
           <div
             ref={contentBoxRef}
             className={!expanded ? "max-h-[480px] overflow-hidden" : ""}
           >
             <article
-              className="prose prose-sm max-w-none text-slate-900 prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-300 prose-pre:bg-slate-100 prose-pre:text-slate-900 prose-code:rounded prose-code:bg-transparent prose-code:px-1 prose-code:py-0.5 prose-code:text-slate-900 prose-code:before:content-none prose-code:after:content-none dark:text-slate-100 dark:prose-invert dark:prose-pre:border-slate-700 dark:prose-pre:bg-slate-800 dark:prose-pre:text-slate-100 dark:prose-code:bg-transparent dark:prose-code:text-slate-100"
+              className="prose prose-sm max-w-none overflow-x-auto break-words text-slate-900 prose-headings:break-words prose-p:break-words prose-li:break-words prose-img:max-w-full prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-300 prose-pre:bg-slate-100 prose-pre:text-slate-900 prose-code:rounded prose-code:bg-transparent prose-code:px-1 prose-code:py-0.5 prose-code:text-slate-900 prose-code:before:content-none prose-code:after:content-none prose-table:block prose-table:w-full prose-table:overflow-x-auto dark:text-slate-100 dark:prose-invert dark:prose-pre:border-slate-700 dark:prose-pre:bg-slate-800 dark:prose-pre:text-slate-100 dark:prose-code:bg-transparent dark:prose-code:text-slate-100"
               dangerouslySetInnerHTML={{ __html: html || "<p>내용 없음</p>" }}
             />
           </div>

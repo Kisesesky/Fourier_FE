@@ -10,6 +10,7 @@ import WorkspaceSettingsModal from "@/workspace/root/WorkspaceSettingsModal";
 import { ToastProvider } from "@/components/ui/Toast";
 import Drawer from "@/components/ui/Drawer";
 import FloatingDm from "../_components/FloatingDm";
+import FloatingSupportCenter from "../_components/FloatingSupportCenter";
 import { setAuthToken } from "@/lib/api";
 import ChatCreateChannelHost from "@/components/layout/ChatCreateChannelHost";
 import { saveWorkspaceEntryPreference } from "@/lib/workspace-entry";
@@ -156,6 +157,7 @@ export default function WorkspaceProjectLayout({ children }: { children: React.R
 
       {showWorkspaceSettings && <WorkspaceSettingsModal onClose={() => setShowWorkspaceSettings(false)} />}
       <FloatingDm />
+      <FloatingSupportCenter />
       <ChatCreateChannelHost />
     </ToastProvider>
   );

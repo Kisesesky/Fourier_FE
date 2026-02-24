@@ -11,12 +11,10 @@ import type { DocsSortKey } from "@/workspace/docs/_model/view.types";
 
 type SortMenuProps = {
   sortKey: DocsSortKey;
-  sortDir: 'asc' | 'desc';
   onChange: (key: DocsSortKey) => void;
-  onToggleDir: () => void;
 };
 
-export function SortMenu({ sortKey, sortDir, onChange, onToggleDir }: SortMenuProps) {
+export function SortMenu({ sortKey, onChange }: SortMenuProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -34,20 +32,14 @@ export function SortMenu({ sortKey, sortDir, onChange, onToggleDir }: SortMenuPr
     <div className="relative flex items-center gap-2" {...MENU_ATTR}>
       <button
         className={clsx(
-          'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs',
-          'border-border text-muted hover:text-foreground'
+          "inline-flex h-8 w-8 items-center justify-center rounded-md border",
+          "border-border bg-background text-muted hover:text-foreground"
         )}
         onClick={() => setOpen((prev) => !prev)}
+        title={`정렬 기준: ${DOCS_SORT_OPTIONS.find((opt) => opt.key === sortKey)?.label ?? ""}`}
+        aria-label={`정렬 기준: ${DOCS_SORT_OPTIONS.find((opt) => opt.key === sortKey)?.label ?? ""}`}
       >
         <ArrowUpDown size={14} />
-        정렬: {DOCS_SORT_OPTIONS.find((opt) => opt.key === sortKey)?.label}
-      </button>
-      <button
-        className="rounded-full border border-border p-2 text-muted transition hover:text-foreground"
-        onClick={onToggleDir}
-        title="정렬 방향"
-      >
-        {sortDir === 'asc' ? '⬆' : '⬇'}
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-20 w-40 rounded-xl border border-border bg-panel text-sm shadow-xl">

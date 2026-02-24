@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Send } from "lucide-react";
 
 import type { OutlineItem } from "../_model/hooks/useDocOutline";
 import { useDocEditor } from "./DocEditorContext";
@@ -49,6 +49,7 @@ export default function DocCommentsPanel({
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
+  const [composerFocused, setComposerFocused] = useState(false);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -56,6 +57,7 @@ export default function DocCommentsPanel({
     commentId: string;
   } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const meId = profile?.id ?? "";
 
@@ -89,6 +91,20 @@ export default function DocCommentsPanel({
       window.removeEventListener("keydown", handleEscape);
     };
   }, [contextMenu]);
+
+  const autoResizeComposer = () => {
+    const el = composerInputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight || "20") || 20;
+    const maxHeight = lineHeight * 3;
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+  };
+
+  useEffect(() => {
+    autoResizeComposer();
+  }, [message]);
 
   const loadComments = async (documentId: string) => {
     setLoading(true);
@@ -287,10 +303,20 @@ export default function DocCommentsPanel({
           )}
         </div>
 
-        <div className="mt-1 flex h-24 flex-col gap-2 border border-border bg-white pt-1 dark:bg-slate-900">
+        <div
+          className={`mt-2 flex items-start gap-2 rounded-2xl border px-2 py-2 transition ${
+            composerFocused
+              ? "border-brand/60 bg-panel shadow-[0_0_0_1px_rgba(59,130,246,0.18)]"
+              : "border-border/70 bg-panel/95"
+          }`}
+        >
           <textarea
+            ref={composerInputRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              autoResizeComposer();
+            }}
             onKeyDown={(event) => {
               if ((event.nativeEvent as KeyboardEvent).isComposing) return;
               if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -307,18 +333,20 @@ export default function DocCommentsPanel({
               }
             }}
             placeholder="댓글을 작성하세요..."
-            className="h-full resize-none rounded-md bg-muted/40 px-3 py-2 text-sm focus:outline-none dark:bg-slate-800 dark:text-slate-100"
+            onFocus={() => setComposerFocused(true)}
+            onBlur={() => setComposerFocused(false)}
+            rows={1}
+            className="hide-scrollbar h-10 flex-1 resize-none rounded-xl bg-background/70 px-3 py-2 text-sm leading-5 text-foreground outline-none placeholder:text-muted/75"
           />
-          <div className="flex justify-end">
-            <button
-              type="button"
-              disabled={saving || !message.trim()}
-              onClick={createComment}
-              className="rounded-md bg-primary px-3 py-1 text-xs text-primary-foreground disabled:opacity-60"
-            >
-              등록
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={saving || !message.trim()}
+            onClick={createComment}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-subtle/70 disabled:text-muted"
+            aria-label="댓글 등록"
+          >
+            <Send size={16} />
+          </button>
         </div>
       </div>
 

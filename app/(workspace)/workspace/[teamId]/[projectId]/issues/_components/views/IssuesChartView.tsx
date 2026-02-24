@@ -142,6 +142,101 @@ const renderLegend = (items: Array<{ key: string; label: string; value: number; 
   );
 };
 
+const BAR_CLASS_TO_HEX: Record<string, string> = {
+  "bg-rose-500": "#f43f5e",
+  "bg-orange-500": "#f97316",
+  "bg-amber-500": "#f59e0b",
+  "bg-sky-500": "#0ea5e9",
+  "bg-slate-500": "#64748b",
+  "bg-violet-500": "#8b5cf6",
+  "bg-emerald-500": "#10b981",
+};
+
+function DonutChart({
+  items,
+  totalLabel,
+}: {
+  items: Array<{ key: string; label: string; value: number; bar: string }>;
+  totalLabel: string;
+}) {
+  const total = items.reduce((acc, item) => acc + item.value, 0);
+  if (!total) {
+    return (
+      <div className="mt-4 rounded-xl border border-dashed border-border/70 px-3 py-6 text-center text-xs text-muted">
+        표시할 데이터가 없습니다.
+      </div>
+    );
+  }
+
+  const size = 220;
+  const stroke = 36;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const segments = items.filter((item) => item.value > 0);
+  let accLength = 0;
+  const active = segments.find((item) => item.key === hoveredKey) ?? null;
+  const activePct = active ? Math.round((active.value / total) * 100) : 0;
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-3">
+      <div className="relative h-52 w-52">
+        {active && (
+          <div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-2 whitespace-nowrap rounded-full border border-border/80 bg-panel px-2 py-0.5 text-[10px] text-foreground shadow-md">
+            {active.label} · {active.value}건 · {activePct}%
+          </div>
+        )}
+        <svg viewBox={`0 0 ${size} ${size}`} className="h-52 w-52">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="rgba(148,163,184,0.22)"
+            strokeWidth={stroke}
+          />
+          {segments.map((item) => {
+            const segmentLength = (item.value / total) * circumference;
+            const offset = -accLength;
+            accLength += segmentLength;
+            const color = BAR_CLASS_TO_HEX[item.bar] ?? "#94a3b8";
+            const isActive = hoveredKey === item.key;
+            return (
+              <circle
+                key={`donut-segment-${item.key}`}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke={color}
+                strokeWidth={isActive ? stroke + 2 : stroke}
+                strokeLinecap="butt"
+                strokeDasharray={`${segmentLength} ${circumference - segmentLength}`}
+                strokeDashoffset={offset}
+                transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                className="cursor-pointer transition-all"
+                onMouseEnter={() => setHoveredKey(item.key)}
+                onMouseLeave={() => setHoveredKey(null)}
+              />
+            );
+          })}
+        </svg>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div
+            className="flex items-center justify-center rounded-full bg-panel text-center"
+            style={{ width: size - stroke * 2.1, height: size - stroke * 2.1 }}
+          >
+            <div>
+              <div className="text-xl font-semibold text-foreground">{total}</div>
+              <div className="text-[10px] text-muted">{totalLabel}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 const renderHorizontalBars = (
   items: Array<{ key: string; label: string; value: number; color: string; avatarUrl?: string | null }>,
@@ -406,6 +501,10 @@ export default function IssuesChartView({ issues, memberMap, issueGroups, loadin
           <div className="mt-4">
             {renderStackedBar(priorityCounts.map((item) => ({ key: item.key, value: item.value, bar: item.bar, label: item.label })))}
             {renderLegend(priorityCounts.map((item) => ({ key: item.key, label: item.label, value: item.value, bar: item.bar })))}
+            <DonutChart
+              items={priorityCounts.map((item) => ({ key: item.key, label: item.label, value: item.value, bar: item.bar }))}
+              totalLabel="우선순위 합계"
+            />
           </div>
         </div>
 
@@ -416,6 +515,10 @@ export default function IssuesChartView({ issues, memberMap, issueGroups, loadin
           <div className="mt-4">
             {renderStackedBar(statusCounts.map((item) => ({ key: item.key, value: item.value, bar: item.bar, label: item.label })))}
             {renderLegend(statusCounts.map((item) => ({ key: item.key, label: item.label, value: item.value, bar: item.bar })))}
+            <DonutChart
+              items={statusCounts.map((item) => ({ key: item.key, label: item.label, value: item.value, bar: item.bar }))}
+              totalLabel="상태 합계"
+            />
           </div>
         </div>
       </section>

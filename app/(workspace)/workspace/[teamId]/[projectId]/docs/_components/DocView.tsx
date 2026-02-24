@@ -289,7 +289,7 @@ export default function DocView() {
               </div>
               <div className="h-[calc(84vh-57px)] overflow-auto bg-[#f8fafc] px-4 py-4 dark:bg-slate-950">
                 <article
-                  className="prose prose-sm min-h-full w-full max-w-none bg-transparent p-0 text-slate-900 prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-300 prose-pre:bg-slate-100 prose-pre:text-slate-900 prose-code:rounded prose-code:bg-transparent prose-code:px-1 prose-code:py-0.5 prose-code:text-slate-900 prose-code:before:content-none prose-code:after:content-none dark:text-slate-100 dark:prose-invert dark:prose-pre:border-slate-700 dark:prose-pre:bg-slate-800 dark:prose-pre:text-slate-100 dark:prose-code:bg-transparent dark:prose-code:text-slate-100"
+                  className="prose prose-sm min-h-full w-full max-w-none overflow-x-auto break-words bg-transparent p-0 text-slate-900 prose-headings:break-words prose-p:break-words prose-li:break-words prose-img:max-w-full prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-300 prose-pre:bg-slate-100 prose-pre:text-slate-900 prose-code:rounded prose-code:bg-transparent prose-code:px-1 prose-code:py-0.5 prose-code:text-slate-900 prose-code:before:content-none prose-code:after:content-none prose-table:block prose-table:w-full prose-table:overflow-x-auto dark:text-slate-100 dark:prose-invert dark:prose-pre:border-slate-700 dark:prose-pre:bg-slate-800 dark:prose-pre:text-slate-100 dark:prose-code:bg-transparent dark:prose-code:text-slate-100"
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
               </div>

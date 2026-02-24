@@ -667,6 +667,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
                   isMine={head.authorId === me.id}
                   view={view}
                   meId={me.id}
+                  isDM={isDM}
                   otherMemberCount={Math.max(memberIds.filter((id) => id !== me.id).length, 0)}
                   otherSeen={otherSeen}
                   users={users}

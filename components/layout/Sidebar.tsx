@@ -8,7 +8,6 @@ import { useMemo, useEffect, useState } from "react";
 
 import {
   ChevronRight,
-  LifeBuoy,
   Settings,
   Home,
   ChevronLeft,
@@ -18,6 +17,7 @@ import {
   Users,
   BookText,
   Archive,
+  Headset,
 } from "lucide-react";
 
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -282,15 +282,36 @@ export default function Sidebar() {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          <button className="h-12 w-12 flex items-center justify-center rounded-2xl border">
-            <Settings size={18} />
-          </button>
-          <a
-            href="mailto:support@fourier.app"
-            className="h-12 w-12 flex items-center justify-center rounded-2xl border"
+          <button
+            type="button"
+            className="group relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-panel/70 text-muted transition hover:bg-accent hover:text-foreground"
+            aria-label="설정"
+            title="설정"
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              window.dispatchEvent(new Event("workspace:open-settings"));
+            }}
           >
-            <LifeBuoy size={18} />
-          </a>
+            <Settings size={15} />
+            <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[11px] font-medium text-background opacity-0 shadow-sm transition group-hover:opacity-100">
+              설정
+            </span>
+          </button>
+          <button
+            type="button"
+            className="group relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-panel/70 text-muted transition hover:bg-accent hover:text-foreground"
+            aria-label="고객센터"
+            title="고객센터"
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              window.dispatchEvent(new Event("support:open"));
+            }}
+          >
+            <Headset size={15} />
+            <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[11px] font-medium text-background opacity-0 shadow-sm transition group-hover:opacity-100">
+              고객센터
+            </span>
+          </button>
         </div>
         {!panelOpen && (
           <button

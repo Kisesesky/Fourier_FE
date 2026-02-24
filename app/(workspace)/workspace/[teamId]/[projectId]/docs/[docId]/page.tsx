@@ -23,6 +23,11 @@ export default function DocDetailPage() {
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [commentsOpen, setCommentsOpen] = useState(true);
   const [commentCount, setCommentCount] = useState(0);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     setMode("view");
@@ -88,7 +93,7 @@ export default function DocDetailPage() {
               onClick={() => setCommentsOpen((prev) => !prev)}
               className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-subtle/60 hover:text-foreground"
             >
-              댓글 {commentCount}개
+              댓글 <span suppressHydrationWarning>{hydrated ? commentCount : 0}</span>개
             </button>
           </div>
           {commentsOpen && (

@@ -35,6 +35,7 @@ type MessageRowProps = {
   isMine: boolean;
   view: 'compact' | 'cozy';
   meId: string;
+  isDM: boolean;
   otherMemberCount: number;
   otherSeenNames: string[];
   showHeader: boolean;
@@ -63,6 +64,7 @@ type MessageGroupProps = {
   isMine: boolean;
   view: 'compact' | 'cozy';
   meId: string;
+  isDM: boolean;
   otherMemberCount: number;
   otherSeen: Record<string, string[]>;
   users: Record<string, ChatUser>;
@@ -190,6 +192,7 @@ function MessageRow({
   isMine,
   view,
   meId,
+  isDM,
   otherMemberCount,
   otherSeenNames,
   showHeader,
@@ -491,7 +494,7 @@ function MessageRow({
             </button>
           </div>
         )}
-        {unreadMemberCount > 0 && (
+        {isDM && unreadMemberCount > 0 && (
           <span
             className="inline-flex px-2.5 py-1 text-[11px] font-semibold text-black"
             title={`안 읽은 인원 ${unreadMemberCount}명`}
@@ -509,6 +512,7 @@ export function MessageGroup({
   isMine,
   view,
   meId,
+  isDM,
   otherMemberCount,
   otherSeen,
   users,
@@ -539,6 +543,7 @@ export function MessageGroup({
           isMine={isMine}
           view={view}
           meId={meId}
+          isDM={isDM}
           otherMemberCount={otherMemberCount}
           avatarUrl={users[item.authorId]?.avatarUrl}
           threadMeta={threadMetaMap?.[item.id]}

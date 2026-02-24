@@ -6,7 +6,6 @@ import {
   MessageSquare, SmilePlus, Pencil, Trash2,
   Pin, PinOff, Megaphone, EyeOff, Bookmark, BookmarkX, Reply
 } from 'lucide-react';
-import EmojiPicker from "./EmojiPicker";
 
 type Item =
   | { id: 'reply';   label: string; icon: React.ReactNode }
@@ -54,32 +53,16 @@ export default function MessageContextMenu({
         style={{ left: Math.min(x, window.innerWidth - 240), top: Math.min(y, window.innerHeight - 380) }}
         onClick={(e)=> e.stopPropagation()}
       >
-        {items.map((it) =>
-          it.id === "react" ? (
-            <div key={it.id} className="relative">
-              <EmojiPicker
-                onPick={(emoji) => onAction("react", { emoji })}
-                panelSide="right"
-                anchorClass="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-subtle/60"
-                triggerContent={
-                  <>
-                    {it.icon}
-                    {it.label}
-                  </>
-                }
-              />
-            </div>
-          ) : (
-            <button
-              key={it.id}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-subtle/60 ${it.id === 'delete' ? 'text-rose-500' : ''}`}
-              onClick={() => onAction(it.id)}
-            >
-              {it.icon}
-              {it.label}
-            </button>
-          ),
-        )}
+        {items.map((it) => (
+          <button
+            key={it.id}
+            className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-subtle/60 ${it.id === 'delete' ? 'text-rose-500' : ''}`}
+            onClick={() => onAction(it.id)}
+          >
+            {it.icon}
+            {it.label}
+          </button>
+        ))}
       </div>
     </div>
   );

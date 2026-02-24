@@ -20,11 +20,11 @@ type ChatHeaderProps = {
   isDM: boolean;
   channelName: string;
   dmAvatarUrl?: string;
-  memberNames: string[];
   memberIds: string[];
   users: Record<string, { id: string; name: string; avatarUrl?: string }>;
   topic?: string;
   view: ViewMode;
+  onOpenMembersPanel: () => void;
   onOpenInvite: () => void;
   onOpenCmd: () => void;
   onOpenPins: () => void;
@@ -41,11 +41,11 @@ export function ChatHeader({
   isDM,
   channelName,
   dmAvatarUrl,
-  memberNames,
   memberIds,
   users,
   topic,
   view,
+  onOpenMembersPanel,
   onOpenInvite,
   onOpenCmd,
   onOpenPins,
@@ -59,9 +59,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const pad = view === 'compact' ? 'py-2' : 'py-2.5';
   const [menuOpen, setMenuOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const membersRef = useRef<HTMLDivElement | null>(null);
   const avatarMembers = useMemo(
     () =>
       memberIds
@@ -82,18 +80,6 @@ export function ChatHeader({
     document.addEventListener("mousedown", handler as unknown as EventListener);
     return () => document.removeEventListener("mousedown", handler as unknown as EventListener);
   }, [menuOpen]);
-
-  useEffect(() => {
-    if (!membersOpen) return;
-    const handler = (event: MouseEvent) => {
-      if (!membersRef.current) return;
-      if (!membersRef.current.contains(event.target as Node)) {
-        setMembersOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler as unknown as EventListener);
-    return () => document.removeEventListener("mousedown", handler as unknown as EventListener);
-  }, [membersOpen]);
 
   return (
     <div className={`border-b border-border/70 bg-panel/85 px-4 ${pad}`}>
@@ -147,27 +133,9 @@ export function ChatHeader({
           )}
         </div>
         <div className="flex items-center gap-1">
-          <div className="relative inline-flex items-center" ref={membersRef}>
-            <button className={CHAT_HEADER_ICON_BUTTON_CLASS} title="Members" onClick={() => setMembersOpen((v) => !v)}>
-              <Users size={16} />
-            </button>
-            {membersOpen && (
-              <div className="absolute left-0 top-9 z-20 min-w-[220px] rounded-xl border border-border bg-panel p-2 text-xs text-muted shadow-panel">
-                <div className="mb-2 text-[11px] font-semibold text-foreground">Members</div>
-                <div className="max-h-40 space-y-1 overflow-auto">
-                  {memberNames.length === 0 ? (
-                    <div className="text-muted">멤버 없음</div>
-                  ) : (
-                    memberNames.map((name) => (
-                      <div key={name} className="truncate rounded px-1.5 py-0.5 hover:bg-subtle/60">
-                        {name}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <button className={CHAT_HEADER_ICON_BUTTON_CLASS} title="Members" onClick={onOpenMembersPanel}>
+            <Users size={16} />
+          </button>
           <button className={CHAT_HEADER_ICON_BUTTON_CLASS} onClick={onOpenPins} title="Pins">
             <Pin size={16} />
             {pinCount > 0 && <span className="ml-1 text-[10px] text-muted">{pinCount}</span>}

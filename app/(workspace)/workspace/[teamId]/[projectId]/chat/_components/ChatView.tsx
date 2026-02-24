@@ -3,7 +3,21 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
-import { CornerDownRight } from "lucide-react";
+import {
+  CornerDownRight,
+  Search,
+  X,
+  Clock3,
+  Smile,
+  UserRound,
+  PawPrint,
+  UtensilsCrossed,
+  Plane,
+  Dumbbell,
+  Laptop,
+  AtSign,
+  Flag,
+} from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
 import type { Msg, ViewMode } from "@/workspace/chat/_model/types";
 import { useToast } from "@/components/ui/Toast";
@@ -29,8 +43,24 @@ import { useChatLifecycle } from "@/workspace/chat/_model/hooks/useChatLifecycle
 import { rtbroadcast, rtlisten } from "@/lib/realtime";
 import { useChatViewUiStore } from "@/workspace/chat/_model/store/useChatViewUiStore";
 import { fetchFriends, removeFriend } from "@/lib/members";
+import { imogiShortcuts } from "@/workspace/chat/_model/emoji.shortcuts";
 
 const VIEWMODE_KEY = 'fd.chat.viewmode';
+const RECENT_EMOJI_KEY = "fd.chat.recentEmojis";
+type EmojiCategoryKey = keyof typeof imogiShortcuts;
+type EmojiTabKey = "recent" | EmojiCategoryKey;
+const EMOJI_CATEGORY_META: Array<{ key: EmojiTabKey; label: string; icon: React.ReactNode }> = [
+  { key: "recent", label: "최근", icon: <Clock3 size={17} /> },
+  { key: "Emotion", label: "감정", icon: <Smile size={17} /> },
+  { key: "PeopleBodyRoles", label: "사람", icon: <UserRound size={17} /> },
+  { key: "AnimalsAndNature", label: "동물/자연", icon: <PawPrint size={17} /> },
+  { key: "FoodAndDrink", label: "음식", icon: <UtensilsCrossed size={17} /> },
+  { key: "TravelAndPlaces", label: "여행", icon: <Plane size={17} /> },
+  { key: "ActivitiesAndSports", label: "활동", icon: <Dumbbell size={17} /> },
+  { key: "ObjectsAndTechnology", label: "사물", icon: <Laptop size={17} /> },
+  { key: "SymbolsAndSigns", label: "기호", icon: <AtSign size={17} /> },
+  { key: "Flags", label: "국기", icon: <Flag size={17} /> },
+];
 
 type ChatViewProps = {
   initialChannelId?: string;
@@ -171,6 +201,11 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   const listRef = useRef<HTMLDivElement>(null);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [profileAnchorRect, setProfileAnchorRect] = useState<{ top: number; left: number; right: number; bottom: number } | null>(null);
+  const [rightPanelMode, setRightPanelMode] = useState<"thread" | "members">("thread");
+  const [reactionModalMsgId, setReactionModalMsgId] = useState<string | null>(null);
+  const [reactionQuery, setReactionQuery] = useState("");
+  const [reactionCategory, setReactionCategory] = useState<EmojiTabKey>("recent");
+  const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
   const handleMention = useCallback(
     (author: string, text: string | undefined) => {
       show({
@@ -221,14 +256,32 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     if (typeof window === "undefined") return;
     setView(getStoredView());
   }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = window.localStorage.getItem(RECENT_EMOJI_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        const next = parsed.filter((v) => typeof v === "string").slice(0, 12);
+        setRecentEmojis(next);
+        if (next.length > 0) setReactionCategory("recent");
+      }
+    } catch {
+      // ignore malformed cache
+    }
+  }, []);
 
   useEffect(() => {
-    const handleOpen = () => setRightOpen(true);
     const handleClose = () => setRightOpen(false);
-    window.addEventListener("chat:open-right", handleOpen);
+    const handleOpenThread = () => {
+      setRightPanelMode("thread");
+      setRightOpen(true);
+    };
+    window.addEventListener("chat:open-right", handleOpenThread);
     window.addEventListener("chat:close-right", handleClose);
     return () => {
-      window.removeEventListener("chat:open-right", handleOpen);
+      window.removeEventListener("chat:open-right", handleOpenThread);
       window.removeEventListener("chat:close-right", handleClose);
     };
   }, []);
@@ -343,7 +396,11 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
         window.dispatchEvent(new Event('chat:open-right'));
         break;
       case 'react':
-        toggleReaction(m.id, payload?.emoji || "👍");
+        if (payload?.emoji) {
+          toggleReaction(m.id, payload.emoji);
+          break;
+        }
+        setReactionModalMsgId(m.id);
         break;
       case 'copy':
         await navigator.clipboard.writeText(m.text || "");
@@ -401,6 +458,18 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     }
     closeMenu();
   };
+  const handlePickReaction = (emoji: string) => {
+    if (!reactionModalMsgId) return;
+    toggleReaction(reactionModalMsgId, emoji);
+    setRecentEmojis((prev) => {
+      const next = [emoji, ...prev.filter((item) => item !== emoji)].slice(0, 12);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(RECENT_EMOJI_KEY, JSON.stringify(next));
+      }
+      return next;
+    });
+    setReactionModalMsgId(null);
+  };
 
   const onTyping = (typing: boolean) => {
     setTyping(typing);
@@ -435,11 +504,51 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
     if (ids.length > 0) return ids;
     return Object.keys(users);
   }, [channelMembers, channelId, dmParticipantIds, isDM, me.id, users]);
-  const memberNames = useMemo(
-    () => memberIds.map((id) => users[id]?.name || id),
-    [memberIds, users],
-  );
   const topic = channelTopics[channelId]?.topic || "";
+  const emojiAllEntries = useMemo(
+    () =>
+      EMOJI_CATEGORY_META
+        .filter((meta): meta is { key: EmojiCategoryKey; label: string; icon: React.ReactNode } => meta.key !== "recent")
+        .flatMap((meta) =>
+          Object.entries(imogiShortcuts[meta.key]).map(([emoji, shortcut]) => ({
+            category: meta.key,
+            emoji,
+            shortcut,
+          })),
+        ),
+    [],
+  );
+  const reactionModalEntries = useMemo(() => {
+    const keyword = reactionQuery.trim().toLowerCase();
+    if (!keyword) {
+      if (reactionCategory === "recent") {
+        return recentEmojis.map((emoji) => ({
+          category: "recent" as const,
+          emoji,
+          shortcut: "",
+        }));
+      }
+      return Object.entries(imogiShortcuts[reactionCategory]).map(([emoji, shortcut]) => ({
+        category: reactionCategory,
+        emoji,
+        shortcut,
+      }));
+    }
+    const normalized = keyword.startsWith("/") ? keyword : `/${keyword}`;
+    return emojiAllEntries.filter(({ emoji, shortcut }) =>
+      emoji.includes(keyword) ||
+      shortcut.toLowerCase().includes(keyword) ||
+      shortcut.toLowerCase().includes(normalized),
+    );
+  }, [emojiAllEntries, reactionCategory, reactionQuery, recentEmojis]);
+  useEffect(() => {
+    if (!reactionModalMsgId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setReactionModalMsgId(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [reactionModalMsgId]);
   const channelDisplayName = isDM ? channelLabel : channelLabel.replace(/^#\s*/, "#");
   const normalizedChannelName = channelDisplayName.replace(/^[@#]\s*/, "");
   const fallbackCreatedAt = useMemo(() => {
@@ -611,11 +720,14 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
             isDM={isDM}
             channelName={channelDisplayName}
             dmAvatarUrl={dmUser?.avatarUrl}
-            memberNames={memberNames}
             memberIds={memberIds}
             users={users}
             topic={topic}
             view={view}
+            onOpenMembersPanel={() => {
+              setRightPanelMode("members");
+              setRightOpen(true);
+            }}
             onOpenInvite={() => setInviteOpen(true)}
             onOpenCmd={() => setCmdOpen(true)}
             onOpenPins={() => setPinOpen(true)}
@@ -794,6 +906,66 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
           onAction={onMenuAction}
           onClose={closeMenu}
         />
+        {reactionModalMsgId && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/45 px-4" onClick={() => setReactionModalMsgId(null)}>
+            <div className="w-full max-w-2xl rounded-2xl border border-border bg-panel p-4 shadow-xl" onClick={(event) => event.stopPropagation()}>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">반응 추가</h3>
+                <button type="button" className="rounded-md p-1 text-muted hover:bg-subtle/60" onClick={() => setReactionModalMsgId(null)} aria-label="close">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="mb-2 flex items-center gap-1 rounded border border-border bg-subtle/40 px-2 py-1">
+                <Search size={12} className="opacity-70" />
+                <input
+                  autoFocus
+                  placeholder="이모지 또는 /기쁨 검색"
+                  className="flex-1 bg-transparent text-xs outline-none"
+                  value={reactionQuery}
+                  onChange={(e) => setReactionQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex w-11 shrink-0 flex-col items-center gap-1 border-r border-border pr-2">
+                  {EMOJI_CATEGORY_META.map((meta) => (
+                    <button
+                      key={meta.key}
+                      type="button"
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-md ${
+                        reactionCategory === meta.key ? "bg-brand text-white" : "text-muted hover:bg-subtle/70"
+                      }`}
+                      onClick={() => setReactionCategory(meta.key)}
+                      title={meta.label}
+                    >
+                      {meta.icon}
+                    </button>
+                  ))}
+                </div>
+                <div className="min-w-0 flex-1">
+                  {reactionCategory === "recent" && recentEmojis.length === 0 && !reactionQuery.trim() ? (
+                    <div className="py-8 text-center text-xs text-muted">최근 사용한 이모지가 없습니다.</div>
+                  ) : (
+                    <div className="max-h-[24rem] overflow-y-auto">
+                      <div className="grid grid-cols-8 gap-0">
+                        {reactionModalEntries.map(({ emoji, shortcut }, index) => (
+                          <button
+                            key={`${emoji}-${index}`}
+                            type="button"
+                            className="inline-flex h-12 items-center justify-center rounded-none text-[30px] leading-none transition-colors hover:bg-brand/20"
+                            onClick={() => handlePickReaction(emoji)}
+                            aria-label={shortcut}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <PinManager open={pinOpen} onOpenChange={setPinOpen} />
         <SavedModal open={savedOpen} onOpenChange={setSavedOpen} />
@@ -831,7 +1003,11 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
       </div>
       {rightOpen && (
         <aside className="hidden h-full min-h-0 overflow-hidden rounded-r-2xl border border-border/70 border-l bg-panel/85 lg:block">
-          <ChatRightPanel />
+          <ChatRightPanel
+            mode={rightPanelMode}
+            memberIds={memberIds}
+            panelTitle={isDM ? "대화 상대" : "멤버 목록"}
+          />
         </aside>
       )}
       <Drawer
@@ -841,11 +1017,15 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
             window.dispatchEvent(new Event("chat:close-right"));
           }
         }}
-        title="Thread"
+        title={rightPanelMode === "members" ? (isDM ? "대화 상대" : "멤버 목록") : "Thread"}
         width={360}
         side="right"
       >
-        <ChatRightPanel />
+        <ChatRightPanel
+          mode={rightPanelMode}
+          memberIds={memberIds}
+          panelTitle={isDM ? "대화 상대" : "멤버 목록"}
+        />
       </Drawer>
     </div>
   );

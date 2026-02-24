@@ -1,10 +1,9 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/chat/_components/ThreadsView.tsx
 'use client';
 
-import { useEffect, useMemo } from "react";
-import { Check, Filter, Search, SmilePlus, Reply, Pin, Bookmark, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Filter, Search, SmilePlus, Reply, Pin, Bookmark, Pencil, Trash2, MoreHorizontal, CornerDownRight } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
-import MarkdownText from "./MarkdownText";
 import Composer from "./Composer";
 import { useThreadItems } from "@/workspace/chat/_model/hooks/useThreadItems";
 import EmojiPicker from "./EmojiPicker";
@@ -87,15 +86,17 @@ function ThreadRow({
   onCancelEdit: () => void;
   onDelete: () => void;
   onReact: (emoji: string) => void;
-  onQuote: () => void;
+  onQuote: (target: Msg) => void;
   pinned: boolean;
   saved: boolean;
   onPin: () => void;
   onSave: () => void;
   meId: string;
 }) {
+  const [quickEmojiOpen, setQuickEmojiOpen] = useState(false);
+  const quickEmojis = ["😁", "😥", "👌", "👋", "🙏", "❤️", "✅"];
   return (
-    <div className="group relative flex gap-3 rounded-xl px-2 py-1 transition hover:bg-subtle/55">
+    <div className="group relative flex gap-3 rounded-xl px-2 py-1 transition hover:bg-subtle/55" onMouseLeave={() => setQuickEmojiOpen(false)}>
       <div className="pt-0.5">
         <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted/20 text-[11px] font-semibold text-foreground">
           {avatarUrl ? (
@@ -106,9 +107,9 @@ function ThreadRow({
         </div>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 text-[12px] text-muted">
-          <span className="font-semibold text-foreground">{author}</span>
-          <span>{new Date(msg.ts).toLocaleString()}</span>
+        <div className="flex min-w-0 items-center gap-2 text-[12px] text-muted">
+          <span className="truncate font-semibold text-foreground">{author}</span>
+          <span className="shrink-0">{new Date(msg.ts).toLocaleString()}</span>
         </div>
         {editing ? (
           <div className="mt-2 space-y-2">
@@ -127,29 +128,55 @@ function ThreadRow({
             </div>
           </div>
         ) : (
-          <div className="mt-1 text-[14px] text-foreground">
-            <MarkdownText text={msg.text || ""} />
-          </div>
+          <div className="mt-1 break-words whitespace-pre-wrap text-[14px] leading-5 text-foreground">{msg.text || ""}</div>
         )}
         <ReactionPills msg={msg} meId={meId} onToggle={onReact} />
         {!editing && null}
       </div>
       {!editing && (
         <div className="absolute right-2 top-1 z-10 flex items-center gap-0.5 rounded-lg border border-border bg-background px-1 py-0.5 opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100">
-          <button className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-subtle/60" aria-label="퀵 이모지">
-            <SmilePlus size={16} />
-          </button>
-          <EmojiPicker
-            onPick={onReact}
-            panelSide="top"
-            panelAlign="right"
-            anchorClass="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
-            triggerContent={<span className="text-base">😊</span>}
-          />
+          <div className="relative">
+            <button
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+              onClick={() => setQuickEmojiOpen((prev) => !prev)}
+              aria-label="퀵 이모지"
+              title="퀵 이모지"
+            >
+              <SmilePlus size={16} />
+            </button>
+            {quickEmojiOpen && (
+              <div className="absolute bottom-full right-0 mb-1 flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 shadow-lg">
+                {quickEmojis.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-base hover:bg-subtle/60"
+                    onClick={() => {
+                      onReact(emoji);
+                      setQuickEmojiOpen(false);
+                    }}
+                    title={emoji}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+                <EmojiPicker
+                  onPick={(emoji) => {
+                    onReact(emoji);
+                    setQuickEmojiOpen(false);
+                  }}
+                  presentation="modal"
+                  anchorClass="inline-flex h-7 w-7 items-center justify-center rounded text-base hover:bg-subtle/60"
+                  triggerContent={<MoreHorizontal size={15} />}
+                />
+              </div>
+            )}
+          </div>
           <button
             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
-            onClick={onQuote}
+            onClick={() => onQuote(msg)}
             aria-label="답장"
+            title="답장"
           >
             <Reply size={14} />
           </button>
@@ -157,6 +184,7 @@ function ThreadRow({
             className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${pinned ? 'text-amber-500' : 'text-muted'} hover:bg-subtle/60`}
             onClick={onPin}
             aria-label="고정"
+            title="고정"
           >
             <Pin size={14} />
           </button>
@@ -164,22 +192,20 @@ function ThreadRow({
             className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${saved ? 'text-emerald-500' : 'text-muted'} hover:bg-subtle/60`}
             onClick={onSave}
             aria-label="저장"
+            title="저장"
           >
             <Bookmark size={14} />
           </button>
           {isMine && (
-            <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60" onClick={onStartEdit} aria-label="편집">
+            <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60" onClick={onStartEdit} aria-label="편집" title="편집">
               <Pencil size={14} />
             </button>
           )}
           {isMine && (
-            <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-rose-500 hover:bg-subtle/60" onClick={onDelete} aria-label="삭제">
+            <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-rose-500 hover:bg-subtle/60" onClick={onDelete} aria-label="삭제" title="삭제">
               <Trash2 size={14} />
             </button>
           )}
-          <button className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60" aria-label="추가 메뉴">
-            <MoreHorizontal size={14} />
-          </button>
         </div>
       )}
     </div>
@@ -209,6 +235,7 @@ export default function ThreadsView() {
     resetThreadsViewState,
   } = useThreadsViewStore();
   const { show } = useToast();
+  const [replyTargets, setReplyTargets] = useState<Record<string, Msg | null>>({});
 
   useEffect(() => {
     resetThreadsViewState();
@@ -308,6 +335,7 @@ export default function ThreadsView() {
     const rootAuthor = users[root.authorId]?.name || root.author || "알 수 없음";
     const rootAvatar = users[root.authorId]?.avatarUrl;
     const isExpanded = expanded.has(item.rootId);
+    const replyTarget = replyTargets[item.rootId] || null;
     const previewCount = 2;
     const visibleReplies = isExpanded ? item.replies : item.replies.slice(-previewCount);
     const hiddenCount = Math.max(0, item.replies.length - visibleReplies.length);
@@ -373,11 +401,7 @@ export default function ThreadsView() {
                   toggleReaction(root.id, emoji);
                 })();
               }}
-              onQuote={() => {
-                window.dispatchEvent(
-                  new CustomEvent("chat:insert-text", { detail: { text: `> ${root.text || ""}\n`, scopeId: item.rootId } }),
-                );
-              }}
+              onQuote={(target) => setReplyTargets((prev) => ({ ...prev, [item.rootId]: target }))}
               pinned={(pinnedByChannel[item.channelId] || []).includes(root.id)}
               saved={savedIds.has(root.id)}
               onPin={() => {
@@ -451,11 +475,7 @@ export default function ThreadsView() {
                       toggleReaction(reply.id, emoji);
                     })();
                   }}
-                  onQuote={() => {
-                    window.dispatchEvent(
-                      new CustomEvent("chat:insert-text", { detail: { text: `> ${reply.text || ""}\n`, scopeId: item.rootId } }),
-                    );
-                  }}
+                  onQuote={(target) => setReplyTargets((prev) => ({ ...prev, [item.rootId]: target }))}
                   pinned={(pinnedByChannel[item.channelId] || []).includes(reply.id)}
                   saved={savedIds.has(reply.id)}
                   onPin={() => {
@@ -504,13 +524,32 @@ export default function ThreadsView() {
         )}
 
         <div className="mt-3">
+          {replyTarget && (
+            <div className="mb-2 overflow-hidden rounded-xl border border-border bg-panel/85">
+              <div className="flex items-center gap-2 border-b border-border bg-panel/90 px-3 py-2 text-[11px] text-muted">
+                <div className="flex items-center gap-1.5 uppercase tracking-[0.16em] text-indigo-500">
+                  <CornerDownRight size={11} />
+                  Replying to <span className="font-semibold normal-case text-foreground">{users[replyTarget.authorId]?.name || replyTarget.author}</span>
+                </div>
+                <button
+                  type="button"
+                  className="ml-auto rounded-full border border-border px-2 py-0.5 text-[11px] text-muted hover:text-foreground"
+                  onClick={() => setReplyTargets((prev) => ({ ...prev, [item.rootId]: null }))}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="truncate px-3 py-1.5 text-[11px] text-muted">{replyTarget.text || ""}</div>
+            </div>
+          )}
           <Composer
             mentionChannelId={item.channelId}
             quoteScopeId={item.rootId}
             placeholder="스레드에 답장 보내기"
             onSend={async (text, files, extra) => {
               await setChannel(item.channelId);
-              await send(text, files, { ...extra, parentId: item.rootId });
+              await send(text, files, { ...extra, parentId: item.rootId, replyToId: replyTarget?.id });
+              setReplyTargets((prev) => ({ ...prev, [item.rootId]: null }));
             }}
           />
         </div>

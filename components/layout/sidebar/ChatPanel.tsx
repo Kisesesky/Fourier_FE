@@ -21,6 +21,27 @@ type ChatPanelProps = {
   onOpenThreadItem: (rootId: string) => void;
 };
 
+const pad2 = (value: number) => String(value).padStart(2, "0");
+
+function formatThreadTime(ts?: number) {
+  if (!ts) return "";
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = new Date();
+  const time = date.toLocaleTimeString("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+  if (isToday) return time;
+  const shortDate = `${String(date.getFullYear()).slice(-2)}.${pad2(date.getMonth() + 1)}.${pad2(date.getDate())}`;
+  return `${shortDate} ${time}`;
+}
+
 export default function ChatPanel({
   channels,
   activeChannelId,
@@ -144,25 +165,55 @@ export default function ChatPanel({
         ) : (
           threadItems.slice(0, 5).map((item) => {
             const unreadLabel = item.unread > 99 ? "99+" : item.unread > 0 ? String(item.unread) : "";
+            const lastMessage = item.replies[item.replies.length - 1] ?? item.root;
+            const author = users[lastMessage.authorId];
+            const authorName = author?.name || item.lastAuthor || "Unknown";
+            const authorAvatar = author?.avatarUrl;
+            const sentAt = formatThreadTime(lastMessage.ts);
             return (
               <button
                 key={`${item.channelId}:${item.rootId}`}
                 type="button"
-                className="flex w-full flex-col gap-1 rounded-xl border border-border/60 bg-panel/70 px-3 py-2.5 text-left text-xs transition hover:border-border hover:bg-accent/70"
+                className="flex w-full flex-col gap-1 overflow-hidden rounded-xl border border-border/60 bg-panel/70 px-3 py-2.5 text-left text-xs transition hover:border-border hover:bg-accent/70"
                 onClick={() => onOpenThreadItem(item.rootId)}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <span className="inline-flex rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-500">#</span>
-                  <span className="truncate font-semibold text-foreground">{item.channelName}</span>
+                  <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{item.channelName}</span>
                   {unreadLabel && (
                     <span className="ml-auto rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-500">
                       {unreadLabel}
                     </span>
                   )}
                 </div>
-                <span className="truncate text-[11px] text-muted">
-                  {item.lastPreview || "메시지 없음"}
-                </span>
+                <div className="h-[1px] w-full bg-border" />
+                <div className="flex min-w-0 items-start gap-2">
+                  <span className="h-5 w-5 shrink-0 overflow-hidden rounded-full bg-muted/20">
+                    {authorAvatar ? (
+                      <img src={authorAvatar} alt={authorName} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-foreground">
+                        {authorName.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 text-[10px]">
+                      <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{authorName}</span>
+                      {sentAt ? <span className="shrink-0 text-muted">{sentAt}</span> : null}
+                    </p>
+                    <p
+                      className="min-w-0 overflow-hidden break-all text-[11px] leading-4 text-muted"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                      }}
+                    >
+                      {item.lastPreview || "메시지 없음"}
+                    </p>
+                  </div>
+                </div>
               </button>
             );
           })

@@ -32,6 +32,7 @@ export function ChatSelectionBar({ count, onPin, onSave, onDelete, onReact, onCl
         </button>
         <EmojiPicker
           onPick={onReact}
+          presentation="modal"
           anchorClass="px-2 py-0.5 rounded border border-border hover:bg-subtle/60 inline-flex items-center gap-1 text-xs"
           triggerContent={
             <>

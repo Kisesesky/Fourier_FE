@@ -271,8 +271,10 @@ export default function ChatDetailView({ pathname, onNavigate, renderHeader, ren
                   <div className="mt-3 space-y-2">
                     {chatThreadRows.map((row) => (
                       <div key={row.channelId} className="flex items-center justify-between rounded-lg border border-border/60 bg-panel px-3 py-2 text-xs">
-                        <span className="font-semibold text-foreground">{row.channelName}</span>
-                        <span className="text-muted">{row.threadCount}개</span>
+                        <span className="min-w-0 flex-1 truncate font-semibold text-foreground" title={row.channelName}>
+                          {row.channelName}
+                        </span>
+                        <span className="ml-3 shrink-0 text-muted">{row.threadCount}개</span>
                       </div>
                     ))}
                     {chatThreadRows.length === 0 && (

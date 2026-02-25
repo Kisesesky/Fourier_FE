@@ -48,7 +48,7 @@ export async function getProjectMemberAnalytics(
   teamId: string,
   projectId: string,
   params: { granularity: "hourly" | "daily" | "monthly"; date?: string; month?: string; year?: string }
-) {
+): Promise<{ counts: number[]; granularity: "hourly" | "daily" | "monthly" }> {
   const query = new URLSearchParams();
   query.set("granularity", params.granularity);
   if (params.date) query.set("date", params.date);
@@ -58,12 +58,27 @@ export async function getProjectMemberAnalytics(
   const payload = res.data;
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
     const bag = payload as Record<string, any>;
-    if (Array.isArray(bag.counts)) return { counts: bag.counts, granularity: bag.granularity };
+    if (Array.isArray(bag.counts)) {
+      return {
+        counts: bag.counts.filter((item): item is number => typeof item === "number"),
+        granularity:
+          bag.granularity === "hourly" || bag.granularity === "daily" || bag.granularity === "monthly"
+            ? bag.granularity
+            : params.granularity,
+      };
+    }
     if (bag.data && typeof bag.data === "object" && Array.isArray((bag.data as any).counts)) {
-      return { counts: (bag.data as any).counts, granularity: (bag.data as any).granularity };
+      const inner = bag.data as Record<string, any>;
+      return {
+        counts: inner.counts.filter((item: unknown): item is number => typeof item === "number"),
+        granularity:
+          inner.granularity === "hourly" || inner.granularity === "daily" || inner.granularity === "monthly"
+            ? inner.granularity
+            : params.granularity,
+      };
     }
   }
-  return { counts: [] };
+  return { counts: [], granularity: params.granularity };
 }
 
 export async function removeProjectMember(teamId: string, projectId: string, userId: string) {

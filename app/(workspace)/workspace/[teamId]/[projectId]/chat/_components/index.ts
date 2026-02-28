@@ -25,4 +25,4 @@ export { default as CommandPalette } from "./CommandPalette";
 export { default as CodeFencePreview } from "./CodeFencePreview";
 export { default as Lightbox } from "./Lightbox";
 export { default as LiveReadersBar } from "./LiveReadersBar";
-export { default as HuddleBar } from "./HuddleBar";
+export { default as CallRoomPanel } from "./CallRoomPanel";

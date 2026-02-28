@@ -12,6 +12,7 @@ import {
   CheckCheck,
   Hash,
   Info,
+  Mic,
   MoreHorizontal,
   Pin,
   PinOff,
@@ -38,6 +39,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 type ChannelEntry = {
   channel: Channel;
+  kind: "text" | "voice";
   displayName: string;
   topic?: string;
   lastPreview?: string;
@@ -50,6 +52,15 @@ type ChannelEntry = {
   avatarUrl?: string;
   presence?: PresenceState;
   muted?: boolean;
+};
+
+const getChannelKind = (channel: Channel): "text" | "voice" => {
+  if (channel.kind === "voice" || channel.kind === "video") return "voice";
+  if (channel.kind === "text") return "text";
+  if (channel.isDM || channel.id.startsWith("dm:")) return "text";
+  const lower = `${channel.name || ""}`.toLowerCase();
+  if (lower.includes("voice") || lower.includes("음성")) return "voice";
+  return "text";
 };
 
 const relativeTime = (ts: number) => {
@@ -168,6 +179,7 @@ export default function ChatDashboard({ initialFilter }: { initialFilter?: Filte
         const targetUser = targetUserId ? users[targetUserId] : undefined;
         return {
           channel,
+          kind: getChannelKind(channel),
           displayName,
           topic,
           lastPreview: preview,
@@ -227,6 +239,14 @@ export default function ChatDashboard({ initialFilter }: { initialFilter?: Filte
         (entry) => !entry.isDM && !pinnedSet.has(entry.channel.id) && !entry.starred
       ),
     [pinnedSet, visibleEntries]
+  );
+  const textChannelEntries = useMemo(
+    () => channelEntries.filter((entry) => entry.kind === "text"),
+    [channelEntries],
+  );
+  const voiceChannelEntries = useMemo(
+    () => channelEntries.filter((entry) => entry.kind === "voice"),
+    [channelEntries],
   );
   const dmEntries = useMemo(
     () =>
@@ -544,9 +564,23 @@ export default function ChatDashboard({ initialFilter }: { initialFilter?: Filte
                   archivedSet={archivedSet}
                 />
                 <ChannelSection
-                  title="Channels"
-                  entries={channelEntries}
-                  emptyLabel="표시할 채널이 없습니다."
+                  title="Text channels"
+                  entries={textChannelEntries}
+                  emptyLabel="텍스트 채널이 없습니다."
+                  onOpen={handleOpenChannel}
+                  onToggleStar={handleToggleStar}
+                  onToggleMuted={handleToggleMuted}
+                  onOpenInfo={handleOpenRightPanelFor}
+                  onTogglePinned={handleTogglePinned}
+                  onToggleArchived={handleToggleArchived}
+                  onMarkRead={handleMarkRead}
+                  pinnedSet={pinnedSet}
+                  archivedSet={archivedSet}
+                />
+                <ChannelSection
+                  title="Call channels"
+                  entries={voiceChannelEntries}
+                  emptyLabel="통화 채널이 없습니다."
                   onOpen={handleOpenChannel}
                   onToggleStar={handleToggleStar}
                   onToggleMuted={handleToggleMuted}
@@ -708,6 +742,8 @@ function ChannelListRow({
 }) {
   const preview = buildPreview(entry);
   const presenceClass = presenceColors[entry.presence ?? "offline"] ?? presenceColors.offline;
+  const channelIcon = entry.kind === "voice" ? <Mic size={14} /> : <Hash size={14} />;
+  const channelBadge = entry.kind === "voice" ? "통화" : "채널";
   return (
     <div
       role="button"
@@ -738,7 +774,7 @@ function ChannelListRow({
               getInitials(entry.displayName)
             )
           ) : (
-            <Hash size={14} />
+            channelIcon
           )}
           {entry.isDM && (
             <span
@@ -758,7 +794,7 @@ function ChannelListRow({
               entry.isDM ? "bg-sky-500/15 text-sky-500" : "bg-violet-500/15 text-violet-500",
             )}
           >
-            {entry.isDM ? "DM" : "채널"}
+            {entry.isDM ? "DM" : channelBadge}
           </span>
           <span
             className={clsx(

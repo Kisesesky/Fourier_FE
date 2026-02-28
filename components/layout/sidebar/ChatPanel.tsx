@@ -2,7 +2,7 @@
 'use client';
 
 import clsx from "clsx";
-import { Plus } from "lucide-react";
+import { Hash, Mic, Plus, Video } from "lucide-react";
 
 import type { Channel, ChatUser } from "@/workspace/chat/_model/types";
 import { useThreadItems } from "@/workspace/chat/_model/hooks/useThreadItems";
@@ -22,6 +22,25 @@ type ChatPanelProps = {
 };
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
+const getChannelKind = (channel: Pick<Channel, "id" | "name" | "kind" | "isDM">): "text" | "voice" | "video" => {
+  if (channel.kind) return channel.kind;
+  if (channel.isDM || channel.id.startsWith("dm:")) return "text";
+  const lower = `${channel.name || ""}`.toLowerCase();
+  if (lower.includes("voice") || lower.includes("음성")) return "voice";
+  if (lower.includes("video") || lower.includes("화상")) return "video";
+  return "text";
+};
+
+function ChannelKindChip({ kind }: { kind: "text" | "voice" | "video" }) {
+  const icon = kind === "voice" ? <Mic size={11} /> : kind === "video" ? <Video size={11} /> : <Hash size={11} />;
+  const color =
+    kind === "voice"
+      ? "bg-emerald-500/15 text-emerald-500"
+      : kind === "video"
+        ? "bg-rose-500/15 text-rose-500"
+        : "bg-violet-500/15 text-violet-500";
+  return <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${color}`}>{icon}</span>;
+}
 
 function formatThreadTime(ts?: number) {
   if (!ts) return "";
@@ -69,6 +88,7 @@ export default function ChatPanel({
           channelList.map((channel) => {
             const unreadCount = channelActivity[channel.id]?.unreadCount ?? 0;
             const unreadLabel = unreadCount > 99 ? "99+" : unreadCount > 0 ? String(unreadCount) : "";
+            const kind = getChannelKind(channel);
             return (
               <button
                 key={channel.id}
@@ -81,7 +101,7 @@ export default function ChatPanel({
                 )}
                 onClick={() => onOpenChannel(channel.id)}
               >
-                <span className="inline-flex rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-500">#</span>
+                <ChannelKindChip kind={kind} />
                 <span className="truncate">{channel.name?.replace(/^#\s*/, "") || channel.id}</span>
                 {unreadLabel && (
                   <span className="ml-auto rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-500">
@@ -170,6 +190,8 @@ export default function ChatPanel({
             const authorName = author?.name || item.lastAuthor || "Unknown";
             const authorAvatar = author?.avatarUrl;
             const sentAt = formatThreadTime(lastMessage.ts);
+            const channel = channels.find((c) => c.id === item.channelId);
+            const kind = channel ? getChannelKind(channel) : "text";
             return (
               <button
                 key={`${item.channelId}:${item.rootId}`}
@@ -178,7 +200,7 @@ export default function ChatPanel({
                 onClick={() => onOpenThreadItem(item.rootId)}
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-500">#</span>
+                  <ChannelKindChip kind={kind} />
                   <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{item.channelName}</span>
                   {unreadLabel && (
                     <span className="ml-auto rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold text-rose-500">

@@ -5,8 +5,10 @@ import {
   Bookmark,
   Hash,
   MessageSquare,
+  Mic,
   Pin,
   Users,
+  Video,
   Info,
   Search,
   MoreHorizontal,
@@ -19,6 +21,7 @@ import { CHAT_HEADER_ICON_BUTTON_CLASS } from "@/workspace/chat/_model/view.cons
 type ChatHeaderProps = {
   isDM: boolean;
   channelName: string;
+  channelKind?: "text" | "voice" | "video";
   dmAvatarUrl?: string;
   memberIds: string[];
   users: Record<string, { id: string; name: string; avatarUrl?: string }>;
@@ -40,6 +43,7 @@ type ChatHeaderProps = {
 export function ChatHeader({
   isDM,
   channelName,
+  channelKind = "text",
   dmAvatarUrl,
   memberIds,
   users,
@@ -95,7 +99,13 @@ export function ChatHeader({
                 <MessageSquare size={16} className="text-muted" />
               )
             ) : (
-              <Hash size={16} className="text-muted" />
+              channelKind === "voice" ? (
+                <Mic size={16} className="text-muted" />
+              ) : channelKind === "video" ? (
+                <Video size={16} className="text-muted" />
+              ) : (
+                <Hash size={16} className="text-muted" />
+              )
             )}
             <span className="truncate max-w-[240px] sm:max-w-[320px] md:max-w-[380px]">{channelName}</span>
           </button>

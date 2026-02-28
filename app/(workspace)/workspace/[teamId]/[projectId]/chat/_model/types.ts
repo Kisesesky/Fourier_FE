@@ -36,6 +36,7 @@ export type Channel = {
   id: string;
   name: string;
   workspaceId: string;
+  kind?: "text" | "voice" | "video";
   isDM?: boolean;
   createdAt?: string;
 };

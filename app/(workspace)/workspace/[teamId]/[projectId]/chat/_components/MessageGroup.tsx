@@ -157,7 +157,7 @@ function ReactionPills({
   if (entries.length === 0) return null;
   const chipTextClass = view === "compact" ? "text-[11.5px]" : "text-[12.5px]";
   return (
-    <div className="mt-1 flex flex-wrap gap-1.5">
+    <div className="mt-2 flex flex-wrap gap-1.5">
       {entries.map(([emoji, userIds]) => {
         const reacted = userIds.includes(meId);
         const who = userIds
@@ -348,7 +348,7 @@ function MessageRow({
             )}
             <CodeFencePreview fences={fences} />
             {urls.length > 0 && (
-              <div className="mt-1 space-y-1">
+              <div className="mt-2 flex flex-col gap-2">
                 {urls.map((url) => (
                   <LinkPreview key={url} url={url} />
                 ))}
@@ -470,7 +470,7 @@ function MessageRow({
         </button>
       </div>
 
-        <div className={`pl-[45px] ${showHeader ? 'mt-1' : 'mt-0.5'}`}>
+        <div className={`pl-[45px] ${showHeader ? 'mt-1.5' : 'mt-1'}`}>
           <div className="flex flex-wrap items-center gap-1 text-[12px] text-muted">
             <ReactionPills m={m} meId={meId} view={view} usersMap={users} onToggle={(emoji) => onReact(m.id, emoji)} />
           </div>
@@ -535,7 +535,7 @@ export function MessageGroup({
   const head = items[0];
   const seenNames = otherSeen[head.id] || [];
   return (
-    <div className="space-y-0">
+    <div className="space-y-1.5">
       {items.map((item, index) => (
         <MessageRow
           key={item.id}

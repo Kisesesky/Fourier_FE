@@ -11,6 +11,7 @@ type ChannelResponse = {
   isDefault?: boolean;
   memberIds?: string[];
   createdAt?: string;
+  type?: "CHAT" | "VOICE" | "VIDEO";
 };
 
 type MessageResponse = {
@@ -31,7 +32,16 @@ const ChannelResponseSchema = z.object({
   isDefault: z.boolean().optional(),
   memberIds: z.array(z.string()).optional(),
   createdAt: z.string().optional(),
+  type: z.enum(["CHAT", "VOICE", "VIDEO"]).optional(),
 });
+
+const toChannelKind = (
+  type?: "CHAT" | "VOICE" | "VIDEO",
+): "text" | "voice" | "video" => {
+  if (type === "VOICE") return "voice";
+  if (type === "VIDEO") return "video";
+  return "text";
+};
 
 const MessageResponseSchema = z.object({
   id: z.string(),
@@ -59,6 +69,7 @@ export async function listChannels(projectId: string): Promise<Channel[]> {
       name: item.name,
       workspaceId: item.projectId ?? projectId,
       createdAt: item.createdAt,
+      kind: toChannelKind(item.type),
     }));
   } catch (error) {
     const status = (error as AxiosError)?.response?.status;
@@ -71,11 +82,15 @@ export async function createChannel(
   projectId: string,
   name: string,
   memberIds: string[] = [],
+  kind: "text" | "voice" | "video" = "text",
 ): Promise<ChannelResponse> {
+  const channelType: "CHAT" | "VOICE" | "VIDEO" =
+    kind === "voice" ? "VOICE" : kind === "video" ? "VIDEO" : "CHAT";
   const res = await api.post<ChannelResponse>("/chat/channels", {
     projectId,
     name,
     memberIds,
+    type: channelType,
   });
   return res.data;
 }

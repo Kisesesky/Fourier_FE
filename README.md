@@ -162,6 +162,7 @@
 │ │   │ │ │ └─page.tsx                                │   │ │ │ └─# 캘린더 루트 페이지
 │ │   │ │ ├─chat/                                     │   │ │ ├─# 프로젝트 채팅 기능
 │ │   │ │ │ ├─_components/                            │   │ │ │ ├─# UI(해당 도메인/route 전용)
+│ │   │ │ │ │ ├─CallRoomPanel.tsx                     │   │ │ │ │ ├─# 음성/화상 통화 패널
 │ │   │ │ │ │ ├─ChannelModals.tsx                     │   │ │ │ │ ├─# 채널 생성/수정/삭제 모달
 │ │   │ │ │ │ ├─ChannelSettingsModal.tsx              │   │ │ │ │ ├─# 채널 설정
 │ │   │ │ │ │ ├─ChatDashboard.tsx                     │   │ │ │ │ ├─# 채널 목록 + 검색 패널
@@ -173,7 +174,6 @@
 │ │   │ │ │ │ ├─Composer.tsx                          │   │ │ │ │ ├─# 메시지 입력창
 │ │   │ │ │ │ ├─EmojiPicker.tsx                       │   │ │ │ │ ├─# 이모지 선택창
 │ │   │ │ │ │ ├─FilesPanel.tsx                        │   │ │ │ │ ├─# 채널 파일목록
-│ │   │ │ │ │ ├─HuddleBar.tsx                         │   │ │ │ │ ├─# 음성/화상 위한 미니 바
 │ │   │ │ │ │ ├─index.ts                              │   │ │ │ │ ├─# components export
 │ │   │ │ │ │ ├─Lightbox.tsx                          │   │ │ │ │ ├─# 이미지 확대
 │ │   │ │ │ │ ├─LinkPreview.tsx                       │   │ │ │ │ ├─# 링크 프리뷰
@@ -428,6 +428,8 @@
 │ ├─projects.ts                                       ├─# 프로젝트 유틸
 │ ├─realtime.ts                                       ├─# 실시간 동기화 및 Presence 관련 유팅
 │ ├─search.ts                                         ├─# 검색 기능 지원 함수
+│ ├─sfuBridge.ts                                      ├─# 
+│ ├─sfuClient.ts                                      ├─# 
 │ ├─socket.ts                                         ├─# WebSocket 통신 함수 및 설정
 │ ├─support.ts                                        ├─# 고객센터 관리
 │ ├─team.ts                                           ├─# 팀 관리

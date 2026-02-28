@@ -42,7 +42,7 @@ export default function MessageContextMenu({
     saved ? { id: 'unsave', label: '저장 해제', icon: <BookmarkX size={14}/> } : { id: 'save', label: '메시지 저장', icon: <Bookmark size={14}/> },
     ...(canEdit ? [{ id: 'edit', label: '메시지 수정', icon: <Pencil size={14}/> } as Item] : []),
     ...(canEdit ? [{ id: 'delete', label: '메시지 삭제', icon: <Trash2 size={14}/> } as Item] : []),
-    { id: 'huddle', label: '여기서 허들 시작', icon: <Megaphone size={14}/> },
+    { id: 'huddle', label: '음성 채널 열기', icon: <Megaphone size={14}/> },
   ];
 
   return (

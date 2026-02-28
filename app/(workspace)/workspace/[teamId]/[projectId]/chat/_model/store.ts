@@ -33,6 +33,7 @@ type HuddleState = {
   startedAt?: number;
   muted?: boolean;
   members?: string[];
+  mode?: 'audio' | 'video';
 };
 
 const DEFAULT_HUDDLE_MEMBER_IDS: string[] = [];
@@ -99,7 +100,7 @@ type State = {
   markSeenUpTo: (ts: number, channelId?: string) => void;
 
   togglePin: (msgId: string) => void;
-  startHuddle: (channelId?: string) => void;
+  startHuddle: (channelId?: string, mode?: 'audio' | 'video') => void;
   stopHuddle: (channelId?: string) => void;
   toggleHuddleMute: (channelId?: string) => void;
   toggleSave: (msgId: string) => void;
@@ -111,7 +112,7 @@ type State = {
   search: (q: string, opts?: { kind?: "all"|"messages"|"files"|"links" }) => Msg[];
 
   /** 채널 관리 */
-  createChannel: (name: string, memberIds: string[]) => Promise<string>; // returns channelId
+  createChannel: (name: string, memberIds: string[], kind?: "text" | "voice" | "video") => Promise<string>; // returns channelId
   startGroupDM: (memberIds: string[], opts?: { name?: string }) => string | null;
   inviteToChannel: (channelId: string, memberIds: string[]) => void;
 
@@ -147,6 +148,13 @@ const ACTIVITY_KEY = "fd.chat.activity";
 const PINNED_CHANNELS_KEY = "fd.chat.pinnedChannels";
 const ARCHIVED_CHANNELS_KEY = "fd.chat.archivedChannels";
 const DM_ROOM_BY_CHANNEL_KEY = "fd.chat.dmRoomByChannel";
+const inferChannelKind = (channel: Pick<Channel, "id" | "name" | "isDM">): "text" | "voice" | "video" => {
+  if (channel.isDM || channel.id.startsWith("dm:")) return "text";
+  const lower = `${channel.name || ""}`.toLowerCase();
+  if (lower.includes("[voice]") || lower.includes("voice") || lower.includes("음성")) return "voice";
+  if (lower.includes("[video]") || lower.includes("video") || lower.includes("화상")) return "video";
+  return "text";
+};
 
 const sortMessages = (list: Msg[]) =>
   [...list].sort((a, b) => {
@@ -398,11 +406,19 @@ export const useChat = create<State>((set, get) => ({
       preferences = { pinnedChannelIds: [], archivedChannelIds: [] };
     }
     const workspaceId = projectId;
-    const serverChannels = channelList.map((ch) => ({ ...ch, workspaceId }));
     const persistedChannels = lsGet<Channel[]>(CHANNELS_KEY, []);
+    const persistedChannelMap = new Map(persistedChannels.map((ch) => [ch.id, ch]));
+    const serverChannels = channelList.map((ch) => {
+      const persisted = persistedChannelMap.get(ch.id);
+      return {
+        ...ch,
+        workspaceId,
+        kind: ch.kind || persisted?.kind || inferChannelKind({ id: ch.id, name: ch.name, isDM: ch.isDM }),
+      };
+    });
     const persistedDmChannels = persistedChannels
       .filter((ch) => (ch.isDM || ch.id.startsWith("dm:")) && ch.workspaceId === workspaceId)
-      .map((ch) => ({ ...ch, isDM: true, workspaceId }));
+      .map((ch) => ({ ...ch, isDM: true, workspaceId, kind: "text" as const }));
     const channelsById = new Map<string, Channel>();
     serverChannels.forEach((channel) => channelsById.set(channel.id, channel));
     persistedDmChannels.forEach((channel) => {
@@ -488,6 +504,7 @@ export const useChat = create<State>((set, get) => ({
       id: generalChannelId,
       name: "# general",
       workspaceId: id,
+      kind: "text",
       createdAt: new Date().toISOString(),
     };
     const workspaces = [...state.workspaces, newWorkspace];
@@ -631,14 +648,14 @@ export const useChat = create<State>((set, get) => ({
 
       const existing = allChannels.find(c => c.id === id);
       if (!existing) {
-        const dmChannel: Channel = { id, name: displayName, isDM: true, workspaceId, createdAt: new Date().toISOString() };
+        const dmChannel: Channel = { id, name: displayName, isDM: true, workspaceId, kind: "text", createdAt: new Date().toISOString() };
         allChannels = [...allChannels, dmChannel];
         if (!channels.some(c => c.id === id) && workspaceId === dmChannel.workspaceId) {
           channels = [...channels, dmChannel];
         }
       } else if (existing.name !== displayName || !existing.isDM) {
-        allChannels = allChannels.map(c => c.id === id ? { ...c, name: displayName, isDM: true } : c);
-        channels = channels.map(c => c.id === id ? { ...c, name: displayName, isDM: true } : c);
+        allChannels = allChannels.map(c => c.id === id ? { ...c, name: displayName, isDM: true, kind: "text" } : c);
+        channels = channels.map(c => c.id === id ? { ...c, name: displayName, isDM: true, kind: "text" } : c);
       }
       lsSet(CHANNELS_KEY, allChannels);
 
@@ -1018,7 +1035,7 @@ export const useChat = create<State>((set, get) => ({
     }
   },
 
-  startHuddle: (ch) => {
+  startHuddle: (ch, mode = 'audio') => {
     const channelId = ch || get().channelId;
     const curr = get().huddles;
     const { me } = get();
@@ -1026,7 +1043,7 @@ export const useChat = create<State>((set, get) => ({
       DEFAULT_HUDDLE_MEMBER_IDS.length > 0 ? DEFAULT_HUDDLE_MEMBER_IDS : [me.id];
     const hs: Record<string,HuddleState> = {
       ...curr,
-      [channelId]: { active: true, startedAt: Date.now(), muted: false, members: fallbackMembers },
+      [channelId]: { active: true, startedAt: Date.now(), muted: false, members: fallbackMembers, mode },
     };
     set({ huddles: hs });
     bc?.postMessage({ type: "huddle:state", channelId, state: hs[channelId] });
@@ -1108,14 +1125,20 @@ export const useChat = create<State>((set, get) => ({
   },
 
   /** 채널 생성 */
-  createChannel: async (name, memberIds) => {
+  createChannel: async (name, memberIds, kind = "text") => {
     const projectId = get().projectId;
     if (projectId) {
       const uniqueMembers = Array.from(new Set(memberIds || []));
-      const created = await createChannelApi(projectId, name, uniqueMembers);
+      const created = await createChannelApi(projectId, name, uniqueMembers, kind);
       const workspaceId = created.projectId ?? projectId;
       const id = created.id;
-      const channel: Channel = { id, name: created.name, workspaceId, createdAt: (created as any).createdAt ?? new Date().toISOString() };
+      const channel: Channel = {
+        id,
+        name: created.name,
+        workspaceId,
+        kind: created.type === "VOICE" ? "voice" : created.type === "VIDEO" ? "video" : kind,
+        createdAt: created.createdAt ?? new Date().toISOString(),
+      };
 
       let allChannels = [...get().allChannels, channel];
       lsSet(CHANNELS_KEY, allChannels);
@@ -1188,7 +1211,7 @@ export const useChat = create<State>((set, get) => ({
       id = `ch-${Date.now()}`;
     }
     const display = name.startsWith("#") ? name : `# ${name}`;
-    const channel: Channel = { id, name: display, workspaceId, createdAt: new Date().toISOString() };
+    const channel: Channel = { id, name: display, workspaceId, kind, createdAt: new Date().toISOString() };
 
     let allChannels = [...get().allChannels, channel];
     lsSet(CHANNELS_KEY, allChannels);

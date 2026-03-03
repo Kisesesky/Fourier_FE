@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { useChat } from "@/workspace/chat/_model/store";
 import { extractUrls } from "./LinkPreview";
-import { CHAT_SLASH_COMMANDS } from "@/workspace/chat/_model/view.constants";
-import type { CommandPaletteKind, CommandPaletteRow } from "@/workspace/chat/_model/view.types";
+import { CHAT_SLASH_COMMANDS } from "@/workspace/chat/_model/constants/view.constants";
+import type { CommandPaletteKind, CommandPaletteRow } from "@/workspace/chat/_model/types/view.types";
 
 function score(query: string, text: string) {
   // 아주 얕은 패턴: 포함 점수 + 접두 가산

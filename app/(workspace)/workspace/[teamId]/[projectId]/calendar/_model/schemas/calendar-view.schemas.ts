@@ -1,5 +1,4 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/calendar/_model/schemas/calendar-view.schemas.ts
-
 import { z } from "zod";
 import type { CalendarMemberOption } from "../types";
 

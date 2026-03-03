@@ -10,8 +10,8 @@ import {
   DOC_HISTORY_STORAGE_KEY,
   DOC_MAX_HISTORY,
   DOC_TAB_STORAGE_KEY,
-} from "../_model/view.constants";
-import type { DocTab, HistoryItem } from "../_model/view.types";
+} from "../_model/constants/view.constants";
+import type { DocTab, HistoryItem } from "../_model/types/view.types";
 import { useDocEditor } from "./DocEditorContext";
 
 export default function DocEditorTabs() {

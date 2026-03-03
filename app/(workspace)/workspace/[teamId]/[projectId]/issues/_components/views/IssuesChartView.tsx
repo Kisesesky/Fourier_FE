@@ -9,8 +9,8 @@ import {
   ISSUE_GROUP_PALETTE,
   ISSUE_PRIORITY_META_CHART,
   ISSUE_STATUS_META_CHART,
-} from "@/workspace/issues/_model/analytics.constants";
-import type { IssuesAnalyticsViewProps } from "@/workspace/issues/_model/view.types";
+} from "@/workspace/issues/_model/constants/analytics.constants";
+import type { IssuesAnalyticsViewProps } from "@/workspace/issues/_model/types/view.types";
 
 const buildSeries = (
   dates: number[],
@@ -159,6 +159,7 @@ function DonutChart({
   items: Array<{ key: string; label: string; value: number; bar: string }>;
   totalLabel: string;
 }) {
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const total = items.reduce((acc, item) => acc + item.value, 0);
   if (!total) {
     return (
@@ -172,7 +173,6 @@ function DonutChart({
   const stroke = 36;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const segments = items.filter((item) => item.value > 0);
   let accLength = 0;
   const active = segments.find((item) => item.key === hoveredKey) ?? null;

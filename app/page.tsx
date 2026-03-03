@@ -7,11 +7,11 @@ import LandingShell from "@/components/landing/LandingShell";
 import WorkspaceMainPanel from "@/components/home/WorkspaceMainPanel";
 import Topbar from "@/components/layout/Topbar";
 import LeftNav from "@/workspace/root/LeftNav";
-import ProjectToolbar from "@/workspace/root/projects/ProjectToolbar";
-import ProjectCard from "@/workspace/root/projects/ProjectCard";
-import ProjectMenu from "@/workspace/root/projects/ProjectMenu";
-import SettingsView from "@/workspace/root/views/SettingsView";
-import ActivitiesView from "@/workspace/root/views/ActivitiesView";
+import ProjectToolbar from "@/app/(workspace)/workspace/[teamId]/_components/projects/_components/ProjectToolbar";
+import ProjectCard from "@/app/(workspace)/workspace/[teamId]/_components/projects/_components/ProjectCard";
+import ProjectMenu from "@/app/(workspace)/workspace/[teamId]/_components/projects/_components/ProjectMenu";
+import SettingsView from "@/workspace/root/views/_components/SettingsView";
+import ActivitiesView from "@/workspace/root/views/_components/ActivitiesView";
 import WorkspaceSettingsModal from "@/workspace/root/WorkspaceSettingsModal";
 import HomePageModals from "@/workspace/root/HomePageModals";
 import type { TabType } from "@/workspace/root/WorkspaceTabs";
@@ -26,7 +26,7 @@ import { cloneProject, createProject, deleteProject, favoriteProject, unfavorite
 import { useToast } from "@/components/ui/Toast";
 import Drawer from "@/components/ui/Drawer";
 import { uploadImage } from "@/lib/uploads";
-import TeamMembersView from "./(workspace)/workspace/[teamId]/_components/views/TeamMembersView";
+import TeamMembersView from "./(workspace)/workspace/[teamId]/_components/views/_components/TeamMembersView";
 import { fetchFriends } from "@/lib/members";
 import FloatingDm from "./(workspace)/workspace/[teamId]/_components/FloatingDm";
 

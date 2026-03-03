@@ -3,7 +3,7 @@
 
 import { ArrowUpRight, BarChart3, Flame, GitBranch, Hash, MessageSquare, MessagesSquare } from 'lucide-react';
 import { buildSeriesFromDates, filterDates } from '../../../_model/dashboard-page.utils';
-import type { DetailViewBaseProps } from './detail-view.types';
+import type { DetailViewBaseProps } from './types/detail-view.types';
 
 export default function ChatDetailView({ pathname, onNavigate, renderHeader, renderDetailTabs, renderGraphFilter, renderGraphTabs, renderBars, renderRangeLabels, model }: DetailViewBaseProps) {
   const {

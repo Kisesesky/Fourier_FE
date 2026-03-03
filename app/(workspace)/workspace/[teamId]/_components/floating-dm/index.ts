@@ -1,5 +1,5 @@
 // app/(workspace)/workspace/[teamId]/_components/floating-dm/index.ts
-export { default as DmListView } from "./DmListView";
-export { default as FloatingLauncher } from "./FloatingLauncher";
-export * from "./floating-dm.constants";
-export * from "./floating-dm.utils";
+export { default as DmListView } from "./_components/DmListView";
+export { default as FloatingLauncher } from "./_components/FloatingLauncher";
+export * from "./_model/constants/floating-dm.constants";
+export * from "./_model/utils/floating-dm.utils";

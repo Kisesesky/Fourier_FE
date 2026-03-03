@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { AlignKey } from "@/workspace/docs/_model/view.types";
+import type { AlignKey } from "@/workspace/docs/_model/types/view.types";
 
 type DropdownItem = {
   key: string;

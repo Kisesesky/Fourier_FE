@@ -1,216 +1,58 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import {
-  Bell,
   ChevronRight,
-  CircleUserRound,
   Eye,
   EyeOff,
-  Settings2,
-  Users,
   X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import MemberProfilePanel from "@/workspace/members/_components/MemberProfilePanel";
-import { useWorkspaceUser } from "@/hooks/useWorkspaceUser";
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { useAuthProfile } from "@/hooks/useAuthProfile";
-import { changePassword, updateProfile } from "@/lib/auth";
-import { setAuthToken } from "@/lib/api";
-import { fetchProjects } from "@/lib/projects";
-import { fetchTeams } from "@/lib/team";
-import { loadProfilePrefs, saveProfilePrefs } from "@/lib/profile-prefs";
-import { loadUserPresence, saveUserPresence, type UserPresenceStatus } from "@/lib/presence";
-
-const SETTINGS_KEY = "workspace:settings:notifications";
-
-const TABS = [
-  { id: "Workspace", label: "Workspace", icon: Settings2, description: "현재 워크스페이스 컨텍스트와 빠른 액션" },
-  { id: "Members", label: "Members", icon: Users, description: "멤버 관리 화면 이동" },
-  { id: "Notifications", label: "Notifications", icon: Bell, description: "알림 옵션 제어" },
-  { id: "My Account", label: "My Account", icon: CircleUserRound, description: "내 계정 및 보안 정보" },
-] as const;
-
-type WorkspaceSettingsSection = (typeof TABS)[number]["id"];
+import { saveUserPresence } from "@/lib/presence";
+import { WORKSPACE_SETTINGS_TABS } from "../_model/constants/workspace-settings.constants";
+import { useWorkspaceSettingsModalController } from "../_model/hooks";
 
 interface WorkspaceSettingsModalProps {
   onClose: () => void;
 }
 
 const WorkspaceSettingsModal = ({ onClose }: WorkspaceSettingsModalProps) => {
-  const router = useRouter();
-  const modalRef = useRef<HTMLDivElement | null>(null);
-  const { currentUser } = useWorkspaceUser();
-  const { workspace: activeWorkspace } = useWorkspace();
-  const { profile } = useAuthProfile();
-  const { workspace, buildHref } = useWorkspacePath();
-
-  const [activeSection, setActiveSection] = useState<WorkspaceSettingsSection>("Workspace");
-  const [teamName, setTeamName] = useState("Team");
-  const [teamIconValue, setTeamIconValue] = useState<string | null>(null);
-  const [projectName, setProjectName] = useState("Project");
-  const [projectIconValue, setProjectIconValue] = useState<string | null>(null);
-  const [userPresence, setUserPresence] = useState<UserPresenceStatus>("online");
-  const [profilePrefs, setProfilePrefs] = useState<{ displayName: string; avatarUrl: string; backgroundImageUrl: string }>({
-    displayName: "",
-    avatarUrl: "",
-    backgroundImageUrl: "",
-  });
-  const [notificationSettings, setNotificationSettings] = useState({
-    mentions: true,
-    dm: true,
-    customerCenterReply: true,
-    emailDigest: false,
-  });
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [passwordVisible, setPasswordVisible] = useState({
-    current: false,
-    next: false,
-    confirm: false,
-  });
-  const [passwordError, setPasswordError] = useState("");
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordDone, setPasswordDone] = useState("");
-
-  const accountEmail = profile?.email || (currentUser as { email?: string } | undefined)?.email || "-";
-  const accountName = profile?.displayName || profile?.name || currentUser?.displayName || currentUser?.name || "Fourier member";
-  const displayName = profilePrefs.displayName || accountName;
-  const avatarUrl = profilePrefs.avatarUrl || currentUser?.avatarUrl || profile?.avatarUrl || undefined;
-  const backgroundImageUrl = profilePrefs.backgroundImageUrl || profile?.backgroundImageUrl || undefined;
-
-  const safeDecode = (value?: string) => {
-    if (!value) return "";
-    try {
-      return decodeURIComponent(value);
-    } catch {
-      return value;
-    }
-  };
-
-  const decodedTeamId = useMemo(() => safeDecode(workspace?.teamId), [workspace?.teamId]);
-  const decodedProjectId = useMemo(() => safeDecode(workspace?.projectId), [workspace?.projectId]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem(SETTINGS_KEY);
-    if (!stored) return;
-    try {
-      const parsed = JSON.parse(stored) as Partial<typeof notificationSettings>;
-      setNotificationSettings((prev) => ({ ...prev, ...parsed }));
-    } catch {
-      // noop
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(notificationSettings));
-  }, [notificationSettings]);
-
-  useEffect(() => {
-    if (!decodedTeamId || !decodedProjectId) return;
-    let cancelled = false;
-    const workspaceId = activeWorkspace?.id ?? (typeof window !== "undefined" ? localStorage.getItem("activeWorkspaceId") : null);
-    const load = async () => {
-      if (workspaceId) {
-        try {
-          const teams = await fetchTeams(workspaceId);
-          if (!cancelled) {
-            const foundTeam = teams.find((team) => team.id === decodedTeamId);
-            setTeamName(foundTeam?.name ?? "Team");
-            setTeamIconValue(foundTeam?.iconValue ?? null);
-          }
-        } catch {
-          if (!cancelled) {
-            setTeamName("Team");
-            setTeamIconValue(null);
-          }
-        }
-      }
-      try {
-        const projects = await fetchProjects(decodedTeamId);
-        if (cancelled) return;
-        const foundProject = projects.find((project: { id: string; name: string; iconValue?: string | null }) => project.id === decodedProjectId);
-        setProjectName(foundProject?.name ?? "Project");
-        setProjectIconValue(foundProject?.iconValue ?? null);
-      } catch {
-        if (cancelled) return;
-        setProjectName("Project");
-        setProjectIconValue(null);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [decodedTeamId, decodedProjectId, activeWorkspace?.id]);
-
-  useEffect(() => {
-    setUserPresence(loadUserPresence());
-    setProfilePrefs(loadProfilePrefs());
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  const selectedTab = TABS.find((tab) => tab.id === activeSection) ?? TABS[0];
-  const handleSaveProfile = async (patch: {
-    displayName?: string;
-    avatarUrl?: string | null;
-    backgroundImageUrl?: string | null;
-    bio?: string;
-  }) => {
-    try {
-      await updateProfile({
-        displayName: patch.displayName?.trim(),
-        backgroundImageUrl: patch.backgroundImageUrl?.trim() ?? "",
-        bio: patch.bio,
-      });
-    } catch {
-      // keep local prefs fallback
-    }
-    saveProfilePrefs({
-      displayName: patch.displayName?.trim() ?? displayName,
-      avatarUrl: patch.avatarUrl ?? "",
-      backgroundImageUrl: patch.backgroundImageUrl ?? profilePrefs.backgroundImageUrl,
-    });
-    setProfilePrefs(loadProfilePrefs());
-  };
-
-  const handleChangePassword = () => {
-    setPasswordError("");
-    setPasswordDone("");
-    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    setPasswordVisible({ current: false, next: false, confirm: false });
-    setPasswordModalOpen(true);
-  };
-
-  const handleDeactivateAccount = () => {
-    if (typeof window === "undefined") return;
-    const ok = window.confirm("계정을 비활성화하시겠어요? 현재는 고객센터를 통해 처리됩니다.");
-    if (!ok) return;
-    window.dispatchEvent(new Event("support:open"));
-  };
-
-  const handleDeleteAccount = () => {
-    if (typeof window === "undefined") return;
-    const ok = window.confirm("정말 계정을 삭제하시겠어요? 현재는 고객센터를 통해 처리됩니다.");
-    if (!ok) return;
-    window.dispatchEvent(new Event("support:open"));
-  };
+  const {
+    modalRef,
+    profile,
+    currentUser,
+    activeSection,
+    teamName,
+    teamIconValue,
+    projectName,
+    projectIconValue,
+    userPresence,
+    notificationSettings,
+    passwordModalOpen,
+    passwordForm,
+    passwordVisible,
+    passwordError,
+    passwordSaving,
+    passwordDone,
+    accountEmail,
+    displayName,
+    avatarUrl,
+    backgroundImageUrl,
+    selectedTab,
+    setActiveSection,
+    setUserPresence,
+    setNotificationSettings,
+    setPasswordModalOpen,
+    setPasswordForm,
+    setPasswordVisible,
+    handleSaveProfile,
+    openPasswordModal,
+    handleDeactivateAccount,
+    handleDeleteAccount,
+    submitPasswordChange,
+    openMembersPage,
+    openIssuesPage,
+  } = useWorkspaceSettingsModalController(onClose);
 
   const renderContent = () => {
     if (activeSection === "Workspace") {
@@ -243,20 +85,14 @@ const WorkspaceSettingsModal = ({ onClose }: WorkspaceSettingsModalProps) => {
               <button
                 type="button"
                 className="rounded-full border border-border px-3 py-1.5 text-sm text-muted hover:bg-accent hover:text-foreground"
-                onClick={() => {
-                  router.push(buildHref(["members"], "/"));
-                  onClose();
-                }}
+                onClick={openMembersPage}
               >
                 멤버 관리로 이동
               </button>
               <button
                 type="button"
                 className="rounded-full border border-border px-3 py-1.5 text-sm text-muted hover:bg-accent hover:text-foreground"
-                onClick={() => {
-                  router.push(buildHref(["issues"], "/"));
-                  onClose();
-                }}
+                onClick={openIssuesPage}
               >
                 이슈 보드로 이동
               </button>
@@ -280,10 +116,7 @@ const WorkspaceSettingsModal = ({ onClose }: WorkspaceSettingsModalProps) => {
           <button
             type="button"
             className="mt-4 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"
-            onClick={() => {
-              router.push(buildHref(["members"], "/"));
-              onClose();
-            }}
+            onClick={openMembersPage}
           >
             멤버 화면 열기
           </button>
@@ -356,7 +189,7 @@ const WorkspaceSettingsModal = ({ onClose }: WorkspaceSettingsModalProps) => {
             <div className="mt-2">
               <button
                 type="button"
-                onClick={handleChangePassword}
+                onClick={openPasswordModal}
                 className="rounded-lg bg-sky-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-600"
               >
                 비밀번호 변경하기
@@ -388,51 +221,6 @@ const WorkspaceSettingsModal = ({ onClose }: WorkspaceSettingsModalProps) => {
     );
   };
 
-  const submitPasswordChange = async () => {
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      setPasswordError("모든 항목을 입력해 주세요.");
-      return;
-    }
-    if (passwordForm.currentPassword === passwordForm.newPassword) {
-      setPasswordError("현재 비밀번호와 새 비밀번호는 같을 수 없습니다.");
-      return;
-    }
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError("새 비밀번호가 일치하지 않습니다.");
-      return;
-    }
-    setPasswordSaving(true);
-    setPasswordError("");
-    try {
-      const res = await changePassword({
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-        confirmPassword: passwordForm.confirmPassword,
-      });
-      setPasswordDone(res?.message || "비밀번호가 변경되었습니다.");
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("accessToken");
-      }
-      setAuthToken(null);
-      window.setTimeout(() => {
-        setPasswordModalOpen(false);
-        onClose();
-        router.replace("/sign-in");
-      }, 700);
-    } catch (error) {
-      const rawMessage = (error as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
-      const normalized = Array.isArray(rawMessage) ? rawMessage.join(" ") : rawMessage ?? "";
-      const lowered = normalized.toLowerCase();
-      if (lowered.includes("newpassword is not strong enough") || lowered.includes("isstrongpassword")) {
-        setPasswordError("비밀번호는 영문 대·소문자, 숫자, 특수문자 포함 8자 이상이어야 합니다.");
-      } else {
-        setPasswordError(normalized || "비밀번호 변경에 실패했습니다.");
-      }
-    } finally {
-      setPasswordSaving(false);
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 py-8"
@@ -445,9 +233,8 @@ const WorkspaceSettingsModal = ({ onClose }: WorkspaceSettingsModalProps) => {
         ref={modalRef}
         className="relative flex w-full max-w-5xl flex-col gap-6 rounded-[36px] border border-border bg-background p-6 text-foreground md:flex-row"
       >
-
         <nav className="w-full space-y-2 md:w-64">
-          {TABS.map((tab) => {
+          {WORKSPACE_SETTINGS_TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeSection === tab.id;
             return (

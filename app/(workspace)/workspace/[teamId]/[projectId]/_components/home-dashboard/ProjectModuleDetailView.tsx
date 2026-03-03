@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/_components/home-dashboard/ProjectModuleDetailView.tsx
 'use client';
 
-import type { DetailViewBaseProps } from './details/detail-view.types';
+import type { DetailViewBaseProps } from './details/types/detail-view.types';
 import CalendarDetailView from './details/CalendarDetailView';
 import ChatDetailView from './details/ChatDetailView';
 import DocsDetailView from './details/DocsDetailView';

@@ -5,12 +5,12 @@ import { useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MessageSquare, FolderKanban, Users, BookText, CalendarDays, Flame, CheckCircle2, Clock4, ArrowUpRight, Archive } from "lucide-react";
 import { useProject } from "@/hooks/useProject";
-import type { WorkspaceProjectPageProps } from "./_model/dashboard-page.types";
+import type { WorkspaceProjectPageProps } from "./_model/types/dashboard-page.types";
 import ProjectModuleDetailView from "./_components/home-dashboard/ProjectModuleDetailView";
 import { formatBytes, renderBars, renderDetailTabs, renderGraphFilter, renderGraphTabs, renderRangeLabels } from "./_components/home-dashboard/graph-ui";
 import { useProjectHomeDashboardData } from "./_model/hooks/useProjectHomeDashboardData";
 import { useProjectDashboardUiStore } from "./_model/store/useProjectDashboardUiStore";
-import { ISSUE_STATUS_LABELS } from "./_model/dashboard-page.constants";
+import { ISSUE_STATUS_LABELS } from "./_model/constants/dashboard-page.constants";
 
 export default function WorkspaceProjectPage({ params }: WorkspaceProjectPageProps) {
   const teamId = decodeURIComponent(params.teamId);

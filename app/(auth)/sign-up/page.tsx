@@ -5,8 +5,8 @@ import { useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
-import { AUTH_PATHS, SIGN_UP_INITIAL_STATE } from "@/app/(auth)/_model/auth.constants";
-import type { SignUpFormState } from "@/app/(auth)/_model/auth.types";
+import { AUTH_PATHS, SIGN_UP_INITIAL_STATE } from "@/app/(auth)/_model/constants/auth.constants";
+import type { SignUpFormState } from "@/app/(auth)/_model/types/auth.types";
 
 export default function SignUpPage() {
   const [form, setForm] = useState<SignUpFormState>(SIGN_UP_INITIAL_STATE);

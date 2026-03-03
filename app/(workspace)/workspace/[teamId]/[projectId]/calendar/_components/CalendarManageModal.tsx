@@ -2,8 +2,8 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { CALENDAR_PRESET_COLORS } from "@/workspace/calendar/_model/view.constants";
-import type { CalendarManageModalProps } from "@/workspace/calendar/_model/view.types";
+import { CALENDAR_PRESET_COLORS } from "@/workspace/calendar/_model/constants/view.constants";
+import type { CalendarManageModalProps } from "@/workspace/calendar/_model/types/view.types";
 import type { CalendarType } from "@/workspace/calendar/_model/types";
 
 export function CalendarManageModal({

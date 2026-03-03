@@ -1,7 +1,9 @@
 // hooks/useWorkspace.ts
 import { useCallback, useEffect, useState } from "react";
 import type { Workspace } from "@/types/workspace";
-import { fetchMyWorkspaces } from "@/lib/workspace";
+import { ACCESS_TOKEN_KEY, ACTIVE_WORKSPACE_ID_KEY, WORKSPACE_EVENTS } from "./workspace.constants";
+import { WorkspaceSelectEventSchema } from "./workspace.schemas";
+import { listMyWorkspaces } from "./workspace.service";
 
 export function useWorkspace() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -11,7 +13,7 @@ export function useWorkspace() {
   const [error, setError] = useState<Error | null>(null);
 
   const refetch = useCallback(async () => {
-    if (typeof window !== "undefined" && !localStorage.getItem("accessToken")) {
+    if (typeof window !== "undefined" && !localStorage.getItem(ACCESS_TOKEN_KEY)) {
       setWorkspaces([]);
       setActiveWorkspaceId(null);
       setWorkspace(null);
@@ -22,13 +24,13 @@ export function useWorkspace() {
 
     setLoading(true);
     try {
-      const data = await fetchMyWorkspaces();
+      const data = await listMyWorkspaces();
       setWorkspaces(data);
-      const storedId = typeof window !== "undefined" ? localStorage.getItem("activeWorkspaceId") : null;
+      const storedId = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_WORKSPACE_ID_KEY) : null;
       const nextId = data.find((item) => item.id === storedId)?.id ?? data[0]?.id ?? null;
       if (nextId) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("activeWorkspaceId", nextId);
+          localStorage.setItem(ACTIVE_WORKSPACE_ID_KEY, nextId);
         }
         setActiveWorkspaceId(nextId);
         setWorkspace(data.find((item) => item.id === nextId) ?? null);
@@ -61,16 +63,17 @@ export function useWorkspace() {
     };
     const handleSelect = (event: Event) => {
       const detail = (event as CustomEvent<{ workspaceId?: string }>).detail;
-      const id = detail?.workspaceId;
+      const parsed = WorkspaceSelectEventSchema.safeParse(detail ?? {});
+      const id = parsed.success ? parsed.data.workspaceId : undefined;
       if (!id) return;
-      localStorage.setItem("activeWorkspaceId", id);
+      localStorage.setItem(ACTIVE_WORKSPACE_ID_KEY, id);
       setActiveWorkspaceId(id);
     };
-    window.addEventListener("workspaces:refresh", handleRefresh);
-    window.addEventListener("workspace:select", handleSelect);
+    window.addEventListener(WORKSPACE_EVENTS.REFRESH, handleRefresh);
+    window.addEventListener(WORKSPACE_EVENTS.SELECT, handleSelect);
     return () => {
-      window.removeEventListener("workspaces:refresh", handleRefresh);
-      window.removeEventListener("workspace:select", handleSelect);
+      window.removeEventListener(WORKSPACE_EVENTS.REFRESH, handleRefresh);
+      window.removeEventListener(WORKSPACE_EVENTS.SELECT, handleSelect);
     };
   }, [refetch]);
 

@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/file/_model/store/useFilePageStore.ts
 
 import { create } from "zustand";
-import type { ViewFile } from "../file-page.types";
+import type { ViewFile } from "../types/file-page.types";
 
 type FilePageState = {
   files: ViewFile[];

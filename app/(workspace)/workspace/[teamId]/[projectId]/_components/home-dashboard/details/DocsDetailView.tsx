@@ -3,7 +3,7 @@
 
 import { ArrowUpRight, BookText, Clock4, FileText, FolderOpen, LineChart } from 'lucide-react';
 import { buildSeriesFromDates, filterDates } from '../../../_model/dashboard-page.utils';
-import type { DetailViewBaseProps } from './detail-view.types';
+import type { DetailViewBaseProps } from './types/detail-view.types';
 
 export default function DocsDetailView({ pathname, onNavigate, renderHeader, renderDetailTabs, renderGraphFilter, renderGraphTabs, renderBars, renderRangeLabels, model }: DetailViewBaseProps) {
   const {

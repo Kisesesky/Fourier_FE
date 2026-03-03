@@ -1,299 +1,39 @@
-// app/(workspace)/workspace/[teamId]/[projectId]/members/_components/MembersView.tsx
 'use client';
 
-import { useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Search, UserPlus, Users, X } from "lucide-react";
 import MemberCard from "./MemberCard";
 import MemberProfilePanel from "./MemberProfilePanel";
 import InviteForm from "./InviteForm";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { addProjectMember, fetchProjectMembers, fetchProjects, removeProjectMember, updateProjectMemberRole } from "@/lib/projects";
-import { fetchTeamMembers } from "@/lib/team";
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { useAuthProfile } from "@/hooks/useAuthProfile";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { useToast } from "@/components/ui/Toast";
-import type { Member, PresenceStatus } from "@/workspace/members/_model/types";
-import { loadUserPresence, saveUserPresence, USER_PRESENCE_EVENT, type UserPresenceStatus } from "@/lib/presence";
-import { loadProfilePrefs, saveProfilePrefs, USER_PROFILE_PREFS_EVENT } from "@/lib/profile-prefs";
-import { updateProfile } from "@/lib/auth";
-import { useChat } from "@/workspace/chat/_model/store";
-import { useMembersViewStore } from "@/workspace/members/_model/store/useMembersViewStore";
-import { parseProjectMembers, parseTeamMembers } from "@/workspace/members/_model/schemas/member.schemas";
-
-const presenceOrder: Record<PresenceStatus, number> = {
-  online: 0,
-  dnd: 1,
-  away: 2,
-  offline: 3,
-};
-
-const mapMemberRoleToProjectRole = (role: Member["role"]) => {
-  switch (role) {
-    case "owner":
-      return "OWNER";
-    case "manager":
-      return "MANAGER";
-    case "member":
-      return "MEMBER";
-    case "guest":
-      return "GUEST";
-    default:
-      return "MEMBER";
-  }
-};
+import { useMembersViewController } from "@/workspace/members/_model/hooks";
 
 export default function MembersView() {
-  const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { buildHref } = useWorkspacePath();
-  const { startGroupDM } = useChat();
-  const { show } = useToast();
-  const { workspace } = useWorkspace();
-  const { profile } = useAuthProfile();
   const {
-    members,
-    setMembers,
-    memberIds,
-    setMemberIds,
+    teamId,
+    projectId,
+    profile,
     presence,
-    setPresence,
-    selectedMemberId,
-    setSelectedMemberId,
-    teamMembers,
-    setTeamMembers,
-    myPresence,
-    setMyPresence,
-    profilePrefs,
-    setProfilePrefs,
-    projectName,
-    setProjectName,
+    selectedMember,
+    orderedMembers,
+    availableTeamMembers,
+    canManageProjectRoles,
     query,
-    setQuery,
     inviteOpen,
-    setInviteOpen,
     profileOpen,
+    projectName,
+    total,
+    online,
+    setQuery,
+    setInviteOpen,
     setProfileOpen,
-    resetMembersViewState,
-  } = useMembersViewStore();
-  const queryProfileAppliedRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    resetMembersViewState();
-  }, [projectId, resetMembersViewState]);
-
-  const loadMembers = async () => {
-    if (!teamId || !projectId) return;
-    try {
-      const data = await fetchProjectMembers(teamId, projectId);
-      const mapped = parseProjectMembers(data);
-      const map = Object.fromEntries(mapped.map((m: Member) => [m.id, m]));
-      setMembers(map);
-      setMemberIds(mapped.map((m: Member) => m.id));
-      if (!selectedMemberId && mapped[0]) {
-        setSelectedMemberId(mapped[0].id);
-      }
-    } catch (err) {
-      console.error("Failed to fetch project members", err);
-      show({
-        title: "멤버 로딩 실패",
-        description: "프로젝트 멤버를 불러오지 못했습니다.",
-        variant: "error",
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (!teamId || !projectId) return;
-    loadMembers();
-  }, [teamId, projectId, show]);
-
-  useEffect(() => {
-    if (!teamId || !projectId) return;
-    fetchProjects(teamId)
-      .then((items) => {
-        const current = (items ?? []).find((item: { id: string; name?: string }) => item.id === projectId);
-        setProjectName(current?.name ?? "");
-      })
-      .catch(() => setProjectName(""));
-  }, [projectId, teamId]);
-
-  useEffect(() => {
-    if (!workspace?.id || !teamId) return;
-    const loadTeamMembers = async () => {
-      try {
-        const data = await fetchTeamMembers(workspace.id, teamId);
-        const mapped = parseTeamMembers(data);
-        setTeamMembers(mapped);
-      } catch (err) {
-        console.error("Failed to fetch team members", err);
-      }
-    };
-    loadTeamMembers();
-  }, [teamId, workspace?.id]);
-
-  const handleInvite = async (payload: { userId: string; role: Member["role"] }) => {
-    if (!teamId || !projectId) return;
-    try {
-      await addProjectMember(teamId, projectId, {
-        userId: payload.userId,
-        role: mapMemberRoleToProjectRole(payload.role ?? "member"),
-      });
-      await loadMembers();
-      show({
-        title: "멤버 추가 완료",
-        description: "프로젝트 멤버가 추가되었습니다.",
-        variant: "success",
-      });
-    } catch (err) {
-      console.error("Failed to add project member", err);
-      show({
-        title: "멤버 추가 실패",
-        description: "권한 또는 입력값을 확인해주세요.",
-        variant: "error",
-      });
-    }
-  };
-
-  const normalizedQuery = query.trim().toLowerCase();
-  const orderedMembers: Member[] = useMemo(() => {
-    const list = memberIds
-      .map((id) => members[id])
-      .filter(Boolean)
-      .filter((member) => {
-        if (!normalizedQuery) return true;
-        const fields = [
-          member.name,
-          member.email,
-          member.role,
-          member.title ?? "",
-          member.tags?.join(" ") ?? "",
-        ]
-          .join(" ")
-          .toLowerCase();
-        return fields.includes(normalizedQuery);
-      })
-      .sort((a, b) => {
-        const presA = presence[a.id]?.status ?? "offline";
-        const presB = presence[b.id]?.status ?? "offline";
-        if (presenceOrder[presA] !== presenceOrder[presB]) {
-          return presenceOrder[presA] - presenceOrder[presB];
-        }
-        if (!!a.isFavorite !== !!b.isFavorite) {
-          return (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0);
-        }
-        return a.name.localeCompare(b.name);
-      });
-    return list;
-  }, [memberIds, members, normalizedQuery, presence]);
-
-  useEffect(() => {
-    if (!selectedMemberId && orderedMembers[0]) {
-      setSelectedMemberId(orderedMembers[0].id);
-    }
-  }, [orderedMembers, selectedMemberId]);
-
-  useEffect(() => {
-    const memberIdFromQuery = searchParams.get("memberId");
-    const shouldOpenProfile = searchParams.get("profile") === "open";
-    if (!memberIdFromQuery || !shouldOpenProfile) return;
-    if (!members[memberIdFromQuery]) return;
-    if (queryProfileAppliedRef.current === memberIdFromQuery) return;
-    setSelectedMemberId(memberIdFromQuery);
-    setProfileOpen(true);
-    queryProfileAppliedRef.current = memberIdFromQuery;
-  }, [members, searchParams, setProfileOpen, setSelectedMemberId]);
-
-  useEffect(() => {
-    setMyPresence(loadUserPresence());
-    const onPresence = (event: Event) => {
-      const detail = (event as CustomEvent<{ status?: UserPresenceStatus }>).detail;
-      const next = detail?.status;
-      if (next === "online" || next === "offline" || next === "away" || next === "dnd") {
-        setMyPresence(next);
-      } else {
-        setMyPresence(loadUserPresence());
-      }
-    };
-    window.addEventListener(USER_PRESENCE_EVENT, onPresence as EventListener);
-    return () => window.removeEventListener(USER_PRESENCE_EVENT, onPresence as EventListener);
-  }, []);
-
-  useEffect(() => {
-    setProfilePrefs(loadProfilePrefs());
-    const onProfilePrefs = () => setProfilePrefs(loadProfilePrefs());
-    window.addEventListener(USER_PROFILE_PREFS_EVENT, onProfilePrefs);
-    return () => window.removeEventListener(USER_PROFILE_PREFS_EVENT, onProfilePrefs);
-  }, []);
-
-  useEffect(() => {
-    if (!profile?.id) return;
-    setMembers((prev) => {
-      if (!prev[profile.id]) return prev;
-      return {
-        ...prev,
-        [profile.id]: {
-          ...prev[profile.id],
-          name: profilePrefs.displayName || profile.displayName || profile.name || prev[profile.id].name,
-          displayName: profilePrefs.displayName || profile.displayName || profile.name || prev[profile.id].displayName,
-          avatarUrl: profilePrefs.avatarUrl || profile.avatarUrl || prev[profile.id].avatarUrl,
-          backgroundImageUrl: profilePrefs.backgroundImageUrl || profile.backgroundImageUrl || prev[profile.id].backgroundImageUrl,
-        },
-      };
-    });
-  }, [profile?.avatarUrl, profile?.backgroundImageUrl, profile?.displayName, profile?.id, profile?.name, profilePrefs]);
-
-  useEffect(() => {
-    if (memberIds.length === 0) {
-      setPresence({});
-      return;
-    }
-    const now = Date.now();
-    setPresence((prev) => {
-      const next: Record<string, { memberId: string; status: PresenceStatus; lastSeenAt: number }> = {};
-      memberIds.forEach((id) => {
-        const prevRecord = prev[id];
-        const isCurrentUser = profile?.id === id;
-        next[id] = {
-          memberId: id,
-          status: isCurrentUser ? myPresence : prevRecord?.status ?? "offline",
-          lastSeenAt: isCurrentUser ? now : prevRecord?.lastSeenAt ?? now,
-        };
-      });
-      return next;
-    });
-  }, [memberIds, myPresence, profile?.id]);
-
-  const selectedMember =
-    selectedMemberId && profile?.id === selectedMemberId
-      ? {
-          ...(members[selectedMemberId] ?? {
-            id: profile.id,
-            name: profile.displayName ?? profile.name ?? profile.email ?? "Me",
-            role: "member" as const,
-            email: profile.email ?? "",
-            joinedAt: Date.now(),
-            lastActiveAt: Date.now(),
-          }),
-          name: profilePrefs.displayName || members[selectedMemberId]?.name || profile.displayName || profile.name || profile.email || "Me",
-          displayName: profilePrefs.displayName || members[selectedMemberId]?.displayName || profile.displayName || profile.name || profile.email || "Me",
-          avatarUrl: profilePrefs.avatarUrl || members[selectedMemberId]?.avatarUrl || profile.avatarUrl || undefined,
-          backgroundImageUrl: profilePrefs.backgroundImageUrl || members[selectedMemberId]?.backgroundImageUrl || profile.backgroundImageUrl || undefined,
-          description: members[selectedMemberId]?.description || profile.bio || undefined,
-        }
-      : selectedMemberId
-        ? members[selectedMemberId] ?? null
-        : null;
-  const availableTeamMembers = useMemo(
-    () => teamMembers.filter((member) => !members[member.id]),
-    [teamMembers, members]
-  );
-  const myProjectRole = profile?.id ? members[profile.id]?.role : undefined;
-  const canManageProjectRoles = myProjectRole === "owner";
-  const total = orderedMembers.length;
-  const online = orderedMembers.filter((member) => (presence[member.id]?.status ?? "offline") === "online").length;
+    setSelectedMemberId,
+    handleInvite,
+    handleSendDm,
+    removeMember,
+    handleRoleChange,
+    handleProfileSave,
+    updateMyPresence,
+  } = useMembersViewController();
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
@@ -301,9 +41,9 @@ export default function MembersView() {
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-10">
           <div className="space-y-1">
             <div className="flex items-baseline gap-2">
-            <Users size={18} className="text-brand"/>
-            <div className="text-xl font-semibold text-foreground">멤버</div>
-          </div>
+              <Users size={18} className="text-brand" />
+              <div className="text-xl font-semibold text-foreground">멤버</div>
+            </div>
             <p className="text-sm text-muted">프로젝트 참여 멤버를 검색하고 상태를 관리합니다.</p>
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
               <span>전체 {total}명</span>
@@ -335,7 +75,7 @@ export default function MembersView() {
                     members={availableTeamMembers}
                     onCancel={() => setInviteOpen(false)}
                     onSubmit={(payload) => {
-                      handleInvite(payload);
+                      void handleInvite(payload);
                       setInviteOpen(false);
                     }}
                   />
@@ -357,7 +97,7 @@ export default function MembersView() {
               className="w-full rounded-lg border border-border bg-background/80 py-2 pl-9 pr-3 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/40"
             />
           </div>
-          <div className="text-xs text-muted">표시 {orderedMembers.length} / {memberIds.length}</div>
+          <div className="text-xs text-muted">표시 {orderedMembers.length}</div>
         </div>
 
         <div className="mt-2 hidden grid-cols-[minmax(0,2fr)_120px_120px_minmax(0,1.2fr)_220px] items-center gap-4 border-b border-border/70 px-2 py-2 text-xs font-semibold uppercase tracking-wide text-muted md:grid">
@@ -388,50 +128,14 @@ export default function MembersView() {
                   }}
                   onStatusChange={(status) => {
                     if (member.id !== profile?.id) return;
-                    setMyPresence(status);
-                    saveUserPresence(status);
-                    setPresence((prev) => ({
-                      ...prev,
-                      [member.id]: {
-                        memberId: member.id,
-                        status,
-                        lastSeenAt: Date.now(),
-                      },
-                    }));
+                    updateMyPresence(member.id, status);
                   }}
                   onSendDm={() => {
-                    if (!profile?.id) return;
-                    if (member.id === profile.id) return;
-                    const channelId = startGroupDM([member.id]);
-                    if (!channelId) return;
-                    router.push(buildHref(["chat", channelId], `/chat/${channelId}`));
+                    handleSendDm(member.id);
                   }}
                   onRemove={() => {
-                    if (window.confirm(`${member.name}을(를) 삭제할까요?`)) {
-                      if (!teamId || !projectId) return;
-                      removeProjectMember(teamId, projectId, member.id)
-                        .then(() => {
-                          setMembers((prev) => {
-                            const next = { ...prev };
-                            delete next[member.id];
-                            return next;
-                          });
-                          setMemberIds((prev) => prev.filter((id) => id !== member.id));
-                          show({
-                            title: "멤버 삭제 완료",
-                            description: "프로젝트 멤버가 삭제되었습니다.",
-                            variant: "success",
-                          });
-                        })
-                        .catch((err) => {
-                          console.error("Failed to remove project member", err);
-                          show({
-                            title: "멤버 삭제 실패",
-                            description: "권한 또는 입력값을 확인해주세요.",
-                            variant: "error",
-                          });
-                        });
-                    }
+                    if (!window.confirm(`${member.name}을(를) 삭제할까요?`)) return;
+                    void removeMember(member.id);
                   }}
                 />
               ))}
@@ -461,112 +165,22 @@ export default function MembersView() {
                 canChangeRole={!!selectedMember && selectedMember.id !== profile?.id && canManageProjectRoles}
                 projectName={projectName || undefined}
                 onPresenceChange={(status) => {
-                  if (!selectedMember) return;
-                  if (selectedMember.id !== profile?.id) return;
-                  setMyPresence(status);
-                  saveUserPresence(status);
-                  setPresence((prev) => ({
-                    ...prev,
-                    [selectedMember.id]: {
-                      memberId: selectedMember.id,
-                      status,
-                      lastSeenAt: Date.now(),
-                    },
-                  }));
+                  if (!selectedMember || selectedMember.id !== profile?.id) return;
+                  updateMyPresence(selectedMember.id, status);
                 }}
                 onRoleChange={async (role) => {
                   if (!selectedMember || !teamId || !projectId) return;
                   if (!canManageProjectRoles || selectedMember.id === profile?.id) return;
-                  try {
-                    await updateProjectMemberRole(teamId, projectId, {
-                      userId: selectedMember.id,
-                      role: mapMemberRoleToProjectRole(role),
-                    });
-                    setMembers((prev) => ({
-                      ...prev,
-                      [selectedMember.id]: {
-                        ...prev[selectedMember.id],
-                        role,
-                      },
-                    }));
-                    show({
-                      title: "권한 변경 완료",
-                      description: `${selectedMember.name} 권한이 변경되었습니다.`,
-                      variant: "success",
-                    });
-                  } catch (err) {
-                    console.error("Failed to update project member role", err);
-                    show({
-                      title: "권한 변경 실패",
-                      description: "권한 또는 입력값을 확인해주세요.",
-                      variant: "error",
-                    });
-                  }
+                  await handleRoleChange(selectedMember.id, role, selectedMember.name);
                 }}
                 onProfileSave={async (patch) => {
                   if (!selectedMember || selectedMember.id !== profile?.id) return;
-                  if (
-                    patch.displayName?.trim() !== undefined ||
-                    patch.avatarUrl !== undefined ||
-                    patch.backgroundImageUrl !== undefined ||
-                    patch.bio !== undefined
-                  ) {
-                    try {
-                      await updateProfile({
-                        displayName: patch.displayName?.trim(),
-                        backgroundImageUrl: patch.backgroundImageUrl?.trim() ?? "",
-                        bio: patch.bio,
-                      });
-                    } catch {
-                      // local sync fallback
-                    }
-                  }
-                  saveProfilePrefs({
-                    displayName: patch.displayName?.trim() ?? (profilePrefs.displayName || selectedMember.name),
-                    avatarUrl: patch.avatarUrl ?? profilePrefs.avatarUrl,
-                    backgroundImageUrl: patch.backgroundImageUrl ?? profilePrefs.backgroundImageUrl,
-                  });
-                  setMembers((prev) => ({
-                    ...prev,
-                    [selectedMember.id]: {
-                      ...prev[selectedMember.id],
-                      name: patch.displayName?.trim() || prev[selectedMember.id]?.name || selectedMember.name,
-                      displayName: patch.displayName?.trim() || prev[selectedMember.id]?.displayName || selectedMember.displayName,
-                      avatarUrl: patch.avatarUrl ?? prev[selectedMember.id]?.avatarUrl,
-                      backgroundImageUrl: patch.backgroundImageUrl ?? prev[selectedMember.id]?.backgroundImageUrl,
-                      description: patch.bio ?? prev[selectedMember.id]?.description,
-                    },
-                  }));
-                  setProfileOpen(false);
+                  await handleProfileSave(selectedMember.id, patch);
                 }}
                 onCancel={() => setProfileOpen(false)}
                 onRemove={(memberId) => {
-                  if (window.confirm("정말 삭제할까요?")) {
-                    if (!teamId || !projectId) return;
-                    removeProjectMember(teamId, projectId, memberId)
-                      .then(() => {
-                        setMembers((prev) => {
-                          const next = { ...prev };
-                          delete next[memberId];
-                          return next;
-                        });
-                        setMemberIds((prev) => prev.filter((id) => id !== memberId));
-                        setProfileOpen(false);
-                        show({
-                          title: "멤버 삭제 완료",
-                          description: "프로젝트 멤버가 삭제되었습니다.",
-                          variant: "success",
-                        });
-                      })
-                      .catch((err) => {
-                        console.error("Failed to remove project member", err);
-                        show({
-                          title: "멤버 삭제 실패",
-                          description: "권한 또는 입력값을 확인해주세요.",
-                          variant: "error",
-                        });
-                      });
-                  }
+                  if (!window.confirm("정말 삭제할까요?")) return;
+                  void removeMember(memberId).then(() => setProfileOpen(false));
                 }}
               />
             </div>

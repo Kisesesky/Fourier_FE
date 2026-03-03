@@ -10,8 +10,8 @@ import { useToast } from "@/components/ui/Toast";
 import { signIn } from "@/lib/auth";
 import { setAuthToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { AUTH_PATHS, SIGN_IN_INITIAL_STATE } from "@/app/(auth)/_model/auth.constants";
-import type { SignInFormState } from "@/app/(auth)/_model/auth.types";
+import { AUTH_PATHS, SIGN_IN_INITIAL_STATE } from "@/app/(auth)/_model/constants/auth.constants";
+import type { SignInFormState } from "@/app/(auth)/_model/types/auth.types";
 
 function GoogleIcon() {
   return (

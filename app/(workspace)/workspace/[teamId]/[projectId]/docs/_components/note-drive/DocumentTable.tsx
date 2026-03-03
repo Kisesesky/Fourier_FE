@@ -6,7 +6,7 @@ import { ChevronDown, Check, MoreHorizontal, Star } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { DocFolder, DocMeta } from '@/workspace/docs/_model/docs';
-import type { DocsSortKey } from '@/workspace/docs/_model/view.types';
+import type { DocsSortKey } from '@/workspace/docs/_model/types/view.types';
 import { MENU_ATTR, relativeTime } from "@/workspace/docs/_model/utils/noteDriveViewUtils";
 
 type DocumentTableProps = {

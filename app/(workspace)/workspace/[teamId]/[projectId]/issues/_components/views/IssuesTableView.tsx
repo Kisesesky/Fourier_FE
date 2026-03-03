@@ -8,7 +8,7 @@ import type { Issue, IssueComment, IssueGroup } from "@/workspace/issues/_model/
 import type {
   IssueCreateModalState,
   IssueEditModalState,
-} from "@/workspace/issues/_model/board.types";
+} from "@/workspace/issues/_model/types/board.types";
 import IssueRow from "@/workspace/issues/_components/views/table/IssueRow";
 import IssueActions from "@/workspace/issues/_components/views/table/IssueActions";
 import SubtaskList from "@/workspace/issues/_components/views/table/SubtaskList";

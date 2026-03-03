@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import type { SetStateAction } from "react";
-import type { GraphMode } from "../dashboard-page.types";
+import type { GraphMode } from "../types/dashboard-page.types";
 
 type ChatTab = "all" | "channels" | "messages" | "threads";
 type IssueTab = "all" | "table" | "kanban" | "timeline" | "chart";

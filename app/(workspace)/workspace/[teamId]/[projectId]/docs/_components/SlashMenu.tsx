@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { DOC_SLASH_MENU_ITEMS } from "../_model/view.constants";
+import { DOC_SLASH_MENU_ITEMS } from "../_model/constants/view.constants";
 
 export default function SlashMenu({ editor }: { editor: Editor | null }) {
   const [open, setOpen] = useState(false);

@@ -1,3 +1,4 @@
+// app/api/link-preview/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 type LinkPreviewPayload = {

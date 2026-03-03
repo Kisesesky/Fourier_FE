@@ -2,3 +2,4 @@
 export * from "./types";
 export * from "./schemas/member.schemas";
 export * from "./store/useMembersViewStore";
+export * from "./hooks";

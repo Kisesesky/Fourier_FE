@@ -3,9 +3,9 @@
 
 import { useMemo, useState } from 'react';
 import { ArrowUpRight, BadgeCheck, CalendarDays, CheckCircle2, CircleDot, Clock4, Eye, Flame, FolderKanban, LayoutGrid, LineChart, Sparkles, Table2 } from 'lucide-react';
-import { ISSUE_PRIORITY_LABELS, ISSUE_PRIORITY_STYLES, ISSUE_STATUS_LABELS, ISSUE_STATUS_STYLES } from '../../../_model/dashboard-page.constants';
+import { ISSUE_PRIORITY_LABELS, ISSUE_PRIORITY_STYLES, ISSUE_STATUS_LABELS, ISSUE_STATUS_STYLES } from '../../../_model/constants/dashboard-page.constants';
 import { buildSeriesFromDates, filterDates } from '../../../_model/dashboard-page.utils';
-import type { DetailViewBaseProps } from './detail-view.types';
+import type { DetailViewBaseProps } from './types/detail-view.types';
 
 type PieBucket = { key: string; name: string; count: number; color: string };
 

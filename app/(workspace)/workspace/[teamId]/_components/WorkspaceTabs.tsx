@@ -1,8 +1,8 @@
 // app/(workspace)/workspace/[teamId]/_components/WorkspaceTabs.tsx
 import clsx from "clsx";
+import { WORKSPACE_TABS } from "../_model/constants/workspace-tabs.constants";
 
-const tabs = ["Projects", "Activities", "Members", "Settings"] as const;
-export type TabType = (typeof tabs)[number];
+export type TabType = (typeof WORKSPACE_TABS)[number];
 
 interface WorkspaceTabsProps {
   activeTab: TabType;
@@ -12,7 +12,7 @@ interface WorkspaceTabsProps {
 const WorkspaceTabs = ({ activeTab, onChange }: WorkspaceTabsProps) => (
   <div className="border-b border-border">
     <div className="flex flex-wrap items-center gap-6 text-sm text-muted">
-      {tabs.map((tab) => (
+      {WORKSPACE_TABS.map((tab) => (
         <button
           key={tab}
           type="button"
@@ -29,7 +29,6 @@ const WorkspaceTabs = ({ activeTab, onChange }: WorkspaceTabsProps) => (
   </div>
 );
 
-export { tabs };
+export const tabs = WORKSPACE_TABS;
 export type { WorkspaceTabsProps };
 export default WorkspaceTabs;
-

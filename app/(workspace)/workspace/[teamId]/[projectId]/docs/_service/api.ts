@@ -2,38 +2,13 @@
 import api from "@/lib/api";
 import type { JSONContent } from "@tiptap/react";
 import { z } from "zod";
-
-const AnalyticsSchema = z.object({ counts: z.array(z.number()), granularity: z.string() });
-const FolderDtoSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  parentId: z.string().nullable().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-const DocumentDtoSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  content: z.string().nullable().optional(),
-  starred: z.boolean().optional(),
-  folderId: z.string().nullable().optional(),
-  authorId: z.string().nullable().optional(),
-  authorName: z.string().nullable().optional(),
-  authorAvatarUrl: z.string().nullable().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-const DocumentCommentDtoSchema = z.object({
-  id: z.string(),
-  content: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  authorId: z.string().nullable().optional(),
-  authorName: z.string().nullable().optional(),
-  authorAvatarUrl: z.string().nullable().optional(),
-  authorRole: z.string().nullable().optional(),
-  mine: z.boolean().optional(),
-});
+import type { DocumentCommentDto, DocumentDto, DocsAnalyticsDto, FolderDto } from "@/workspace/docs/_model/types/api.types";
+import {
+  DocumentCommentDtoSchema,
+  DocumentDtoSchema,
+  DocsAnalyticsSchema,
+  FolderDtoSchema,
+} from "@/workspace/docs/_model/schemas/docs-api.schemas";
 
 export async function getDocsAnalytics(params: {
   granularity: "hourly" | "daily" | "monthly";
@@ -42,43 +17,10 @@ export async function getDocsAnalytics(params: {
   year?: string;
   projectId?: string;
 }) {
-  const res = await api.get<{ counts: number[]; granularity: string }>("/docs/analytics", { params });
-  const parsed = AnalyticsSchema.safeParse(res.data);
+  const res = await api.get<DocsAnalyticsDto>("/docs/analytics", { params });
+  const parsed = DocsAnalyticsSchema.safeParse(res.data);
   return parsed.success ? parsed.data : { counts: [], granularity: params.granularity };
 }
-
-export type FolderDto = {
-  id: string;
-  name: string;
-  parentId?: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type DocumentDto = {
-  id: string;
-  title: string;
-  content?: string | null;
-  starred?: boolean;
-  folderId?: string | null;
-  authorId?: string | null;
-  authorName?: string | null;
-  authorAvatarUrl?: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type DocumentCommentDto = {
-  id: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  authorId?: string | null;
-  authorName?: string | null;
-  authorAvatarUrl?: string | null;
-  authorRole?: string | null;
-  mine?: boolean;
-};
 
 export async function listFolders(projectId: string) {
   const res = await api.get<FolderDto[]>("/docs/folders", { params: { projectId } });

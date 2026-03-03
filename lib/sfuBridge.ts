@@ -1,3 +1,4 @@
+// lib/sfuBridge.ts
 import type { Socket } from "socket.io-client";
 
 type SfuCapabilitiesPayload = {

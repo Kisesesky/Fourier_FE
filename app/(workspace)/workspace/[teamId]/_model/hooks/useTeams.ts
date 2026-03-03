@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/_model/hooks/useTeams.ts
 import { useCallback, useEffect, useState } from "react";
 import type { Team } from "@/types/workspace";
-import { fetchTeamMembers, fetchTeams } from "@/lib/team";
+import { listEnrichedTeams } from "../../_service/teams.api";
 
 export function useTeams(workspaceId: string, userId?: string) {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -17,22 +17,7 @@ export function useTeams(workspaceId: string, userId?: string) {
     setLoading(true);
     setError(null);
 
-    const baseTeams = await fetchTeams(workspaceId);
-    const enriched = await Promise.all(
-      baseTeams.map(async (team) => {
-        try {
-          const members = await fetchTeamMembers(workspaceId, team.id);
-          const me = userId ? members.find((member) => member.userId === userId) : null;
-          return {
-            ...team,
-            members: members.length,
-            role: me?.role ?? team.role,
-          };
-        } catch {
-          return team;
-        }
-      })
-    );
+    const enriched = await listEnrichedTeams(workspaceId, userId);
     setTeams(enriched);
     setLoading(false);
   }, [workspaceId, userId]);

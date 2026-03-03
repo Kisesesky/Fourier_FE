@@ -3,37 +3,8 @@ import api from "@/lib/api";
 import type { Channel } from "@/workspace/chat/_model/types";
 import { z } from "zod";
 import type { AxiosError } from "axios";
-
-type ChannelResponse = {
-  id: string;
-  name: string;
-  projectId?: string;
-  isDefault?: boolean;
-  memberIds?: string[];
-  createdAt?: string;
-  type?: "CHAT" | "VOICE" | "VIDEO";
-};
-
-type MessageResponse = {
-  id: string;
-  content?: string;
-  senderId: string;
-  sender?: { id: string; name: string; avatar?: string };
-  createdAt: string;
-  editedAt?: string;
-  threadParentId?: string;
-  thread?: { count: number };
-};
-
-const ChannelResponseSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  projectId: z.string().optional(),
-  isDefault: z.boolean().optional(),
-  memberIds: z.array(z.string()).optional(),
-  createdAt: z.string().optional(),
-  type: z.enum(["CHAT", "VOICE", "VIDEO"]).optional(),
-});
+import type { AnalyticsResponse, ChannelResponse, MessageResponse } from "../_model/types/api.types";
+import { AnalyticsSchema, ChannelResponseSchema, MessageResponseSchema } from "../_model/schemas/chat-api.schemas";
 
 const toChannelKind = (
   type?: "CHAT" | "VOICE" | "VIDEO",
@@ -43,21 +14,6 @@ const toChannelKind = (
   return "text";
 };
 
-const MessageResponseSchema = z.object({
-  id: z.string(),
-  content: z.string().optional(),
-  senderId: z.string(),
-  sender: z.object({ id: z.string(), name: z.string(), avatar: z.string().optional() }).optional(),
-  createdAt: z.string(),
-  editedAt: z.string().optional(),
-  threadParentId: z.string().optional(),
-  thread: z.object({ count: z.number() }).optional(),
-});
-
-const AnalyticsSchema = z.object({
-  counts: z.array(z.number()),
-  granularity: z.string(),
-});
 
 export async function listChannels(projectId: string): Promise<Channel[]> {
   try {
@@ -211,7 +167,7 @@ export async function getMessageAnalytics(params: {
   month?: string;
   year?: string;
 }) {
-  const res = await api.get<{ counts: number[]; granularity: string }>("/chat/analytics/messages", {
+  const res = await api.get<AnalyticsResponse>("/chat/analytics/messages", {
     params,
   });
   const parsed = AnalyticsSchema.safeParse(res.data);

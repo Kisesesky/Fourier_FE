@@ -4,7 +4,7 @@
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 
-import type { AlignKey } from "@/workspace/docs/_model/view.types";
+import type { AlignKey } from "@/workspace/docs/_model/types/view.types";
 import { cn } from "@/lib/utils";
 
 interface DocEditorCanvasProps {

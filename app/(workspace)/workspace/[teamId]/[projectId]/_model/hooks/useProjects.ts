@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/_model/hooks/useProjects.ts
 import { useCallback, useEffect, useState } from "react";
 import { Project } from "@/types/project";
-import { fetchProjects } from "@/lib/projects";
+import { listTeamProjects } from "../../_service/api";
 
 export function useProjects(teamId?: string) {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -15,7 +15,7 @@ export function useProjects(teamId?: string) {
     setError(null);
 
     try {
-      const data = await fetchProjects(teamId, signal);
+      const data = await listTeamProjects(teamId, signal);
       setProjects(data);
     } catch (err: any) {
       if (err?.name !== "CanceledError") {

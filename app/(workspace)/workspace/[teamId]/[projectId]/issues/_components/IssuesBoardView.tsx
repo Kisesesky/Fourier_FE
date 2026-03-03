@@ -1,7 +1,7 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/issues/_components/IssuesBoardView.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { Issue } from "@/workspace/issues/_model/types";
@@ -16,9 +16,10 @@ import IssuesTimelineView from "@/workspace/issues/_components/views/IssuesTimel
 import IssuesKanbanView from "@/workspace/issues/_components/views/IssuesKanbanView";
 import IssuesChartView from "@/workspace/issues/_components/views/IssuesChartView";
 import IssuesDashboardView from "@/workspace/issues/_components/views/IssuesDashboardView";
-import type { ViewMode } from "@/workspace/issues/_model/board.types";
+import type { ViewMode } from "@/workspace/issues/_model/types/board.types";
 import { useIssuesBoardState } from "@/workspace/issues/_model/hooks/useIssuesBoardState";
-import { ISSUES_BASE_COLUMNS, ISSUES_VIEW_META } from "@/workspace/issues/_model/view.constants";
+import { useIssuesTimelineFilters } from "@/workspace/issues/_model/hooks/useIssuesTimelineFilters";
+import { ISSUES_BASE_COLUMNS, ISSUES_VIEW_META } from "@/workspace/issues/_model/constants/view.constants";
 
 export default function IssuesBoardView() {
   const params = useParams<{ teamId?: string; projectId?: string; id?: string }>();
@@ -94,65 +95,20 @@ export default function IssuesBoardView() {
     handlePriorityChange,
     updateIssueTree,
   } = useIssuesBoardState({ teamId, projectId, baseColumns: ISSUES_BASE_COLUMNS });
-  const [timelineFilters, setTimelineFilters] = useState<Record<string, boolean>>({});
-
-  const timelineOptions = useMemo(() => {
-    const opts = issueGroups.map((group) => ({
-      key: group.id,
-      label: group.name,
-      color: group.color ?? "#475569",
-    }));
-    const hasUngrouped = issues.some((issue) => !issue.group && !issue.parentId);
-    if (hasUngrouped) {
-      opts.push({ key: "ungrouped", label: "미분류", color: "#64748b" });
-    }
-    return opts;
-  }, [issueGroups, issues]);
+  const {
+    timelineFilters,
+    setTimelineFilters,
+    timelineOptions,
+    timelineAllChecked,
+    toggleTimelineAll,
+  } = useIssuesTimelineFilters(issues, issueGroups);
 
   const defaultIssueGroup = useMemo(
     () => issueGroups.find((group) => group.name === "프로젝트") ?? issueGroups[0],
     [issueGroups],
   );
 
-  useEffect(() => {
-    setTimelineFilters((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      timelineOptions.forEach((opt) => {
-        if (next[opt.key] === undefined) {
-          next[opt.key] = true;
-          changed = true;
-        }
-      });
-      Object.keys(next).forEach((key) => {
-        if (!timelineOptions.find((opt) => opt.key === key)) {
-          delete next[key];
-          changed = true;
-        }
-      });
-      return changed ? next : prev;
-    });
-  }, [timelineOptions]);
-
-  const timelineAllChecked = useMemo(
-    () =>
-      timelineOptions.length > 0 &&
-      timelineOptions.every((opt) => timelineFilters[opt.key] ?? true),
-    [timelineFilters, timelineOptions],
-  );
-
-  const handleToggleTimelineAll = useCallback(
-    (checked: boolean) => {
-      setTimelineFilters((prev) => {
-        const next = { ...prev };
-        timelineOptions.forEach((opt) => {
-          next[opt.key] = checked;
-        });
-        return next;
-      });
-    },
-    [timelineOptions],
-  );
+  const handleToggleTimelineAll = toggleTimelineAll;
 
   useEffect(() => {
     const viewParam = searchParams?.get("view") as ViewMode | null;

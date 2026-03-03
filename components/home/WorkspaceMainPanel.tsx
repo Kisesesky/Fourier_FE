@@ -3,10 +3,10 @@
 
 import { LayoutGrid, List } from 'lucide-react';
 import InviteBanner from '@/workspace/root/InviteBanner';
-import ProjectCard from '@/workspace/root/projects/ProjectCard';
-import ProjectMenu from '@/workspace/root/projects/ProjectMenu';
-import RecentVisitedView from '@/workspace/root/views/RecentVisitedView';
-import FriendsView from '@/workspace/root/views/FriendsView';
+import ProjectCard from '@/app/(workspace)/workspace/[teamId]/_components/projects/_components/ProjectCard';
+import ProjectMenu from '@/app/(workspace)/workspace/[teamId]/_components/projects/_components/ProjectMenu';
+import RecentVisitedView from '@/workspace/root/views/_components/RecentVisitedView';
+import FriendsView from '@/workspace/root/views/_components/FriendsView';
 import WorkspaceTabs, { type TabType } from '@/workspace/root/WorkspaceTabs';
 import type { Project, ProjectViewMode } from '@/types/workspace';
 

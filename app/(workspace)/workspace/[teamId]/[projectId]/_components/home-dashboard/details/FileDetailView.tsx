@@ -2,7 +2,7 @@
 'use client';
 
 import { Archive, ArrowUpRight, BarChart3, Clock4, FileText } from 'lucide-react';
-import type { DetailViewBaseProps } from './detail-view.types';
+import type { DetailViewBaseProps } from './types/detail-view.types';
 
 export default function FileDetailView({ pathname, onNavigate, renderHeader, renderDetailTabs, formatBytes, model }: DetailViewBaseProps) {
   const {

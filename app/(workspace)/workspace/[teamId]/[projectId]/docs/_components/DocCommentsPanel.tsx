@@ -12,8 +12,8 @@ import {
   deleteDocumentComment,
   listDocumentComments,
   updateDocumentComment,
-  type DocumentCommentDto,
 } from "../_service/api";
+import type { DocumentCommentDto } from "../_model/types/api.types";
 import { renderMarkdownToHtml } from "../_model/markdown";
 import { useAuthProfile } from "@/hooks/useAuthProfile";
 

@@ -8,7 +8,7 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 
 import type { CalendarEvent, EventDraft } from "@/workspace/calendar/_model/types";
-import type { CalendarDetailsPanelProps } from "@/workspace/calendar/_model/view.types";
+import type { CalendarDetailsPanelProps } from "@/workspace/calendar/_model/types/view.types";
 
 const labelClass = "text-[11px] font-semibold uppercase tracking-[0.08em] text-muted";
 

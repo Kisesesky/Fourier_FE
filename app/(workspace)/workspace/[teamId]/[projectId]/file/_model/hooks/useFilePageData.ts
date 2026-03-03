@@ -7,7 +7,7 @@ import { useProjectFileFolders } from "@/workspace/file/_model/hooks/useProjectF
 import { deleteProjectFile, listProjectFiles, uploadProjectFile } from "@/workspace/file/_service/api";
 import { detectUploadCategory, MAX_SIZE_MB, parseProjectFiles } from "../schemas/file.schemas";
 import { useFilePageStore } from "../store/useFilePageStore";
-import type { ViewFile } from "../file-page.types";
+import type { ViewFile } from "../types/file-page.types";
 
 export function useFilePageData() {
   const router = useRouter();

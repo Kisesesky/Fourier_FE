@@ -11,7 +11,7 @@ import {
 } from "date-fns";
 import { DAY_LABELS } from "@/workspace/calendar/_model/constants";
 import type { CalendarEvent } from "@/workspace/calendar/_model/types";
-import type { CalendarMonthViewProps } from "@/workspace/calendar/_model/view.types";
+import type { CalendarMonthViewProps } from "@/workspace/calendar/_model/types/view.types";
 import { cn } from "@/lib/utils";
 import { DayEventPill } from "./DayEventPill";
 import { toZonedDate } from "@/workspace/calendar/_model/utils";

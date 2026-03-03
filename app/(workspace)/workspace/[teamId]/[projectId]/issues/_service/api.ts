@@ -2,23 +2,10 @@
 import api from "@/lib/api";
 import type { ActivityType, ID, Issue, IssueActivity, IssueComment, IssueGroup, User } from "@/workspace/issues/_model/types";
 import { z } from "zod";
+import type { IssueGroupResponse, IssuesAnalyticsResponse } from "@/workspace/issues/_model/types/api.types";
+import { IssueGroupSchema, IssuesAnalyticsSchema, IssueUserSchema, UnknownArraySchema } from "@/workspace/issues/_model/schemas/issues-api.schemas";
 
 const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID;
-const UnknownArraySchema = z.array(z.unknown());
-const AnalyticsSchema = z.object({ counts: z.array(z.number()), granularity: z.string() });
-const IssueGroupSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  color: z.string().optional(),
-  sortOrder: z.number().optional(),
-  createdAt: z.string().optional(),
-});
-const UserSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string().optional(),
-  avatarUrl: z.string().optional(),
-});
 
 const mapStatus = (status?: string): Issue["status"] => {
   switch ((status || "").toUpperCase()) {
@@ -172,8 +159,8 @@ export async function getIssueAnalytics(projectId: string, params: { granularity
   if (params.date) query.set("date", params.date);
   if (params.month) query.set("month", params.month);
   if (params.year) query.set("year", params.year);
-  const { data } = await api.get<{ counts: number[]; granularity: string }>(`/projects/${projectId}/issues/analytics?${query.toString()}`);
-  const parsed = AnalyticsSchema.safeParse(data);
+  const { data } = await api.get<IssuesAnalyticsResponse>(`/projects/${projectId}/issues/analytics?${query.toString()}`);
+  const parsed = IssuesAnalyticsSchema.safeParse(data);
   return parsed.success ? parsed.data : { counts: [], granularity: params.granularity };
 }
 
@@ -261,7 +248,7 @@ export async function deleteIssue(projectId: string, issueId: ID): Promise<{ ok:
 }
 
 export async function listIssueGroups(projectId: string): Promise<IssueGroup[]> {
-  const { data } = await api.get<IssueGroup[]>(`/projects/${projectId}/issues/groups`);
+  const { data } = await api.get<IssueGroupResponse[]>(`/projects/${projectId}/issues/groups`);
   const parsed = z.array(IssueGroupSchema).safeParse(data ?? []);
   return parsed.success ? (parsed.data as IssueGroup[]) : [];
 }
@@ -358,6 +345,6 @@ export async function listActivities(issueId: ID, projectId?: string, type?: Act
 export async function searchUsers(q: string, limit = 8): Promise<User[]> {
   if (!q.trim()) return [];
   const { data } = await api.get<any[]>(`/users/search?q=${encodeURIComponent(q)}&limit=${limit}`);
-  const parsed = z.array(UserSchema).safeParse(data ?? []);
+  const parsed = z.array(IssueUserSchema).safeParse(data ?? []);
   return (parsed.success ? parsed.data : []).map(mapUser);
 }

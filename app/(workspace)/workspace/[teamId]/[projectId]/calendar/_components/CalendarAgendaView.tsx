@@ -6,7 +6,7 @@ import { ko } from "date-fns/locale";
 import { useMemo } from "react";
 
 import type { CalendarEvent } from "@/workspace/calendar/_model/types";
-import type { CalendarAgendaSection, CalendarAgendaViewProps } from "@/workspace/calendar/_model/view.types";
+import type { CalendarAgendaSection, CalendarAgendaViewProps } from "@/workspace/calendar/_model/types/view.types";
 import { UpcomingEventCard } from "./UpcomingEventCard";
 
 export function CalendarAgendaView({

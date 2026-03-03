@@ -20,7 +20,7 @@ import {
 
 import { useFilePageData } from "@/workspace/file/_model/hooks/useFilePageData";
 import { PREVIEWABLE_DOC_EXTS, PREVIEWABLE_TEXT_EXTS } from "@/workspace/file/_model/schemas/file.schemas";
-import type { ViewFile } from "@/workspace/file/_model/file-page.types";
+import type { ViewFile } from "@/workspace/file/_model/types/file-page.types";
 
 const formatSize = (size: number) => {
   if (size < 1024) return `${size} B`;

@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type { SetStateAction } from "react";
 import type { Issue } from "../types";
-import type { ViewMode } from "../board.types";
+import type { ViewMode } from "../types/board.types";
 
 type IssuesViewState = {
   tableStatusFilter: Record<string, Set<Issue["status"]>>;

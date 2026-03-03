@@ -17,8 +17,8 @@ import {
   ISSUE_GROUP_PALETTE,
   ISSUE_PRIORITY_META_DASHBOARD,
   ISSUE_STATUS_META_DASHBOARD,
-} from "@/workspace/issues/_model/analytics.constants";
-import type { IssuesAnalyticsViewProps } from "@/workspace/issues/_model/view.types";
+} from "@/workspace/issues/_model/constants/analytics.constants";
+import type { IssuesAnalyticsViewProps } from "@/workspace/issues/_model/types/view.types";
 
 const parseDateValue = (value?: string) => {
   if (!value) return null;

@@ -16,7 +16,7 @@ import {
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ViewMode } from "@/workspace/chat/_model/types";
-import { CHAT_HEADER_ICON_BUTTON_CLASS } from "@/workspace/chat/_model/view.constants";
+import { CHAT_HEADER_ICON_BUTTON_CLASS } from "@/workspace/chat/_model/constants/view.constants";
 
 type ChatHeaderProps = {
   isDM: boolean;

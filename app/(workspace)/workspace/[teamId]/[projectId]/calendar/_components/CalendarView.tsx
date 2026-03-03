@@ -7,8 +7,8 @@ import { useRouter, useParams } from "next/navigation";
 
 import { COLOR_PALETTE } from "@/workspace/calendar/_model/constants";
 import { toDateKey, toZonedDate } from "@/workspace/calendar/_model/utils";
-import { MAX_VISIBLE_EVENTS_PER_DAY } from "@/workspace/calendar/_model/view.constants";
-import type { CalendarCategoryGroup } from "@/workspace/calendar/_model/view.types";
+import { MAX_VISIBLE_EVENTS_PER_DAY } from "@/workspace/calendar/_model/constants/view.constants";
+import type { CalendarCategoryGroup } from "@/workspace/calendar/_model/types/view.types";
 import { useCalendarState } from "@/workspace/calendar/_model/hooks/useCalendarState";
 import type {
   CalendarEvent,

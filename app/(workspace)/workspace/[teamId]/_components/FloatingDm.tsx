@@ -1,607 +1,90 @@
-// app/(workspace)/workspace/[teamId]/_components/FloatingDm.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronDown, MoreHorizontal, Plus, Reply, Search, Send, Smile, SmilePlus } from "lucide-react";
 import Modal from "@/components/common/Modal";
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { useAuthProfile } from "@/hooks/useAuthProfile";
-import { fetchFriends, type FriendProfile } from "@/lib/members";
-import { createDmRoom, fetchDmMessages, sendDmMessage, type DmMessage } from "@/lib/chat";
-import { getChatSocket } from "@/lib/socket";
 import EmojiPicker from "@/workspace/chat/_components/EmojiPicker";
-import DmListView from "./floating-dm/DmListView";
-import FloatingLauncher from "./floating-dm/FloatingLauncher";
+import DmListView from "./floating-dm/_components/DmListView";
+import FloatingLauncher from "./floating-dm/_components/FloatingLauncher";
 import {
   FLOATING_DM_FILE_TYPE_OPTIONS,
   FLOATING_DM_STORAGE_KEYS,
-} from "./floating-dm/floating-dm.constants";
+} from "./floating-dm/_model/constants/floating-dm.constants";
 import {
   getFloatingDmInitials,
   getFloatingDmMessageTimeLabel,
   getFloatingDmRelativeDateLabel,
-} from "./floating-dm/floating-dm.utils";
+} from "./floating-dm/_model/utils/floating-dm.utils";
+import { useFloatingDmController } from "./floating-dm/_model/hooks/useFloatingDmController";
 
 export default function FloatingDm() {
-  const { workspace } = useWorkspace();
-  const { profile } = useAuthProfile();
-  const [open, setOpen] = useState(false);
-  const [floatingHidden, setFloatingHidden] = useState(false);
-  const [floatingPos, setFloatingPos] = useState<{ x: number; y: number } | null>(null);
-  const [contextOpen, setContextOpen] = useState(false);
-  const [contextPos, setContextPos] = useState({ x: 0, y: 0 });
-  const [friends, setFriends] = useState<FriendProfile[]>([]);
-  const [selected, setSelected] = useState<FriendProfile | null>(null);
-  const [roomId, setRoomId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<DmMessage[]>([]);
-  const [loadingFriends, setLoadingFriends] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [query, setQuery] = useState("");
-  const [recentByFriend, setRecentByFriend] = useState<Record<string, { preview: string; at: string }>>({});
-  const [unreadByFriend, setUnreadByFriend] = useState<Record<string, number>>({});
-  const canSend = draft.trim().length > 0 && !!roomId;
-  const [view, setView] = useState<"list" | "chat">("list");
-  const [, setLastReadAt] = useState<Record<string, string>>({});
-  const [replyTarget, setReplyTarget] = useState<DmMessage | null>(null);
-  const [emojiOpenFor, setEmojiOpenFor] = useState<string | null>(null);
-  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
-  const [inputFocused, setInputFocused] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [detailSearchOpen, setDetailSearchOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<string[]>([]);
-  const [searchIndex, setSearchIndex] = useState(0);
-  const [detailKeyword, setDetailKeyword] = useState("");
-  const [detailDate, setDetailDate] = useState("");
-  const [detailFileType, setDetailFileType] = useState("");
-  const [detailFileOpen, setDetailFileOpen] = useState(false);
-  const [pendingOpenUserId, setPendingOpenUserId] = useState<string | null>(null);
-  const [, setNowTick] = useState(0);
-  const messageRefs = useMemo(() => new Map<string, HTMLDivElement | null>(), []);
-  const messageScrollRef = useRef<HTMLDivElement | null>(null);
-  const draftInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const detailFileRef = useRef<HTMLDivElement | null>(null);
-  const floatingBtnRef = useRef<HTMLButtonElement | null>(null);
-  const contextRef = useRef<HTMLDivElement | null>(null);
-  const dragState = useRef({ active: false, offsetX: 0, offsetY: 0, moved: false });
-  const dmComposerShellClass = `flex items-start gap-2 rounded-2xl border px-2 py-2 transition ${
-    inputFocused ? "border-brand/60 bg-panel shadow-[0_0_0_1px_rgba(59,130,246,0.18)]" : "border-border/70 bg-panel/95"
-  }`;
-
-  const getDefaultFloatingPos = () => {
-    const defaultSize = 48;
-    const margin = 24;
-    if (typeof window === "undefined") {
-      return { x: margin, y: margin };
-    }
-    return {
-      x: Math.max(margin, window.innerWidth - defaultSize - margin),
-      y: Math.max(margin, window.innerHeight - defaultSize - margin),
-    };
-  };
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNowTick((prev) => prev + 1);
-    }, 60000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedHidden = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.floatingHidden);
-    if (storedHidden === "true") {
-      setFloatingHidden(true);
-    }
-    const storedPos = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.floatingPos);
-    if (storedPos) {
-      try {
-        const parsed = JSON.parse(storedPos);
-        if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
-          setFloatingPos(parsed);
-          return;
-        }
-      } catch {
-        // ignore
-      }
-    }
-    setFloatingPos(getDefaultFloatingPos());
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!floatingPos) return;
-    localStorage.setItem(FLOATING_DM_STORAGE_KEYS.floatingPos, JSON.stringify(floatingPos));
-  }, [floatingPos]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(FLOATING_DM_STORAGE_KEYS.floatingHidden, floatingHidden ? "true" : "false");
-  }, [floatingHidden]);
-
-  useEffect(() => {
-    if (!contextOpen) return;
-    const onDown = (event: MouseEvent) => {
-      if (!contextRef.current) return;
-      if (!contextRef.current.contains(event.target as Node)) {
-        setContextOpen(false);
-      }
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setContextOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [contextOpen]);
-
-  useEffect(() => {
-    const show = () => setFloatingHidden(false);
-    const hide = () => setFloatingHidden(true);
-    window.addEventListener("dm:show-floating", show as EventListener);
-    window.addEventListener("dm:hide-floating", hide as EventListener);
-    return () => {
-      window.removeEventListener("dm:show-floating", show as EventListener);
-      window.removeEventListener("dm:hide-floating", hide as EventListener);
-    };
-  }, []);
-
-  const loadFriends = useCallback(async () => {
-    if (!workspace?.id) return;
-    setLoadingFriends(true);
-    try {
-      const list = await fetchFriends(workspace.id);
-      setFriends(list);
-      if (!selected && list.length > 0) {
-        setSelected(list[0]);
-      }
-      setUnreadByFriend((prev) => {
-        const next = { ...prev };
-        list.forEach((friend) => {
-          if (next[friend.userId] === undefined) next[friend.userId] = 0;
-        });
-        if (typeof window !== "undefined") {
-          localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
-        }
-        return next;
-      });
-    } catch (err) {
-      console.error("Failed to load friends", err);
-    } finally {
-      setLoadingFriends(false);
-    }
-  }, [selected, workspace?.id]);
-
-  useEffect(() => {
-    if (!open) return;
-    void loadFriends();
-  }, [loadFriends, open]);
-
-  useEffect(() => {
-    if (!pendingOpenUserId) return;
-    if (friends.length === 0) return;
-    const friend = friends.find((item) => item.userId === pendingOpenUserId);
-    if (!friend) return;
-    setSelected(friend);
-    setView("chat");
-    setPendingOpenUserId(null);
-  }, [friends, pendingOpenUserId]);
-
-  useEffect(() => {
-    if (!detailFileOpen) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!detailFileRef.current) return;
-      if (!detailFileRef.current.contains(event.target as Node)) {
-        setDetailFileOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDetailFileOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [detailFileOpen]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const recents = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.recents);
-    const unread = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.unread);
-    const read = localStorage.getItem(FLOATING_DM_STORAGE_KEYS.read);
-    if (recents) {
-      try {
-        const parsed = JSON.parse(recents);
-        if (parsed && typeof parsed === "object") setRecentByFriend(parsed);
-      } catch {
-        setRecentByFriend({});
-      }
-    }
-    if (unread) {
-      try {
-        const parsed = JSON.parse(unread);
-        if (parsed && typeof parsed === "object") setUnreadByFriend(parsed);
-      } catch {
-        setUnreadByFriend({});
-      }
-    }
-    if (read) {
-      try {
-        const parsed = JSON.parse(read);
-        if (parsed && typeof parsed === "object") setLastReadAt(parsed);
-      } catch {
-        setLastReadAt({});
-      }
-    }
-  }, []);
-
-  const loadRoom = useCallback(async () => {
-    if (!selected) return;
-    setLoadingMessages(true);
-    try {
-      const room = await createDmRoom([selected.userId]);
-      const id = room?.id as string | undefined;
-      if (!id) return;
-      setRoomId(id);
-      const data = await fetchDmMessages(id, 30);
-      const list = Array.isArray(data) ? data : [];
-      setMessages(list);
-      const last = list[list.length - 1];
-      if (last?.content) {
-        setRecentByFriend((prev) => ({
-          ...prev,
-          [selected.userId]: { preview: last.content ?? "", at: last.createdAt },
-        }));
-      }
-      setUnreadByFriend((prev) => {
-        const next = { ...prev, [selected.userId]: 0 };
-        if (typeof window !== "undefined") {
-          localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
-        }
-        return next;
-      });
-      setLastReadAt((prev) => {
-        const next = { ...prev, [selected.userId]: new Date().toISOString() };
-        if (typeof window !== "undefined") {
-          localStorage.setItem(FLOATING_DM_STORAGE_KEYS.read, JSON.stringify(next));
-        }
-        return next;
-      });
-      requestAnimationFrame(() => {
-        if (last?.id) scrollToMessage(last.id);
-      });
-    } catch (err) {
-      console.error("Failed to load DM room", err);
-    } finally {
-      setLoadingMessages(false);
-    }
-  }, [selected]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (!selected) return;
-    void loadRoom();
-  }, [loadRoom, open, selected]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handler = () => {
-      setFloatingHidden(false);
-      setFloatingPos(getDefaultFloatingPos());
-      setOpen(true);
-    };
-    window.addEventListener("dm:open", handler as EventListener);
-    const handleOpenFriend = (event: Event) => {
-      const detail = (event as CustomEvent<{ userId?: string }>).detail;
-      if (!detail?.userId) return;
-      setFloatingHidden(false);
-      setFloatingPos(getDefaultFloatingPos());
-      setPendingOpenUserId(detail.userId);
-      setOpen(true);
-    };
-    window.addEventListener("dm:open-friend", handleOpenFriend as EventListener);
-    return () => {
-      window.removeEventListener("dm:open", handler as EventListener);
-      window.removeEventListener("dm:open-friend", handleOpenFriend as EventListener);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!open) {
-      setView("list");
-      setSearchOpen(false);
-      setDetailSearchOpen(false);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || view !== "chat") return;
-    if (!messageScrollRef.current) return;
-    requestAnimationFrame(() => {
-      if (!messageScrollRef.current) return;
-      messageScrollRef.current.scrollTop = messageScrollRef.current.scrollHeight;
-    });
-  }, [messages, open, view]);
-
-  useEffect(() => {
-    if (!draftInputRef.current) return;
-    draftInputRef.current.style.height = "0px";
-    draftInputRef.current.style.height = `${Math.min(draftInputRef.current.scrollHeight, 96)}px`;
-  }, [draft]);
-
-  useEffect(() => {
-    if (!open) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    const socket = getChatSocket(token);
-    if (!socket) return;
-    const handleMessageEvent = (payload: { type: string; roomId: string; payload: any }) => {
-      if (payload.type === "reaction") {
-        if (!roomId || payload.roomId !== roomId) return;
-        const { messageId, emoji, userId, action } = payload.payload ?? {};
-        if (!messageId || !emoji) return;
-        setMessages((prev) =>
-          prev.map((msg) => {
-            if (msg.id !== messageId) return msg;
-            const reactions = [...(msg.reactions ?? [])];
-            const existingIndex = reactions.findIndex((item) => item.emoji === emoji);
-            const reactedByMe = userId === profile?.id;
-            if (existingIndex === -1) {
-              reactions.push({ emoji, count: 1, reactedByMe });
-            } else {
-              const existing = reactions[existingIndex];
-              const nextCount = action === "added" ? existing.count + 1 : Math.max(0, existing.count - 1);
-              if (nextCount === 0) {
-                reactions.splice(existingIndex, 1);
-              } else {
-                reactions[existingIndex] = {
-                  ...existing,
-                  count: nextCount,
-                  reactedByMe: reactedByMe ? action === "added" : existing.reactedByMe,
-                };
-              }
-            }
-            return { ...msg, reactions };
-          })
-        );
-        return;
-      }
-
-      if (payload.type === "created") {
-        const message = payload.payload as DmMessage;
-        if (!message?.id) return;
-        if (payload.roomId === roomId) {
-          setMessages((prev) => [...prev, message]);
-          if (selected) {
-            setRecentByFriend((prev) => ({
-              ...prev,
-              [selected.userId]: { preview: message.content ?? "", at: message.createdAt },
-            }));
-          }
-        } else if (message.senderId && message.senderId !== profile?.id) {
-          setRecentByFriend((prev) => ({
-            ...prev,
-            [message.senderId]: { preview: message.content ?? "", at: message.createdAt },
-          }));
-          setUnreadByFriend((prev) => {
-            const next = { ...prev, [message.senderId]: (prev[message.senderId] ?? 0) + 1 };
-            if (typeof window !== "undefined") {
-              localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
-            }
-            return next;
-          });
-        }
-      }
-    };
-    socket.on("message.event", handleMessageEvent);
-    return () => {
-      socket.off("message.event", handleMessageEvent);
-    };
-  }, [open, profile?.id, roomId]);
-
-  const orderedMessages = useMemo(
-    () => [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-    [messages]
-  );
-
-  const groupedMessages = useMemo(() => {
-    const groups: Array<{ dateKey: string; items: DmMessage[] }> = [];
-    orderedMessages.forEach((msg) => {
-      const key = new Date(msg.createdAt).toDateString();
-      const last = groups[groups.length - 1];
-      if (!last || last.dateKey !== key) {
-        groups.push({ dateKey: key, items: [msg] });
-      } else {
-        last.items.push(msg);
-      }
-    });
-    return groups;
-  }, [orderedMessages]);
-
-  const filteredFriends = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    if (!keyword) return friends;
-    return friends.filter((friend) => friend.displayName.toLowerCase().includes(keyword));
-  }, [friends, query]);
-
-  const recentFriends = useMemo(() => {
-    const list = friends
-      .filter((friend) => recentByFriend[friend.userId])
-      .map((friend) => ({
-        friend,
-        meta: recentByFriend[friend.userId],
-      }))
-      .sort((a, b) => new Date(b.meta.at).getTime() - new Date(a.meta.at).getTime());
-    return list;
-  }, [friends, recentByFriend]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(FLOATING_DM_STORAGE_KEYS.recents, JSON.stringify(recentByFriend));
-  }, [recentByFriend]);
-
-  const handleSelectFriend = (friend: FriendProfile) => {
-    setSelected(friend);
-    setView("chat");
-    setUnreadByFriend((prev) => {
-      const next = { ...prev, [friend.userId]: 0 };
-      if (typeof window !== "undefined") {
-        localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
-      }
-      return next;
-    });
-    setLastReadAt((prev) => {
-      const next = { ...prev, [friend.userId]: new Date().toISOString() };
-      if (typeof window !== "undefined") {
-        localStorage.setItem(FLOATING_DM_STORAGE_KEYS.read, JSON.stringify(next));
-      }
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    const onDown = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-dm-menu]")) return;
-      setMenuOpenFor(null);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
-
-  const handleSend = async () => {
-    if (!canSend || !roomId) return;
-    const content = draft.trim();
-    setDraft("");
-    try {
-      const message = await sendDmMessage(roomId, content, replyTarget?.id);
-      if (message?.id) {
-        setMessages((prev) => [...prev, message]);
-        if (selected) {
-          setRecentByFriend((prev) => ({
-            ...prev,
-            [selected.userId]: { preview: content, at: message.createdAt ?? new Date().toISOString() },
-          }));
-          setUnreadByFriend((prev) => {
-            const next = { ...prev, [selected.userId]: 0 };
-            if (typeof window !== "undefined") {
-              localStorage.setItem(FLOATING_DM_STORAGE_KEYS.unread, JSON.stringify(next));
-            }
-            return next;
-          });
-          setLastReadAt((prev) => {
-            const next = { ...prev, [selected.userId]: new Date().toISOString() };
-            if (typeof window !== "undefined") {
-              localStorage.setItem(FLOATING_DM_STORAGE_KEYS.read, JSON.stringify(next));
-            }
-            return next;
-          });
-        }
-        setReplyTarget(null);
-      }
-    } catch (err) {
-      console.error("Failed to send DM", err);
-    }
-  };
-
-  const scrollToMessage = (messageId?: string) => {
-    if (!messageId) return;
-    const el = messageRefs.get(messageId);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-2", "ring-primary/40");
-      window.setTimeout(() => {
-        el.classList.remove("ring-2", "ring-primary/40");
-      }, 1200);
-    }
-  };
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    const keyword = searchQuery.trim().toLowerCase();
-    if (!keyword) {
-      setSearchResults([]);
-      setSearchIndex(0);
-      return;
-    }
-    const matches = orderedMessages
-      .filter((msg) => (msg.content ?? "").toLowerCase().includes(keyword))
-      .map((msg) => msg.id);
-    setSearchResults(matches);
-    setSearchIndex(0);
-  }, [orderedMessages, searchOpen, searchQuery]);
-
-  useEffect(() => {
-    if (searchOpen) return;
-    setSearchResults([]);
-    setSearchIndex(0);
-  }, [searchOpen]);
-
-  const goToSearchResult = (direction: "next" | "prev") => {
-    if (searchResults.length === 0) return;
-    setSearchIndex((prev) => {
-      const nextIndex =
-        direction === "next"
-          ? (prev + 1) % searchResults.length
-          : (prev - 1 + searchResults.length) % searchResults.length;
-      const targetId = searchResults[nextIndex];
-      scrollToMessage(targetId);
-      return nextIndex;
-    });
-  };
-
-  const detailResults = useMemo(() => {
-    const keyword = detailKeyword.trim().toLowerCase();
-    return orderedMessages.filter((msg) => {
-      if (keyword && !(msg.content ?? "").toLowerCase().includes(keyword)) return false;
-      if (detailDate) {
-        const msgDate = new Date(msg.createdAt);
-        const target = new Date(detailDate);
-        if (
-          msgDate.getFullYear() !== target.getFullYear() ||
-          msgDate.getMonth() !== target.getMonth() ||
-          msgDate.getDate() !== target.getDate()
-        ) {
-          return false;
-        }
-      }
-      if (detailFileType) {
-        return false;
-      }
-      return true;
-    });
-  }, [detailDate, detailFileType, detailKeyword, orderedMessages]);
-
-  const handleToggleReaction = (messageId: string, emoji: string) => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    const socket = getChatSocket(token);
-    socket?.emit("toggle-reaction", { messageId, emoji });
-    setMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.id !== messageId) return msg;
-        const reactions = [...(msg.reactions ?? [])];
-        const existingIndex = reactions.findIndex((item) => item.emoji === emoji);
-        if (existingIndex === -1) {
-          reactions.push({ emoji, count: 1, reactedByMe: true });
-        } else {
-          const existing = reactions[existingIndex];
-          if (existing.reactedByMe) {
-            const nextCount = Math.max(0, existing.count - 1);
-            if (nextCount === 0) reactions.splice(existingIndex, 1);
-            else reactions[existingIndex] = { ...existing, count: nextCount, reactedByMe: false };
-          } else {
-            reactions[existingIndex] = { ...existing, count: existing.count + 1, reactedByMe: true };
-          }
-        }
-        return { ...msg, reactions };
-      })
-    );
-  };
+  const {
+    profile,
+    open,
+    setOpen,
+    floatingHidden,
+    setFloatingHidden,
+    floatingPos,
+    setFloatingPos,
+    contextOpen,
+    setContextOpen,
+    contextPos,
+    setContextPos,
+    selected,
+    loadingFriends,
+    loadingMessages,
+    draft,
+    setDraft,
+    query,
+    setQuery,
+    recentByFriend,
+    unreadByFriend,
+    canSend,
+    view,
+    setView,
+    replyTarget,
+    setReplyTarget,
+    emojiOpenFor,
+    setEmojiOpenFor,
+    menuOpenFor,
+    setMenuOpenFor,
+    setInputFocused,
+    searchOpen,
+    setSearchOpen,
+    searchQuery,
+    setSearchQuery,
+    detailSearchOpen,
+    setDetailSearchOpen,
+    searchResults,
+    setSearchResults,
+    searchIndex,
+    setSearchIndex,
+    detailKeyword,
+    setDetailKeyword,
+    detailDate,
+    setDetailDate,
+    detailFileType,
+    setDetailFileType,
+    detailFileOpen,
+    setDetailFileOpen,
+    filteredFriends,
+    recentFriends,
+    orderedMessages,
+    groupedMessages,
+    detailResults,
+    messageRefs,
+    messageScrollRef,
+    draftInputRef,
+    detailFileRef,
+    floatingBtnRef,
+    contextRef,
+    dragState,
+    dmComposerShellClass,
+    handleSelectFriend,
+    handleSend,
+    scrollToMessage,
+    goToSearchResult,
+    handleToggleReaction,
+  } = useFloatingDmController();
 
   return (
     <>
@@ -655,364 +138,364 @@ export default function FloatingDm() {
           ) : (
             <div className={`grid h-full gap-4 ${detailSearchOpen ? "md:grid-cols-[1fr_280px]" : ""}`}>
               <div className="flex min-h-0 h-full flex-col rounded-2xl border border-border bg-panel/80">
-              <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
-                <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted hover:text-foreground"
-                  onClick={() => setView("list")}
-                  aria-label="Back to friends"
-                >
-                  <ArrowLeft size={14} />
-                </button>
-                <span>
-                  {selected?.displayName ?? ""}
-                  {selected?.userId === profile?.id ? " (나)" : ""}
-                </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted hover:text-foreground"
-                    onClick={() => setSearchOpen((prev) => !prev)}
-                    aria-label="Search messages"
-                  >
-                    <Search size={14} />
-                  </button>
-                </div>
-              </div>
-              {searchOpen && (
-                <div className="border-b border-border px-4 py-2">
-                  <div className="flex items-center gap-2 rounded-full border border-border bg-panel px-4">
-                    <input
-                      className="h-9 w-full bg-transparent text-xs text-foreground placeholder:text-muted focus:outline-none"
-                      placeholder="메시지 검색"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          const keyword = searchQuery.trim().toLowerCase();
-                          if (!keyword) return;
-                          if (searchResults.length > 0) {
-                            goToSearchResult("next");
-                          }
-                        }
-                      }}
-                    />
-                    <div className="flex items-center gap-1 text-[10px] text-muted">
-                      <span>
-                        {searchResults.length === 0 ? "0" : searchIndex + 1}/{searchResults.length}
-                      </span>
-                      <button
-                        type="button"
-                        className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground"
-                        onClick={() => goToSearchResult("prev")}
-                      >
-                        Prev
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground"
-                        onClick={() => goToSearchResult("next")}
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex justify-end">
+                <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="rounded-full border border-border px-3 py-1 text-[10px] text-muted hover:text-foreground"
-                      onClick={() => setDetailSearchOpen((prev) => !prev)}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted hover:text-foreground"
+                      onClick={() => setView("list")}
+                      aria-label="Back to friends"
                     >
-                      상세검색하기
+                      <ArrowLeft size={14} />
+                    </button>
+                    <span>
+                      {selected?.displayName ?? ""}
+                      {selected?.userId === profile?.id ? " (나)" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted hover:text-foreground"
+                      onClick={() => setSearchOpen((prev) => !prev)}
+                      aria-label="Search messages"
+                    >
+                      <Search size={14} />
                     </button>
                   </div>
                 </div>
-              )}
-              <div ref={messageScrollRef} className="flex-1 min-h-0 space-y-4 overflow-y-auto px-4 py-3 text-sm">
-                {loadingMessages ? (
-                  <div className="rounded-xl border border-border bg-panel/80 p-3 text-xs text-muted">메시지 불러오는 중...</div>
-                ) : orderedMessages.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border bg-panel/80 p-3 text-xs text-muted">
-                    아직 메시지가 없습니다.
-                  </div>
-                ) : (
-                  groupedMessages.map((group) => (
-                    <div key={group.dateKey} className="space-y-4">
-                      <div className="flex items-center gap-3 py-1">
-                        <div className="h-0 flex-1 border-t border-border/80" />
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-blue-200">
-                            {getFloatingDmRelativeDateLabel(new Date(group.items[0].createdAt))}
-                          </span>
-                          <span className="text-[9px] uppercase tracking-[0.2em] text-muted/70">
-                            {new Date(group.items[0].createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="h-0 flex-1 border-t border-border/80" />
+                {searchOpen && (
+                  <div className="border-b border-border px-4 py-2">
+                    <div className="flex items-center gap-2 rounded-full border border-border bg-panel px-4">
+                      <input
+                        className="h-9 w-full bg-transparent text-xs text-foreground placeholder:text-muted focus:outline-none"
+                        placeholder="메시지 검색"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const keyword = searchQuery.trim().toLowerCase();
+                            if (!keyword) return;
+                            if (searchResults.length > 0) {
+                              goToSearchResult("next");
+                            }
+                          }
+                        }}
+                      />
+                      <div className="flex items-center gap-1 text-[10px] text-muted">
+                        <span>
+                          {searchResults.length === 0 ? "0" : searchIndex + 1}/{searchResults.length}
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground"
+                          onClick={() => goToSearchResult("prev")}
+                        >
+                          Prev
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground"
+                          onClick={() => goToSearchResult("next")}
+                        >
+                          Next
+                        </button>
                       </div>
-                      {group.items.map((msg) => {
-                        const mine = msg.senderId === profile?.id;
-                        return (
-                          <div
-                            key={msg.id}
-                            ref={(el) => {
-                              messageRefs.set(msg.id, el);
-                            }}
-                            className={`group relative flex ${mine ? "justify-end" : "justify-start"} rounded-2xl transition ${
-                              searchResults.includes(msg.id)
-                                ? "bg-black/5 dark:bg-white/5"
-                                : "hover:bg-black/5 dark:hover:bg-white/5"
-                            }`}
-                          >
-                            <div className="flex w-full items-start gap-3">
-                              <div className="h-10 w-10 overflow-hidden rounded-full bg-muted/20 text-[10px] font-semibold text-foreground">
-                                {mine ? (
-                                  profile?.avatarUrl ? (
-                                    <img
-                                      src={profile.avatarUrl}
-                                      alt={profile.displayName ?? "Me"}
-                                      className="h-full w-full object-cover"
-                                    />
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        className="rounded-full border border-border px-3 py-1 text-[10px] text-muted hover:text-foreground"
+                        onClick={() => setDetailSearchOpen((prev) => !prev)}
+                      >
+                        상세검색하기
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div ref={messageScrollRef} className="flex-1 min-h-0 space-y-4 overflow-y-auto px-4 py-3 text-sm">
+                  {loadingMessages ? (
+                    <div className="rounded-xl border border-border bg-panel/80 p-3 text-xs text-muted">메시지 불러오는 중...</div>
+                  ) : orderedMessages.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border bg-panel/80 p-3 text-xs text-muted">
+                      아직 메시지가 없습니다.
+                    </div>
+                  ) : (
+                    groupedMessages.map((group) => (
+                      <div key={group.dateKey} className="space-y-4">
+                        <div className="flex items-center gap-3 py-1">
+                          <div className="h-0 flex-1 border-t border-border/80" />
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-blue-200">
+                              {getFloatingDmRelativeDateLabel(new Date(group.items[0].createdAt))}
+                            </span>
+                            <span className="text-[9px] uppercase tracking-[0.2em] text-muted/70">
+                              {new Date(group.items[0].createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="h-0 flex-1 border-t border-border/80" />
+                        </div>
+                        {group.items.map((msg) => {
+                          const mine = msg.senderId === profile?.id;
+                          return (
+                            <div
+                              key={msg.id}
+                              ref={(el) => {
+                                messageRefs.set(msg.id, el);
+                              }}
+                              className={`group relative flex ${mine ? "justify-end" : "justify-start"} rounded-2xl transition ${
+                                searchResults.includes(msg.id)
+                                  ? "bg-black/5 dark:bg-white/5"
+                                  : "hover:bg-black/5 dark:hover:bg-white/5"
+                              }`}
+                            >
+                              <div className="flex w-full items-start gap-3">
+                                <div className="h-10 w-10 overflow-hidden rounded-full bg-muted/20 text-[10px] font-semibold text-foreground">
+                                  {mine ? (
+                                    profile?.avatarUrl ? (
+                                      <img
+                                        src={profile.avatarUrl}
+                                        alt={profile.displayName ?? "Me"}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center">
+                                        {getFloatingDmInitials(profile?.displayName ?? profile?.name ?? "Me")}
+                                      </div>
+                                    )
+                                  ) : selected?.avatarUrl ? (
+                                    <img src={selected.avatarUrl} alt={selected.displayName} className="h-full w-full object-cover" />
                                   ) : (
                                     <div className="flex h-full w-full items-center justify-center">
-                                      {getFloatingDmInitials(profile?.displayName ?? profile?.name ?? "Me")}
+                                      {getFloatingDmInitials(selected?.displayName)}
                                     </div>
-                                  )
-                                ) : selected?.avatarUrl ? (
-                                  <img src={selected.avatarUrl} alt={selected.displayName} className="h-full w-full object-cover" />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center">
-                                    {getFloatingDmInitials(selected?.displayName)}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex items-center gap-2 text-[14px] font-semibold text-foreground">
-                                    <span>{mine ? profile?.displayName ?? profile?.name ?? "Me" : selected?.displayName ?? "Friend"}</span>
-                                    {mine && (
-                                      <span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-foreground">
-                                        나
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-[10px] text-muted">
-                                    {getFloatingDmMessageTimeLabel(new Date(msg.createdAt))}
-                                  </div>
+                                  )}
                                 </div>
-                                {msg.reply && (
-                                  <button
-                                    type="button"
-                                    className="mt-1 flex w-full items-center gap-3 rounded-xl border border-border/70 bg-panel/70 px-3 py-2 text-left text-[12px] text-muted transition hover:border-border hover:text-foreground"
-                                    onClick={() => scrollToMessage(msg.reply?.id)}
-                                  >
-                                    <span className="h-7 w-7 overflow-hidden rounded-full bg-muted/20 text-[10px] font-semibold text-foreground">
-                                      {msg.reply.sender?.avatar ? (
-                                        <img
-                                          src={msg.reply.sender.avatar}
-                                          alt={msg.reply.sender.name ?? "User"}
-                                          className="h-full w-full object-cover"
-                                        />
-                                      ) : (
-                                        <span className="flex h-full w-full items-center justify-center">
-                                          {getFloatingDmInitials(msg.reply.sender?.name ?? "User")}
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 text-[14px] font-semibold text-foreground">
+                                      <span>{mine ? profile?.displayName ?? profile?.name ?? "Me" : selected?.displayName ?? "Friend"}</span>
+                                      {mine && (
+                                        <span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-foreground">
+                                          나
                                         </span>
                                       )}
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-2 text-[10px] text-muted">
-                                        <span className="font-semibold text-foreground">
-                                          {msg.reply.sender?.name ?? "User"}
-                                        </span>
-                                        <span>Reply</span>
-                                      </div>
-                                      <div className="truncate text-[11px] text-muted">
-                                        {msg.reply.isDeleted ? "(삭제된 메시지)" : msg.reply.content ?? ""}
-                                      </div>
                                     </div>
-                                    <span className="h-full w-[2px] rounded-full bg-border/80" />
-                                  </button>
-                                )}
-                                <div className="mt-1 text-left text-[16px] text-foreground">{msg.content ?? ""}</div>
-                                {msg.reactions && msg.reactions.length > 0 && (
-                                  <div className={`mt-2 flex flex-wrap gap-2 ${mine ? "justify-end" : "justify-start"}`}>
-                                    {msg.reactions.map((reaction) => (
-                                      <button
-                                        key={`${msg.id}-${reaction.emoji}`}
-                                        type="button"
-                                        className={`rounded-full border px-2 py-0.5 text-[11px] ${
-                                          reaction.reactedByMe
-                                            ? "border-primary/50 bg-primary/10 text-foreground"
-                                            : "border-border bg-panel/80 text-muted"
-                                        }`}
-                                        onClick={() => handleToggleReaction(msg.id, reaction.emoji)}
-                                      >
-                                        {reaction.emoji} {reaction.count}
-                                      </button>
-                                    ))}
+                                    <div className="text-[10px] text-muted">
+                                      {getFloatingDmMessageTimeLabel(new Date(msg.createdAt))}
+                                    </div>
                                   </div>
-                                )}
-                                <div className="absolute right-2 top-1 z-20 flex items-center gap-0.5 rounded-lg border border-border bg-background px-1 py-0.5 opacity-0 shadow-lg transition group-hover:opacity-100">
-                                  <div className="relative" data-dm-menu>
+                                  {msg.reply && (
+                                    <button
+                                      type="button"
+                                      className="mt-1 flex w-full items-center gap-3 rounded-xl border border-border/70 bg-panel/70 px-3 py-2 text-left text-[12px] text-muted transition hover:border-border hover:text-foreground"
+                                      onClick={() => scrollToMessage(msg.reply?.id)}
+                                    >
+                                      <span className="h-7 w-7 overflow-hidden rounded-full bg-muted/20 text-[10px] font-semibold text-foreground">
+                                        {msg.reply.sender?.avatar ? (
+                                          <img
+                                            src={msg.reply.sender.avatar}
+                                            alt={msg.reply.sender.name ?? "User"}
+                                            className="h-full w-full object-cover"
+                                          />
+                                        ) : (
+                                          <span className="flex h-full w-full items-center justify-center">
+                                            {getFloatingDmInitials(msg.reply.sender?.name ?? "User")}
+                                          </span>
+                                        )}
+                                      </span>
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 text-[10px] text-muted">
+                                          <span className="font-semibold text-foreground">
+                                            {msg.reply.sender?.name ?? "User"}
+                                          </span>
+                                          <span>Reply</span>
+                                        </div>
+                                        <div className="truncate text-[11px] text-muted">
+                                          {msg.reply.isDeleted ? "(삭제된 메시지)" : msg.reply.content ?? ""}
+                                        </div>
+                                      </div>
+                                      <span className="h-full w-[2px] rounded-full bg-border/80" />
+                                    </button>
+                                  )}
+                                  <div className="mt-1 text-left text-[16px] text-foreground">{msg.content ?? ""}</div>
+                                  {msg.reactions && msg.reactions.length > 0 && (
+                                    <div className={`mt-2 flex flex-wrap gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+                                      {msg.reactions.map((reaction) => (
+                                        <button
+                                          key={`${msg.id}-${reaction.emoji}`}
+                                          type="button"
+                                          className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                                            reaction.reactedByMe
+                                              ? "border-primary/50 bg-primary/10 text-foreground"
+                                              : "border-border bg-panel/80 text-muted"
+                                          }`}
+                                          onClick={() => handleToggleReaction(msg.id, reaction.emoji)}
+                                        >
+                                          {reaction.emoji} {reaction.count}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div className="absolute right-2 top-1 z-20 flex items-center gap-0.5 rounded-lg border border-border bg-background px-1 py-0.5 opacity-0 shadow-lg transition group-hover:opacity-100">
+                                    <div className="relative" data-dm-menu>
+                                      <button
+                                        type="button"
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+                                        onClick={() => setEmojiOpenFor((prev) => (prev === msg.id ? null : msg.id))}
+                                        aria-label="퀵 이모지"
+                                      >
+                                        <SmilePlus size={15} />
+                                      </button>
+                                      {emojiOpenFor === msg.id && (
+                                        <div className="absolute bottom-full right-0 mb-1 flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 shadow-lg">
+                                          {["😁", "😥", "👌", "👋", "🙏", "❤️", "✅"].map((emoji) => (
+                                            <button
+                                              key={`${msg.id}-${emoji}`}
+                                              type="button"
+                                              className="inline-flex h-7 w-7 items-center justify-center rounded text-base hover:bg-subtle/60"
+                                              onClick={() => {
+                                                handleToggleReaction(msg.id, emoji);
+                                                setEmojiOpenFor(null);
+                                              }}
+                                            >
+                                              {emoji}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                     <button
                                       type="button"
                                       className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
-                                      onClick={() => setEmojiOpenFor((prev) => (prev === msg.id ? null : msg.id))}
-                                      aria-label="퀵 이모지"
+                                      onClick={() => setReplyTarget(msg)}
+                                      aria-label="답장"
                                     >
-                                      <SmilePlus size={15} />
+                                      <Reply size={14} />
                                     </button>
-                                    {emojiOpenFor === msg.id && (
-                                      <div className="absolute bottom-full right-0 mb-1 flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 shadow-lg">
-                                        {["😁", "😥", "👌", "👋", "🙏", "❤️", "✅"].map((emoji) => (
+                                    <div className="relative" data-dm-menu>
+                                      <button
+                                        type="button"
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
+                                        onClick={() => setMenuOpenFor((prev) => (prev === msg.id ? null : msg.id))}
+                                        aria-label="추가 메뉴"
+                                      >
+                                        <MoreHorizontal size={14} />
+                                      </button>
+                                      {menuOpenFor === msg.id && (
+                                        <div className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-border bg-panel p-1 shadow-xl">
                                           <button
-                                            key={`${msg.id}-${emoji}`}
                                             type="button"
-                                            className="inline-flex h-7 w-7 items-center justify-center rounded text-base hover:bg-subtle/60"
+                                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted hover:bg-subtle/60 hover:text-foreground"
                                             onClick={() => {
-                                              handleToggleReaction(msg.id, emoji);
-                                              setEmojiOpenFor(null);
+                                              setMenuOpenFor(null);
+                                              setEmojiOpenFor(msg.id);
                                             }}
                                           >
-                                            {emoji}
+                                            <SmilePlus size={13} />
+                                            반응 추가
                                           </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
-                                    onClick={() => setReplyTarget(msg)}
-                                    aria-label="답장"
-                                  >
-                                    <Reply size={14} />
-                                  </button>
-                                  <div className="relative" data-dm-menu>
-                                    <button
-                                      type="button"
-                                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-subtle/60"
-                                      onClick={() => setMenuOpenFor((prev) => (prev === msg.id ? null : msg.id))}
-                                      aria-label="추가 메뉴"
-                                    >
-                                      <MoreHorizontal size={14} />
-                                    </button>
-                                    {menuOpenFor === msg.id && (
-                                      <div className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-border bg-panel p-1 shadow-xl">
-                                        <button
-                                          type="button"
-                                          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted hover:bg-subtle/60 hover:text-foreground"
-                                          onClick={() => {
-                                            setMenuOpenFor(null);
-                                            setEmojiOpenFor(msg.id);
-                                          }}
-                                        >
-                                          <SmilePlus size={13} />
-                                          반응 추가
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted hover:bg-subtle/60 hover:text-foreground"
-                                          onClick={() => {
-                                            setMenuOpenFor(null);
-                                            setReplyTarget(msg);
-                                          }}
-                                        >
-                                          <Reply size={13} />
-                                          답장
-                                        </button>
-                                      </div>
-                                    )}
+                                          <button
+                                            type="button"
+                                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted hover:bg-subtle/60 hover:text-foreground"
+                                            onClick={() => {
+                                              setMenuOpenFor(null);
+                                              setReplyTarget(msg);
+                                            }}
+                                          >
+                                            <Reply size={13} />
+                                            답장
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="flex items-center gap-2 border-t border-border px-4 py-3">
-                <div className="flex-1">
-                  {replyTarget && (
-                    <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-panel/80 px-3 py-2 text-left text-[11px] text-muted">
-                      <span className="h-6 w-6 overflow-hidden rounded-full bg-muted/20 text-[10px] font-semibold text-foreground">
-                        {replyTarget.sender?.avatar ? (
-                          <img
-                            src={replyTarget.sender.avatar}
-                            alt={replyTarget.sender.name ?? "User"}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center">
-                            {getFloatingDmInitials(replyTarget.sender?.name ?? "User")}
-                          </span>
-                        )}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-[10px] text-muted">
-                          <span className="font-semibold text-foreground">
-                            {replyTarget.sender?.name ?? "User"}
-                          </span>
-                          <span>Replying</span>
-                        </div>
-                        <div className="truncate text-[11px] text-muted">{replyTarget.content ?? ""}</div>
+                          );
+                        })}
                       </div>
+                    ))
+                  )}
+                </div>
+                <div className="flex items-center gap-2 border-t border-border px-4 py-3">
+                  <div className="flex-1">
+                    {replyTarget && (
+                      <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-panel/80 px-3 py-2 text-left text-[11px] text-muted">
+                        <span className="h-6 w-6 overflow-hidden rounded-full bg-muted/20 text-[10px] font-semibold text-foreground">
+                          {replyTarget.sender?.avatar ? (
+                            <img
+                              src={replyTarget.sender.avatar}
+                              alt={replyTarget.sender.name ?? "User"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center">
+                              {getFloatingDmInitials(replyTarget.sender?.name ?? "User")}
+                            </span>
+                          )}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 text-[10px] text-muted">
+                            <span className="font-semibold text-foreground">
+                              {replyTarget.sender?.name ?? "User"}
+                            </span>
+                            <span>Replying</span>
+                          </div>
+                          <div className="truncate text-[11px] text-muted">{replyTarget.content ?? ""}</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground"
+                          onClick={() => setReplyTarget(null)}
+                        >
+                          취소
+                        </button>
+                      </div>
+                    )}
+                    <div className={dmComposerShellClass}>
                       <button
                         type="button"
-                        className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted hover:text-foreground"
-                        onClick={() => setReplyTarget(null)}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-foreground/90 transition hover:bg-subtle/80 hover:text-foreground"
                       >
-                        취소
+                        <Plus size={20} />
+                      </button>
+                      <EmojiPicker
+                        presentation="modal"
+                        anchorClass="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground/90 hover:bg-subtle/80"
+                        triggerContent={<Smile size={22} />}
+                        onPick={(emoji) => setDraft((prev) => `${prev}${emoji}`)}
+                      />
+                      <textarea
+                        ref={draftInputRef}
+                        rows={1}
+                        maxLength={3000}
+                        onFocus={() => setInputFocused(true)}
+                        onBlur={() => setInputFocused(false)}
+                        className="hide-scrollbar max-h-24 min-h-10 flex-1 resize-none rounded-xl bg-background/70 px-3 py-2.5 text-[15px] leading-snug text-foreground outline-none placeholder:text-muted/75"
+                        placeholder={selected ? `@${selected.displayName}에게 메시지 보내기` : "메시지 입력…"}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            if (e.shiftKey) return;
+                            e.preventDefault();
+                            void handleSend();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-subtle/70 disabled:text-muted"
+                        disabled={!canSend}
+                        onClick={handleSend}
+                      >
+                        <Send size={17} />
                       </button>
                     </div>
-                  )}
-                  <div className={dmComposerShellClass}>
-                    <button
-                      type="button"
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-foreground/90 transition hover:bg-subtle/80 hover:text-foreground"
-                    >
-                      <Plus size={20} />
-                    </button>
-                    <EmojiPicker
-                      presentation="modal"
-                      anchorClass="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground/90 hover:bg-subtle/80"
-                      triggerContent={<Smile size={22} />}
-                      onPick={(emoji) => setDraft((prev) => `${prev}${emoji}`)}
-                    />
-                    <textarea
-                      ref={draftInputRef}
-                      rows={1}
-                      maxLength={3000}
-                      onFocus={() => setInputFocused(true)}
-                      onBlur={() => setInputFocused(false)}
-                      className="hide-scrollbar max-h-24 min-h-10 flex-1 resize-none rounded-xl bg-background/70 px-3 py-2.5 text-[15px] leading-snug text-foreground outline-none placeholder:text-muted/75"
-                      placeholder={selected ? `@${selected.displayName}에게 메시지 보내기` : "메시지 입력…"}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          if (e.shiftKey) return;
-                          e.preventDefault();
-                          void handleSend();
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-subtle/70 disabled:text-muted"
-                      disabled={!canSend}
-                      onClick={handleSend}
-                    >
-                      <Send size={17} />
-                    </button>
                   </div>
                 </div>
-              </div>
               </div>
               {detailSearchOpen && (
                 <aside className="hidden h-full min-h-0 rounded-2xl border border-border bg-panel/80 p-4 shadow-panel md:flex md:flex-col md:gap-4">

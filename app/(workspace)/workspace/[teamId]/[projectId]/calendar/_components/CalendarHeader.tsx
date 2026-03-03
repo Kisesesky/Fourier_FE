@@ -6,8 +6,8 @@ import { ko } from "date-fns/locale";
 import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { CALENDAR_VIEW_OPTIONS } from "@/workspace/calendar/_model/view.constants";
-import type { CalendarHeaderProps } from "@/workspace/calendar/_model/view.types";
+import { CALENDAR_VIEW_OPTIONS } from "@/workspace/calendar/_model/constants/view.constants";
+import type { CalendarHeaderProps } from "@/workspace/calendar/_model/types/view.types";
 import type { ViewMode } from "@/workspace/calendar/_model/types";
 
 export function CalendarHeader({

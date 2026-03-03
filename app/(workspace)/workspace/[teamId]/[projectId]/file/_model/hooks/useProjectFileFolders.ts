@@ -4,7 +4,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { FILE_VAULT_EVENT } from "@/workspace/file/_model/vault";
-import { listFileFolders, type FileFolderDto } from "@/workspace/file/_service/api";
+import type { FileFolderDto } from "@/workspace/file/_model/types/api.types";
+import { listFileFolders } from "@/workspace/file/_service/api";
 
 export function useProjectFileFolders(projectId?: string) {
   const [folders, setFolders] = useState<FileFolderDto[]>([]);
@@ -34,4 +35,3 @@ export function useProjectFileFolders(projectId?: string) {
 
   return { folders, reload };
 }
-

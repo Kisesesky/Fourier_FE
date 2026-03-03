@@ -10,12 +10,12 @@ import Button from "@/components/ui/button";
 import {
   TIMELINE_DAY_CELL_MIN_WIDTH,
   TIMELINE_MONTH_COLORS,
-} from "@/workspace/calendar/_model/view.constants";
+} from "@/workspace/calendar/_model/constants/view.constants";
 import type {
   CalendarTimelineViewProps,
   TimelineGroup,
   TimelineTask,
-} from "@/workspace/calendar/_model/view.types";
+} from "@/workspace/calendar/_model/types/view.types";
 import { formatTimelineRange } from "@/workspace/calendar/_model/view.utils";
 import { TimelineTaskBar } from "./TimelineTaskBar";
 

@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { addMonths, format, subMonths } from 'date-fns';
 import { ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Clock4, LayoutGrid, LineChart } from 'lucide-react';
 import { buildSeriesFromDates, filterDates } from '../../../_model/dashboard-page.utils';
-import type { DetailViewBaseProps } from './detail-view.types';
+import type { DetailViewBaseProps } from './types/detail-view.types';
 
 type PieBucket = { key: string; name: string; count: number; color: string };
 

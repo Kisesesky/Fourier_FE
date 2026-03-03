@@ -1,12 +1,10 @@
-// app/(workspace)/workspace/[teamId]/_components/LeftNav.tsx
 'use client';
 
 import clsx from "clsx";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
 import type { Team } from "@/types/workspace";
-import { shortcuts } from "@/workspace/root-model/workspace.constants";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { shortcuts } from "@/app/(workspace)/workspace/[teamId]/_model/constants/workspace.constants";
+import { useLeftNavState } from "../_model/hooks";
 
 type LeftNavView = "projects" | "recent" | "favorites" | "friends";
 
@@ -45,58 +43,20 @@ const LeftNav = ({
   className,
   onNavigate,
 }: LeftNavProps) => {
-  const [openMenuTeamId, setOpenMenuTeamId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const { workspaces, workspace, activeWorkspaceId, setActiveWorkspaceId } = useWorkspace();
-  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
-  const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
-  const teamRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-
-  useEffect(() => {
-    const activeTeam = teams.find((team) => team.active);
-    if (!activeTeam) return;
-    const element = teamRefs.current.get(activeTeam.id);
-    if (element) {
-      element.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      element.focus();
-    }
-  }, [teams]);
-
-  useEffect(() => {
-    if (!openMenuTeamId) return;
-    const onClick = (event: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) {
-        setOpenMenuTeamId(null);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [openMenuTeamId]);
-
-  useEffect(() => {
-    if (!workspaceMenuOpen) return;
-    const onClick = (event: MouseEvent) => {
-      if (!workspaceMenuRef.current) return;
-      if (!workspaceMenuRef.current.contains(event.target as Node)) {
-        setWorkspaceMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [workspaceMenuOpen]);
-
-  const teamInitials = useMemo(
-    () => (name: string) =>
-      name
-        .split(/\s+/)
-        .map((part) => part[0])
-        .filter(Boolean)
-        .slice(0, 2)
-        .join("")
-        .toUpperCase(),
-    []
-  );
+  const {
+    openMenuTeamId,
+    setOpenMenuTeamId,
+    menuRef,
+    workspaces,
+    workspace,
+    activeWorkspaceId,
+    workspaceMenuOpen,
+    setWorkspaceMenuOpen,
+    workspaceMenuRef,
+    teamRefs,
+    teamInitials,
+    selectWorkspace,
+  } = useLeftNavState(teams, onNavigate);
 
   const containerClass =
     variant === "panel"
@@ -133,14 +93,7 @@ const LeftNav = ({
                       "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-foreground hover:bg-accent",
                       activeWorkspaceId === item.id && "bg-accent/70"
                     )}
-                  onClick={() => {
-                    localStorage.setItem("activeWorkspaceId", item.id);
-                    setActiveWorkspaceId(item.id);
-                    window.dispatchEvent(new CustomEvent("workspace:select", { detail: { workspaceId: item.id } }));
-                    window.dispatchEvent(new Event("teams:refresh"));
-                    setWorkspaceMenuOpen(false);
-                    onNavigate?.();
-                  }}
+                    onClick={() => selectWorkspace(item.id)}
                   >
                     <span className="font-medium">{item.name}</span>
                     {activeWorkspaceId === item.id && (
@@ -262,49 +215,47 @@ const LeftNav = ({
         </div>
       )}
 
-    <div className="mt-8 space-y-2 border-t border-border pt-6">
-      {shortcuts.map((item) => {
-        const isRecent = item.id === "recent";
-        const isFavorite = item.id === "favorite";
-        const isFriends = item.id === "friends";
-        const isActive =
-          (isRecent && activeView === "recent") ||
-          (isFavorite && activeView === "favorites") ||
-          (isFriends && activeView === "friends");
-        const hintValue = isFavorite
-          ? favoriteCount.toString()
-          : isRecent
-            ? recentCount.toString()
-            : isFriends
-              ? friendCount.toString()
-            : item.hint;
-        return (
-          <button
-            key={item.id}
-            type="button"
-            className={clsx(
-              "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition",
-              isActive ? "bg-accent text-foreground" : "text-muted hover:bg-accent"
-            )}
-            onClick={() => {
-              onChangeView(
-                isRecent ? "recent" : isFavorite ? "favorites" : isFriends ? "friends" : "projects"
-              );
-              onNavigate?.();
-            }}
-          >
-            <span className="flex items-center gap-2 text-[13px] font-medium">
-              <item.icon size={14} className={clsx("text-muted", isActive && "text-foreground")} />
-              {item.label}
-            </span>
-            {hintValue && <span className="text-[11px] text-muted">{hintValue}</span>}
-          </button>
-        );
-      })}
-    </div>
-
-    
-  </aside>
+      <div className="mt-8 space-y-2 border-t border-border pt-6">
+        {shortcuts.map((item) => {
+          const isRecent = item.id === "recent";
+          const isFavorite = item.id === "favorite";
+          const isFriends = item.id === "friends";
+          const isActive =
+            (isRecent && activeView === "recent") ||
+            (isFavorite && activeView === "favorites") ||
+            (isFriends && activeView === "friends");
+          const hintValue = isFavorite
+            ? favoriteCount.toString()
+            : isRecent
+              ? recentCount.toString()
+              : isFriends
+                ? friendCount.toString()
+                : item.hint;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={clsx(
+                "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition",
+                isActive ? "bg-accent text-foreground" : "text-muted hover:bg-accent"
+              )}
+              onClick={() => {
+                onChangeView(
+                  isRecent ? "recent" : isFavorite ? "favorites" : isFriends ? "friends" : "projects"
+                );
+                onNavigate?.();
+              }}
+            >
+              <span className="flex items-center gap-2 text-[13px] font-medium">
+                <item.icon size={14} className={clsx("text-muted", isActive && "text-foreground")} />
+                {item.label}
+              </span>
+              {hintValue && <span className="text-[11px] text-muted">{hintValue}</span>}
+            </button>
+          );
+        })}
+      </div>
+    </aside>
   );
 };
 

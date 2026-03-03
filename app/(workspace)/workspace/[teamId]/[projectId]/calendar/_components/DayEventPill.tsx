@@ -9,8 +9,8 @@ import {
   DAY_EVENT_LEFT_MARGIN,
   DAY_EVENT_RADIUS,
   DAY_EVENT_RIGHT_MARGIN,
-} from "@/workspace/calendar/_model/view.constants";
-import type { DayEventPillProps } from "@/workspace/calendar/_model/view.types";
+} from "@/workspace/calendar/_model/constants/view.constants";
+import type { DayEventPillProps } from "@/workspace/calendar/_model/types/view.types";
 
 export function DayEventPill({
   event,

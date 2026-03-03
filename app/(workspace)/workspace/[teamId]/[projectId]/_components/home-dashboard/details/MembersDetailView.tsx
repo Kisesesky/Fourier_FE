@@ -2,9 +2,9 @@
 'use client';
 
 import { ArrowUpRight, CheckCircle2, Clock4, LayoutGrid, LineChart, UserSquare2, Users } from 'lucide-react';
-import { MEMBER_ROLE_LABELS } from '../../../_model/dashboard-page.constants';
+import { MEMBER_ROLE_LABELS } from '../../../_model/constants/dashboard-page.constants';
 import { buildSeriesFromDates, filterDates } from '../../../_model/dashboard-page.utils';
-import type { DetailViewBaseProps } from './detail-view.types';
+import type { DetailViewBaseProps } from './types/detail-view.types';
 
 const MEMBER_ROLE_BADGE_CLASS: Record<string, string> = {
   OWNER: "bg-rose-500 text-rose-100 border-rose-500/80",

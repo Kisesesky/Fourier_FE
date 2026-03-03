@@ -6,7 +6,7 @@ import { ko } from "date-fns/locale";
 import { CalendarDays, Clock, MapPin, StickyNote } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { TimelineTaskBarProps } from "@/workspace/calendar/_model/view.types";
+import type { TimelineTaskBarProps } from "@/workspace/calendar/_model/types/view.types";
 
 export function TimelineTaskBar({
   title,

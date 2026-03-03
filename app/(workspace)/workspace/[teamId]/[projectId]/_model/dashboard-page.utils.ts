@@ -1,6 +1,6 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/_model/dashboard-page.utils.ts
 
-import type { AnalyticsCounts, DateFilter, GraphMode } from "./dashboard-page.types";
+import type { AnalyticsCounts, DateFilter, GraphMode } from "./types/dashboard-page.types";
 
 export const buildSeriesFromDates = (dates: number[]): AnalyticsCounts => {
   const now = new Date();

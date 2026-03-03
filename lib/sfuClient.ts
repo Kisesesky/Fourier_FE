@@ -1,3 +1,4 @@
+// lib/sfuClient.ts
 import type { Socket } from "socket.io-client";
 
 type TrackKind = "audio" | "video" | "screen";
@@ -77,13 +78,13 @@ export class SfuClientSession {
   constructor(
     private readonly socket: Socket,
     private readonly channelId: string,
-    private readonly onRemoteStream: (userId: string, stream: MediaStream | null) => void,
+    private readonly onRemoteStream: (userId: string, kind: TrackKind, stream: MediaStream | null) => void,
   ) {}
 
   static async create(
     socket: Socket,
     channelId: string,
-    onRemoteStream: (userId: string, stream: MediaStream | null) => void,
+    onRemoteStream: (userId: string, kind: TrackKind, stream: MediaStream | null) => void,
   ) {
     const mediasoupClient = await loadMediasoupClientModule();
     if (!mediasoupClient?.Device) return null;
@@ -123,7 +124,9 @@ export class SfuClientSession {
     this.consumedProducerIds.clear();
     this.remoteStreamsByUser.forEach((stream, userId) => {
       stream.getTracks().forEach((track) => track.stop());
-      this.onRemoteStream(userId, null);
+      this.onRemoteStream(userId, "audio", null);
+      this.onRemoteStream(userId, "video", null);
+      this.onRemoteStream(userId, "screen", null);
     });
     this.remoteStreamsByUser.clear();
     if (this.sendTransport) this.sendTransport.close();
@@ -189,11 +192,9 @@ export class SfuClientSession {
             }
             if (stream.getTracks().length === 0 && ownerUserId) {
               this.remoteStreamsByUser.delete(ownerUserId);
-              this.onRemoteStream(ownerUserId, null);
-            } else if (ownerUserId) {
-              this.onRemoteStream(ownerUserId, stream);
             }
           }
+          if (ownerUserId) this.onRemoteStream(ownerUserId, kind || "video", null);
           consumer.close?.();
         }
 
@@ -209,7 +210,9 @@ export class SfuClientSession {
           stream.getTracks().forEach((track) => track.stop());
           this.remoteStreamsByUser.delete(payload.userId);
         }
-        this.onRemoteStream(payload.userId, null);
+        this.onRemoteStream(payload.userId, "audio", null);
+        this.onRemoteStream(payload.userId, "video", null);
+        this.onRemoteStream(payload.userId, "screen", null);
       };
       this.socket.on("sfu.new-producer", onNewProducer);
       this.socket.on("sfu.producer-closed", onProducerClosed);
@@ -320,13 +323,14 @@ export class SfuClientSession {
       this.remoteStreamsByUser.set(userId, stream);
     }
     stream.addTrack(consumer.track);
-    this.onRemoteStream(userId, stream);
+    const trackKind: TrackKind = data.kind === "audio" ? "audio" : data.kind === "screen" ? "screen" : "video";
+    const singleTrackStream = new MediaStream([consumer.track]);
+    this.onRemoteStream(userId, trackKind, singleTrackStream);
     this.debug("consume producer", { producerId, userId, consumerId: data.id, kind: data.kind });
   }
 
   private debug(message: string, payload?: any) {
     if (!this.debugEnabled) return;
-    // eslint-disable-next-line no-console
     console.log(`[SFU:${this.channelId}] ${message}`, payload ?? "");
   }
 }

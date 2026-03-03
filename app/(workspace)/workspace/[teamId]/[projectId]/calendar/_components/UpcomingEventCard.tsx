@@ -7,7 +7,7 @@ import { CalendarDays, Clock, MapPin, MoreHorizontal, StickyNote } from "lucide-
 import { useEffect, useState } from "react";
 
 import { formatEventTime } from "@/workspace/calendar/_model/utils";
-import type { UpcomingEventCardProps } from "@/workspace/calendar/_model/view.types";
+import type { UpcomingEventCardProps } from "@/workspace/calendar/_model/types/view.types";
 
 export function UpcomingEventCard({
   event,

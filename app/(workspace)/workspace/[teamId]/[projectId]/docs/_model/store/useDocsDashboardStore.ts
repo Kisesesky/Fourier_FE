@@ -3,8 +3,8 @@
 import { create } from "zustand";
 import type { SetStateAction } from "react";
 import type { DocMeta, DocFolder } from "../types";
-import type { DocsSortKey } from "../view.types";
-import type { DocumentCommentDto } from "@/workspace/docs/_service/api";
+import type { DocsSortKey } from "../types/view.types";
+import type { DocumentCommentDto } from "@/workspace/docs/_model/types/api.types";
 
 type DocsDashboardState = {
   docs: DocMeta[];

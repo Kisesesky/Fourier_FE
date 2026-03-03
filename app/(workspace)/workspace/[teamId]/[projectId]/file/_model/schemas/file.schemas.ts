@@ -1,8 +1,8 @@
 // app/(workspace)/workspace/[teamId]/[projectId]/file/_model/schemas/file.schemas.ts
 
 import { z } from "zod";
-import type { ProjectFileDto } from "@/workspace/file/_service/api";
-import type { FileCategory, ViewFile } from "../file-page.types";
+import type { ProjectFileDto } from "@/workspace/file/_model/types/api.types";
+import type { FileCategory, ViewFile } from "../types/file-page.types";
 
 export const MAX_SIZE_MB: Record<FileCategory, number> = {
   image: 10,

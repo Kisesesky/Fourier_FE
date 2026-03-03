@@ -2,7 +2,7 @@
 'use client';
 
 import type { ComponentType } from 'react';
-import type { GraphMode } from '../../_model/dashboard-page.types';
+import type { GraphMode } from '../../_model/types/dashboard-page.types';
 
 export const renderBars = (values: number[], height = 80) => {
   const max = Math.max(...values, 1);

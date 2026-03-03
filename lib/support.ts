@@ -1,3 +1,4 @@
+// lib/support.ts
 import api from "./api";
 
 export async function createSupportInquiry(payload: {

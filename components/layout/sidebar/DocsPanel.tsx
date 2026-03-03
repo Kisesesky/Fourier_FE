@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Folder, LayoutDashboard, Star, FolderOpen } from "lucide-react";
+import { FileText, Folder, Star, FolderOpen } from "lucide-react";
 
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { DocsTree } from "@/app/(workspace)/workspace/[teamId]/[projectId]/docs/_components/note-drive/tree";

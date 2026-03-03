@@ -763,7 +763,7 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
   );
 
   return (
-    <div className={`grid min-h-0 flex-1 ${!isCallChannel && rightOpen ? "lg:grid-cols-[minmax(0,1fr)_390px]" : ""} gap-0`}>
+    <div className={`grid min-h-0 flex-1 ${!isCallChannel && rightOpen ? "lg:grid-cols-[minmax(0,1fr)_390px]" : ""} ${isCallChannel ? "h-full" : ""} gap-0`}>
       <div
         className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
           isCallChannel
@@ -822,8 +822,10 @@ export default function ChatView({ initialChannelId }: ChatViewProps = {}) {
 
         <div
           ref={listRef}
-          className={`scroll-smooth overflow-y-auto ${
-            isCallChannel ? "bg-background p-0" : "bg-background/35 px-4 py-3 pb-8 space-y-2"
+          className={`scroll-smooth ${
+            isCallChannel
+              ? "min-h-0 flex-1 overflow-hidden bg-background p-0"
+              : "overflow-y-auto bg-background/35 px-4 py-3 pb-8 space-y-2"
           } scrollbar-thin ${view === 'compact' ? 'text-[13px]' : 'text-[14px]'}`}
           onClick={(e)=> {
             if ((e.target as HTMLElement).closest('[data-mid]')) return;

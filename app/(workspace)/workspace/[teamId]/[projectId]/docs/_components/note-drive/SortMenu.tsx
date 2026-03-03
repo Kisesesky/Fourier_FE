@@ -5,9 +5,9 @@ import { useEffect, useState } from 'react';
 import { ArrowUpDown, Check } from 'lucide-react';
 import clsx from 'clsx';
 
-import { DOCS_SORT_OPTIONS } from "@/workspace/docs/_model/view.constants";
+import { DOCS_SORT_OPTIONS } from "@/workspace/docs/_model/constants/view.constants";
 import { MENU_ATTR } from "@/workspace/docs/_model/utils/noteDriveViewUtils";
-import type { DocsSortKey } from "@/workspace/docs/_model/view.types";
+import type { DocsSortKey } from "@/workspace/docs/_model/types/view.types";
 
 type SortMenuProps = {
   sortKey: DocsSortKey;

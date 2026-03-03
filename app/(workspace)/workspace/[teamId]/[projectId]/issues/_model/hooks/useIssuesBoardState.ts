@@ -23,7 +23,7 @@ import type {
   GroupModalState,
   IssueCreateModalState,
   IssueEditModalState,
-} from "@/workspace/issues/_model/board.types";
+} from "@/workspace/issues/_model/types/board.types";
 import { useIssuesViewStore } from "@/workspace/issues/_model/store/useIssuesViewStore";
 
 export function useIssuesBoardState({

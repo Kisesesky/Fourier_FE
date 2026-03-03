@@ -9,47 +9,27 @@ import type {
   CalendarType,
   ProjectCalendar,
 } from "@/workspace/calendar/_model/types";
+import type {
+  CalendarCategoryResponse,
+  CalendarEventResponse,
+  CalendarFolderResponse,
+  CalendarResponse,
+} from "@/workspace/calendar/_model/types/api.types";
+import {
+  CalendarAnalyticsSchema,
+  CalendarCategoryResponseSchema,
+  CalendarEventResponseSchema,
+  CalendarFolderResponseSchema,
+  CalendarResponseSchema,
+} from "@/workspace/calendar/_model/schemas/calendar-api.schemas";
 
 const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID;
-
-type CalendarEventResponse = {
+type NormalizedCalendarEventResponse = CalendarEventResponse & {
   id: string;
   title: string;
   startAt: string;
   endAt: string;
-  location?: string | null;
-  memo?: string | null;
-  calendarId?: string;
-  categoryId?: string;
-  category?: { id: string; name: string; categoryColor?: string; color?: string } | null;
-  createdBy?: { id: string; name: string; avatarUrl?: string | null };
-  sourceType?: "manual" | "issue";
-  linkedIssueId?: string;
-};
-
-type CalendarCategoryResponse = {
-  id: string;
-  name: string;
-  categoryColor?: string;
-  color?: string;
-  calendarId?: string;
-  isDefault?: boolean;
-};
-
-type CalendarResponse = {
-  id: string;
-  name: string;
-  type: CalendarType;
-  color: string;
-  ownerId?: string | null;
-  folderId?: string | null;
-};
-
-type CalendarFolderResponse = {
-  id: string;
-  name: string;
-  createdById?: string | null;
-  isActive?: boolean;
+  category: { id: string; name: string; categoryColor?: string; color?: string } | null;
 };
 
 const pickArrayPayload = (payload: unknown): unknown[] => {
@@ -84,56 +64,7 @@ const pickObjectPayload = (payload: unknown): Record<string, unknown> => {
   return {};
 };
 
-const CalendarEventResponseSchema = z.object({
-  id: z.union([z.string(), z.number()]).optional(),
-  title: z.string().optional(),
-  startAt: z.string().optional(),
-  endAt: z.string().optional(),
-  location: z.string().nullable().optional(),
-  memo: z.string().nullable().optional(),
-  calendarId: z.string().optional(),
-  categoryId: z.string().optional(),
-  category: z
-    .object({
-      id: z.string(),
-      name: z.string(),
-      categoryColor: z.string().optional(),
-      color: z.string().optional(),
-    })
-    .passthrough()
-    .nullable()
-    .optional(),
-  createdBy: z.object({ id: z.string(), name: z.string(), avatarUrl: z.string().nullable().optional() }).optional(),
-  sourceType: z.enum(["manual", "issue"]).optional(),
-  linkedIssueId: z.string().optional(),
-}).passthrough();
-
-const CalendarCategoryResponseSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  categoryColor: z.string().optional(),
-  color: z.string().optional(),
-  calendarId: z.string().optional(),
-  isDefault: z.boolean().optional(),
-});
-
-const CalendarResponseSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.custom<CalendarType>(),
-  color: z.string(),
-  ownerId: z.string().nullable().optional(),
-  folderId: z.string().nullable().optional(),
-});
-
-const CalendarFolderResponseSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  createdById: z.string().nullable().optional(),
-  isActive: z.boolean().optional(),
-});
-
-const toEvent = (event: CalendarEventResponse): CalendarEvent => {
+const toEvent = (event: NormalizedCalendarEventResponse): CalendarEvent => {
   const start = new Date(event.startAt);
   const end = new Date(event.endAt);
   const isAllDay = start.getHours() === 0 && start.getMinutes() === 0 && end.getHours() === 23 && end.getMinutes() >= 59;
@@ -157,7 +88,7 @@ const toEvent = (event: CalendarEventResponse): CalendarEvent => {
   };
 };
 
-const normalizeCalendarEventResponse = (input: unknown): CalendarEventResponse | null => {
+const normalizeCalendarEventResponse = (input: unknown): NormalizedCalendarEventResponse | null => {
   const parsed = CalendarEventResponseSchema.safeParse(input);
   const item = (parsed.success ? parsed.data : (input as any)) ?? {};
   const startAt = item.startAt ?? item.start ?? item.startDate;
@@ -243,7 +174,7 @@ export async function getCalendarEvents(params: { start?: string | null; end?: s
   const raw = pickArrayPayload(res.data);
   const data = raw
     .map((item) => normalizeCalendarEventResponse(item))
-    .filter((item): item is CalendarEventResponse => item !== null);
+    .filter((item): item is NormalizedCalendarEventResponse => item !== null);
   return {
     events: data.map(toEvent),
     start,
@@ -320,7 +251,7 @@ export async function getCalendarAnalytics(
   if (params.month) query.set("month", params.month);
   if (params.year) query.set("year", params.year);
   const res = await api.get<{ counts: number[]; granularity: string }>(`/projects/${projectId}/calendar/analytics?${query.toString()}`);
-  const parsed = z.object({ counts: z.array(z.number()), granularity: z.string() }).safeParse(res.data);
+  const parsed = CalendarAnalyticsSchema.safeParse(res.data);
   return parsed.success ? parsed.data : { counts: [], granularity: params.granularity };
 }
 

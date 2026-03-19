@@ -27,12 +27,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <p className="text-sm font-medium">Workspace OS</p>
             </div>
           </Link>
-          <Link
-            href="/sign-in"
-            className="rounded-full border border-border px-3 py-1.5 text-xs text-muted transition hover:border-primary hover:text-primary sm:text-sm"
-          >
-            로그인
-          </Link>
         </header>
 
         <div className="rounded-2xl border border-border bg-panel/90 p-5 shadow-xl shadow-primary/5 backdrop-blur-sm sm:p-7">

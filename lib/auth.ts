@@ -23,9 +23,56 @@ export type SignInResponse = {
   refreshToken?: string;
 };
 
+export type VerificationPayload = {
+  email: string;
+};
+
+export type VerifyCodePayload = {
+  email: string;
+  code: string;
+};
+
+export type ResetPasswordPayload = {
+  email: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
 export async function signIn(payload: SignInPayload): Promise<SignInResponse> {
   const res = await api.post("/auth/sign-in", payload);
   return res.data;
+}
+
+export async function sendSignUpVerificationCode(payload: VerificationPayload) {
+  const res = await api.post("/verification/sign-up/sendcode", payload);
+  return res.data as { success: boolean; message: string };
+}
+
+export async function verifySignUpCode(payload: VerifyCodePayload) {
+  const res = await api.post("/verification/sign-up/verifycode", payload);
+  return res.data as { success: boolean; message: string };
+}
+
+export async function sendPasswordResetVerificationCode(payload: VerificationPayload) {
+  const res = await api.post("/verification/find-password/sendcode", payload);
+  return res.data as { success: boolean; message: string };
+}
+
+export async function verifyPasswordResetCode(payload: VerifyCodePayload) {
+  const res = await api.post("/verification/find-password/verifycode", payload);
+  return res.data as { success: boolean; message: string };
+}
+
+export async function signUp(payload: FormData) {
+  const res = await api.post("/auth/sign-up", payload, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+}
+
+export async function resetPassword(payload: ResetPasswordPayload) {
+  const res = await api.post("/auth/reset-password", payload);
+  return res.data as { success: boolean; message: string };
 }
 
 export async function signOut(): Promise<void> {
